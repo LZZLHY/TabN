@@ -1,0 +1,15 @@
+{
+  "name": "start",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/start-all.js",
+    "dev": "node scripts/start-all.js",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:restart": "docker compose restart"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

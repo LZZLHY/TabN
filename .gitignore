@@ -1,0 +1,63 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+
+# Production build
+dist/
+build/
+
+# Environment variables (local config)
+.env
+.env.local
+.env.*.local
+backend/env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Prisma - migrations 需要提交，方便协作
+# 但不要提交 generated client
+
+# Database files
+*.db
+*.sqlite
+
+# Cache
+.cache/
+.parcel-cache/
+.npm/
+.eslintcache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Log files
+*.log
+backend/logs/**/*.log
+
+# User data (runtime generated)
+backend/storage/user-settings/*.json
+
+# Process ID files
+.start/
+
+# Word temp files
+~$*.docx

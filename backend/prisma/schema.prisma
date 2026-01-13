@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  ROOT
+}
+
+enum ExtensionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  email        String?  @unique
+  phone        String?  @unique
+  nickname     String   @unique
+  role         Role     @default(USER)
+
+  bookmarks Bookmark[]
+  extensions Extension[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([phone])
+}
+
+enum BookmarkType {
+  LINK
+  FOLDER
+}
+
+model Bookmark {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name String
+  url  String?
+  note String?
+  
+  type     BookmarkType @default(LINK)
+  parentId String?
+  parent   Bookmark?    @relation("FolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children Bookmark[]   @relation("FolderChildren")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Extension {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  sourceUrl   String?
+  status      ExtensionStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}

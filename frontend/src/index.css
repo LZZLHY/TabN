@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================
+   外观系统（设计 Token）
+   说明：用 CSS 变量承载主题色/深色/毛玻璃等视觉基建。
+   后续功能（包括拓展系统）只要用这些变量/类名，就能自动适配。
+   ========================= */
+
+:root {
+  /* 基础色（RGB 三元组，配合 Tailwind 的 /<alpha-value> 使用） */
+  --bg: 255 255 255;
+  --fg: 15 23 42; /* slate-900 */
+
+  /* 主题色（可被设置面板动态修改） */
+  --primary: 59 130 246; /* blue-500 */
+  --primary-fg: 255 255 255;
+
+  /* 毛玻璃表面 */
+  --glass: 255 255 255;
+  --glass-border: 255 255 255;
+
+  /* 全局圆角（可在设置里调节） */
+  --start-radius: 18px;
+}
+
+.dark {
+  --bg: 2 6 23; /* slate-950 */
+  --fg: 241 245 249; /* slate-100 */
+
+  --glass: 2 6 23;
+  --glass-border: 255 255 255;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: transparent;
+  color: rgb(var(--fg));
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    'Apple Color Emoji', 'Segoe UI Emoji';
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-glass/15 backdrop-blur-xl border border-glass-border/20 shadow-glass;
+  }
+
+  .glass-panel-strong {
+    @apply bg-glass/20 backdrop-blur-2xl border border-glass-border/25 shadow-glass;
+  }
+
+  /* 带主题色边框的模态框面板 */
+  .glass-modal {
+    @apply bg-glass/20 backdrop-blur-2xl shadow-glass;
+    border: 1px solid rgb(var(--primary) / 0.35);
+  }
+
+  .focus-ring {
+    @apply outline-none ring-2 ring-primary/60 ring-offset-2 ring-offset-transparent;
+  }
+}
+
+
+/* =========================
+   流光边框效果（Glow Border）
+   说明：搜索框聚焦时显示流光边框效果
+   使用 conic-gradient + 伪元素 + mask 实现
+   ========================= */
+
+@property --glow-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* 流光边框容器 */
+.glow-border {
+  position: relative;
+  z-index: 0;
+}
+
+/* ::after - 清晰的边框线条 */
+.glow-border::after {
+  --glow-angle: 0deg;
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  /* 边框粗细 2px */
+  padding: 2px;
+  background: conic-gradient(
+    from var(--glow-angle),
+    transparent 50%,
+    rgb(var(--primary) / 0.1) 60%,
+    rgb(var(--primary) / 0.3) 70%,
+    rgb(var(--primary) / 0.6) 80%,
+    rgb(var(--primary) / 0.9) 90%,
+    rgb(var(--primary)) 100%
+  );
+  /* 使用 mask 裁切内部，只保留边框 */
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* 激活状态 - 显示流光边框 */
+.glow-border-active::after {
+  opacity: 1;
+  animation: glow-spin 4s linear infinite;
+}
+
+/* 外发光效果 - 移动模式（独立于流光线条） */
+.glow-light-move {
+  animation: glow-shadow 4s linear infinite !important;
+}
+
+/* 外发光效果 - 静态模式，像灯泡在背后照亮整个边框（独立于流光线条） */
+.glow-light-static {
+  box-shadow: 
+    0 0 20px 2px rgb(var(--primary) / 0.4),
+    0 0 40px 4px rgb(var(--primary) / 0.2) !important;
+}
+
+@keyframes glow-spin {
+  from {
+    --glow-angle: 0deg;
+  }
+  to {
+    --glow-angle: 360deg;
+  }
+}
+
+/* 外发光动画 - 模拟灯光从边框向外照射 */
+/* conic-gradient 从 0deg (右侧/3点钟方向) 开始顺时针旋转 */
+/* 流星头部在 100% 位置，所以 0deg 时头部在右侧 */
+@keyframes glow-shadow {
+  0% {
+    /* 0deg: 流星头部在右侧 */
+    box-shadow: 
+      12px 0 20px -5px rgb(var(--primary) / 0.5),
+      8px 0 10px -3px rgb(var(--primary) / 0.3) !important;
+  }
+  25% {
+    /* 90deg: 流星头部在下方 */
+    box-shadow: 
+      0 12px 20px -5px rgb(var(--primary) / 0.5),
+      0 8px 10px -3px rgb(var(--primary) / 0.3) !important;
+  }
+  50% {
+    /* 180deg: 流星头部在左侧 */
+    box-shadow: 
+      -12px 0 20px -5px rgb(var(--primary) / 0.5),
+      -8px 0 10px -3px rgb(var(--primary) / 0.3) !important;
+  }
+  75% {
+    /* 270deg: 流星头部在上方 */
+    box-shadow: 
+      0 -12px 20px -5px rgb(var(--primary) / 0.5),
+      0 -8px 10px -3px rgb(var(--primary) / 0.3) !important;
+  }
+  100% {
+    /* 360deg: 回到右侧 */
+    box-shadow: 
+      12px 0 20px -5px rgb(var(--primary) / 0.5),
+      8px 0 10px -3px rgb(var(--primary) / 0.3) !important;
+  }
+}

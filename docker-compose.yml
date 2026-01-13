@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: start
+      POSTGRES_USER: start
+      POSTGRES_PASSWORD: start
+    ports:
+      - "5432:5432"
+    volumes:
+      - start-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  start-postgres-data:
+
+
