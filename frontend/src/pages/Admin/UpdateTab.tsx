@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   Clock,
   Server,
+  Database,
+  Monitor,
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { apiFetch } from '../../services/api'
@@ -30,6 +32,8 @@ interface VersionInfo {
   releaseDate: string
   needsRestart: boolean
   needsDeps: boolean
+  needsMigration: boolean
+  frontendOnly: boolean
   hasGit: boolean
 }
 
@@ -335,19 +339,36 @@ export function UpdateTab() {
           <div className="space-y-4">
             {/* 更新类型提示 */}
             <div className="flex flex-wrap gap-3">
+              {/* 仅前端更新 - 最快速 */}
+              {versionInfo.frontendOnly && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 rounded-lg text-sm">
+                  <Monitor className="w-4 h-4" />
+                  仅前端更新（秒级）
+                </div>
+              )}
+              {/* 数据库迁移 */}
+              {versionInfo.needsMigration && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg text-sm">
+                  <Database className="w-4 h-4" />
+                  需要数据库迁移
+                </div>
+              )}
+              {/* 安装依赖 */}
               {versionInfo.needsDeps && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-sm">
                   <Package className="w-4 h-4" />
                   需要安装新依赖
                 </div>
               )}
+              {/* 重启后端 */}
               {versionInfo.needsRestart && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg text-sm">
                   <RotateCcw className="w-4 h-4" />
                   需要重启后端
                 </div>
               )}
-              {!versionInfo.needsRestart && !versionInfo.needsDeps && (
+              {/* 无缝更新（无需重启、无需依赖、非仅前端） */}
+              {!versionInfo.needsRestart && !versionInfo.needsDeps && !versionInfo.needsMigration && !versionInfo.frontendOnly && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg text-sm">
                   <Zap className="w-4 h-4" />
                   无缝更新（无需重启）

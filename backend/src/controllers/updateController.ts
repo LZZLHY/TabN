@@ -42,6 +42,8 @@ interface VersionInfo {
   releaseDate: string
   needsRestart: boolean
   needsDeps: boolean
+  needsMigration: boolean
+  frontendOnly: boolean
   hasGit: boolean
 }
 
@@ -132,6 +134,106 @@ async function getLatestRelease(): Promise<{ version: string; notes: string; dat
 }
 
 /**
+ * 比较两个版本之间的变更文件
+ * 通过 GitHub API 获取变更文件列表，判断是否需要安装依赖或重启后端
+ */
+async function getChangedFiles(currentVersion: string, latestVersion: string): Promise<{
+  needsDeps: boolean
+  needsRestart: boolean
+  needsMigration: boolean
+  frontendOnly: boolean
+  changedFiles: string[]
+}> {
+  const result = {
+    needsDeps: false,
+    needsRestart: false,
+    needsMigration: false,
+    frontendOnly: false,
+    changedFiles: [] as string[]
+  }
+  
+  try {
+    // 使用 GitHub Compare API 获取两个版本之间的差异
+    const response = await fetch(
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/compare/v${currentVersion}...v${latestVersion}`,
+      {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Start-App'
+        }
+      }
+    )
+    
+    if (!response.ok) {
+      logger.warn('GitHub Compare API 请求失败，使用保守策略', { status: response.status })
+      // API 失败时使用保守策略
+      return { needsDeps: true, needsRestart: true, needsMigration: true, frontendOnly: false, changedFiles: [] }
+    }
+    
+    const data = await response.json() as { files?: Array<{ filename: string }> }
+    const files = data.files || []
+    result.changedFiles = files.map(f => f.filename)
+    
+    // 统计变更类型
+    let hasBackendChanges = false
+    let hasFrontendChanges = false
+    
+    // 分析变更文件
+    for (const file of result.changedFiles) {
+      // 检查是否需要安装依赖（package.json 或 package-lock.json 变更）
+      if (file === 'backend/package.json' || 
+          file === 'backend/package-lock.json' ||
+          file === 'frontend/package.json' ||
+          file === 'frontend/package-lock.json' ||
+          file === 'package.json' ||
+          file === 'package-lock.json') {
+        result.needsDeps = true
+      }
+      
+      // 检查是否需要数据库迁移（prisma 目录下的文件变更）
+      if (file.startsWith('backend/prisma/') && 
+          (file.endsWith('.prisma') || file.includes('/migrations/'))) {
+        result.needsMigration = true
+      }
+      
+      // 检查是否需要重启后端（backend 目录下的代码变更）
+      if (file.startsWith('backend/') && 
+          !file.endsWith('.md') && 
+          !file.endsWith('.txt')) {
+        result.needsRestart = true
+        hasBackendChanges = true
+      }
+      
+      // 检查是否有前端变更
+      if (file.startsWith('frontend/') && 
+          !file.endsWith('.md') && 
+          !file.endsWith('.txt')) {
+        hasFrontendChanges = true
+      }
+    }
+    
+    // 判断是否仅前端更新（最快速的更新方式）
+    result.frontendOnly = hasFrontendChanges && !hasBackendChanges && !result.needsDeps && !result.needsMigration
+    
+    logger.info('版本差异分析完成', {
+      currentVersion,
+      latestVersion,
+      totalFiles: result.changedFiles.length,
+      needsDeps: result.needsDeps,
+      needsRestart: result.needsRestart,
+      needsMigration: result.needsMigration,
+      frontendOnly: result.frontendOnly
+    })
+    
+    return result
+  } catch (error) {
+    logger.error('获取版本差异失败，使用保守策略', { error })
+    // 出错时使用保守策略
+    return { needsDeps: true, needsRestart: true, needsMigration: true, frontendOnly: false, changedFiles: [] }
+  }
+}
+
+/**
  * 比较版本号
  * @returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal
  */
@@ -160,14 +262,31 @@ router.get('/check', requireAuth, requireRoot, async (_req: AuthedRequest, res: 
     const latest = latestInfo?.version || current
     const hasUpdate = compareVersions(latest, current) > 0
     
+    // 智能检测是否需要安装依赖和重启
+    let needsDeps = false
+    let needsRestart = false
+    let needsMigration = false
+    let frontendOnly = false
+    
+    if (hasUpdate) {
+      // 通过 GitHub API 分析变更文件
+      const changes = await getChangedFiles(current, latest)
+      needsDeps = changes.needsDeps
+      needsRestart = changes.needsRestart
+      needsMigration = changes.needsMigration
+      frontendOnly = changes.frontendOnly
+    }
+    
     const info: VersionInfo = {
       current,
       latest,
       hasUpdate,
       releaseNotes: latestInfo?.notes || '',
       releaseDate: latestInfo?.date || '',
-      needsRestart: true, // 保守起见，总是建议重启
-      needsDeps: hasUpdate, // 有更新时建议安装依赖
+      needsRestart,
+      needsDeps,
+      needsMigration,
+      frontendOnly,
       hasGit: gitAvailable,
     }
     
