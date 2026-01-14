@@ -10,11 +10,19 @@ import { extensionsRouter } from './routes/extensions'
 import utilsRouter from './routes/utils'
 import { logsRouter } from './routes/logs'
 import { updateRouter } from './controllers/updateController'
-import { createLogger } from './services/logger'
+import { initLogger, createLogger } from './services/logger'
+import { getLogStorage } from './services/logStorage'
 import { requestLogger } from './middleware/requestLogger'
 import { errorLogger, setupGlobalErrorHandlers } from './middleware/errorLogger'
 
-// 初始化全局 Logger
+// 记录启动时间
+const startTime = Date.now()
+
+// 初始化日志存储
+const logStorage = getLogStorage()
+
+// 初始化全局 Logger（连接日志存储）
+initLogger((type, entry) => logStorage.write(type, entry))
 const logger = createLogger('server')
 
 // 设置全局错误处理
@@ -58,7 +66,12 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 const HOST = env.HOST || '0.0.0.0'
 app.listen(env.PORT, HOST, () => {
-  logger.info(`Server started on http://${HOST}:${env.PORT}`)
+  const startupTime = Date.now() - startTime
+  logger.info(`Server started on http://${HOST}:${env.PORT}`, { startupTime: `${startupTime}ms` })
+  
+  // 将启动时间存储到全局变量，供 API 查询
+  ;(global as any).__SERVER_START_TIME__ = startTime
+  ;(global as any).__SERVER_STARTUP_DURATION__ = startupTime
 })
 
 

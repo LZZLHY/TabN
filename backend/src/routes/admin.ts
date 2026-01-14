@@ -13,6 +13,7 @@ import {
   setUserRole,
   updateRootProfile,
   updateUserProfileAsRoot,
+  getServerStatus,
 } from '../controllers/adminController'
 
 export const adminRouter = Router()
@@ -33,5 +34,8 @@ adminRouter.patch('/extensions/:id/review', requireAuth, requireAdmin, reviewExt
 
 adminRouter.get('/project-settings', requireAuth, requireRoot, getProjectSettings)
 adminRouter.put('/project-settings', requireAuth, requireRoot, putProjectSettings)
+
+// 服务器状态
+adminRouter.get('/server-status', requireAuth, requireAdmin, getServerStatus)
 
 

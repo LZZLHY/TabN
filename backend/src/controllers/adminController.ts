@@ -356,3 +356,40 @@ export async function changeRootPassword(req: AuthedRequest, res: Response) {
   await prisma.user.update({ where: { id: actor.userId }, data: { passwordHash } })
   return ok(res, { ok: true })
 }
+
+/** 获取服务器状态（启动时长等） */
+export async function getServerStatus(req: AuthedRequest, res: Response) {
+  const actor = req.auth
+  if (!actor) return fail(res, 401, '未登录')
+  if (actor.role !== 'ADMIN' && actor.role !== 'ROOT') return fail(res, 403, '无权限')
+
+  const startTime = (global as any).__SERVER_START_TIME__ || Date.now()
+  const startupDuration = (global as any).__SERVER_STARTUP_DURATION__ || 0
+  const uptime = Date.now() - startTime
+
+  // 格式化运行时长
+  const formatUptime = (ms: number) => {
+    const seconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    const days = Math.floor(hours / 24)
+
+    if (days > 0) {
+      return `${days}天 ${hours % 24}小时 ${minutes % 60}分钟`
+    }
+    if (hours > 0) {
+      return `${hours}小时 ${minutes % 60}分钟 ${seconds % 60}秒`
+    }
+    if (minutes > 0) {
+      return `${minutes}分钟 ${seconds % 60}秒`
+    }
+    return `${seconds}秒`
+  }
+
+  return ok(res, {
+    startTime: new Date(startTime).toISOString(),
+    startupDuration: `${startupDuration}ms`,
+    uptime: formatUptime(uptime),
+    uptimeMs: uptime,
+  })
+}

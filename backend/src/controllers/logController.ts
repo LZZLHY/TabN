@@ -69,8 +69,8 @@ export async function queryLogs(req: AuthedRequest, res: Response) {
     try {
       const entry = JSON.parse(line)
 
-      // 级别过滤
-      if (level && entry.level !== undefined && entry.level < levelMap[level]) continue
+      // 级别过滤（精确匹配）
+      if (level && entry.level !== undefined && entry.level !== levelMap[level]) continue
 
       // 关键词过滤
       if (keyword && !line.toLowerCase().includes(keyword.toLowerCase())) continue

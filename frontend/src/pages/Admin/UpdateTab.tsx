@@ -3,7 +3,7 @@
  * 提供版本检查和智能更新功能
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import {
   RefreshCw,
@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Zap,
   AlertTriangle,
+  Clock,
+  Server,
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { apiFetch } from '../../services/api'
@@ -31,38 +33,115 @@ interface VersionInfo {
   hasGit: boolean
 }
 
+interface ServerStatus {
+  startTime: string
+  startupDuration: string
+  uptime: string
+  uptimeMs: number
+}
+
 export function UpdateTab() {
   const token = useAuthStore((s) => s.token)
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
+  const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
+  const [displayUptime, setDisplayUptime] = useState<string>('加载中...')
 
-  // 检查更新
-  const checkUpdate = useCallback(async () => {
+  // 格式化运行时长
+  const formatUptime = (ms: number) => {
+    const seconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    const days = Math.floor(hours / 24)
+
+    if (days > 0) {
+      return `${days}天 ${hours % 24}小时 ${minutes % 60}分钟`
+    }
+    if (hours > 0) {
+      return `${hours}小时 ${minutes % 60}分钟 ${seconds % 60}秒`
+    }
+    if (minutes > 0) {
+      return `${minutes}分钟 ${seconds % 60}秒`
+    }
+    return `${seconds}秒`
+  }
+
+  // 获取服务器状态
+  const fetchServerStatus = useCallback(async () => {
+    if (!token) return
+    try {
+      const resp = await apiFetch<ServerStatus>('/api/admin/server-status', { method: 'GET', token })
+      if (resp.ok) {
+        setServerStatus(resp.data)
+      }
+    } catch {
+      // 忽略错误
+    }
+  }, [token])
+
+  // 初始获取服务器状态
+  useEffect(() => {
+    fetchServerStatus()
+  }, [fetchServerStatus])
+
+  // 动态更新运行时长（每秒更新一次）
+  useEffect(() => {
+    if (!serverStatus?.startTime) return
+    
+    const startTime = new Date(serverStatus.startTime).getTime()
+    
+    const updateUptime = () => {
+      const uptime = Date.now() - startTime
+      setDisplayUptime(formatUptime(uptime))
+    }
+    
+    // 立即更新一次
+    updateUptime()
+    
+    // 每秒更新
+    const interval = setInterval(updateUptime, 1000)
+    return () => clearInterval(interval)
+  }, [serverStatus?.startTime])
+
+  // 检查更新（silent 模式不显示"已是最新版本"提示）
+  const checkUpdate = useCallback(async (silent = false) => {
     if (!token) return
     setChecking(true)
     try {
       const resp = await apiFetch<VersionInfo>('/api/admin/update/check', { method: 'GET', token })
       if (!resp.ok) {
-        toast.error(resp.message)
+        if (!silent) toast.error(resp.message)
         return
       }
       setVersionInfo(resp.data)
       if (resp.data.hasUpdate) {
         toast.success(`发现新版本 v${resp.data.latest}`)
-      } else {
+      } else if (!silent) {
         toast.success('已是最新版本')
       }
-      if (!resp.data.hasGit) {
+      if (resp.data.hasUpdate && !resp.data.hasGit) {
         toast.warning('当前环境没有 Git，无法自动更新')
       }
     } catch (error) {
-      toast.error('检查更新失败')
+      if (!silent) toast.error('检查更新失败')
     } finally {
       setChecking(false)
     }
   }, [token])
+
+  // 进入页面时自动检查更新（静默模式，只有有更新才提示）
+  useEffect(() => {
+    if (!token) return
+    
+    // 添加小延迟确保 toast 组件已挂载
+    const timer = setTimeout(() => {
+      checkUpdate(true)
+    }, 500)
+    
+    return () => clearTimeout(timer)
+  }, []) // 只在组件挂载时执行一次
 
   // 执行更新
   const doUpdate = useCallback(async () => {
@@ -169,12 +248,59 @@ export function UpdateTab() {
         </div>
         <Button
           variant="glass"
-          onClick={checkUpdate}
+          onClick={() => checkUpdate(false)}
           disabled={checking}
         >
           <RefreshCw className={cn("w-4 h-4 mr-2", checking && "animate-spin")} />
           检查更新
         </Button>
+      </div>
+
+      {/* 服务器状态卡片 */}
+      <div className="glass-panel rounded-2xl p-6">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+            <Server className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-lg font-medium text-fg">服务器状态</div>
+            <div className="text-sm text-fg/60">后端服务运行信息</div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 bg-glass/5 rounded-xl">
+            <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
+              <Clock className="w-4 h-4" />
+              启动时长
+            </div>
+            <div className="text-lg font-medium text-fg">
+              {serverStatus?.startupDuration || '加载中...'}
+            </div>
+          </div>
+          
+          <div className="p-4 bg-glass/5 rounded-xl">
+            <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
+              <Zap className="w-4 h-4" />
+              运行时长
+            </div>
+            <div className="text-lg font-medium text-fg">
+              {displayUptime}
+            </div>
+          </div>
+          
+          <div className="p-4 bg-glass/5 rounded-xl">
+            <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
+              <Server className="w-4 h-4" />
+              启动时间
+            </div>
+            <div className="text-sm font-medium text-fg">
+              {serverStatus?.startTime 
+                ? new Date(serverStatus.startTime).toLocaleString('zh-CN')
+                : '加载中...'}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* 版本信息卡片 */}

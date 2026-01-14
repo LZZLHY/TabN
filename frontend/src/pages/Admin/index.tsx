@@ -460,8 +460,14 @@ export function AdminPage() {
             </div>
           </header>
 
-          <div className="flex-1 overflow-y-auto p-6 md:p-8 scroll-smooth">
-            <div className="max-w-6xl mx-auto space-y-6 pb-20">
+          <div className={cn(
+            "flex-1 p-6 md:p-8 scroll-smooth",
+            tab === 'logs' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'
+          )}>
+            <div className={cn(
+              "mx-auto pb-20",
+              tab === 'logs' ? 'flex-1 flex flex-col min-h-0 w-full' : 'max-w-6xl space-y-6'
+            )}>
 
               {/* Users Tab */}
               {tab === 'users' && (

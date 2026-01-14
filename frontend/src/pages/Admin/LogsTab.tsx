@@ -62,12 +62,12 @@ const LOG_TYPES = [
 ]
 
 const LOG_LEVELS = [
-  { value: '', label: '全部级别', icon: <Filter className="w-4 h-4" /> },
-  { value: 'debug', label: 'DEBUG', icon: <Bug className="w-4 h-4" /> },
-  { value: 'info', label: 'INFO', icon: <Info className="w-4 h-4" /> },
-  { value: 'warn', label: 'WARN', icon: <AlertTriangle className="w-4 h-4" /> },
-  { value: 'error', label: 'ERROR', icon: <AlertCircle className="w-4 h-4" /> },
-  { value: 'fatal', label: 'FATAL', icon: <Skull className="w-4 h-4" /> },
+  { value: '', label: '全部级别', icon: <Filter className="w-4 h-4" />, color: '', tooltip: '显示所有级别的日志' },
+  { value: 'debug', label: 'DEBUG', icon: <Bug className="w-4 h-4 text-gray-500" />, color: 'text-gray-500', tooltip: '调试信息' },
+  { value: 'info', label: 'INFO', icon: <Info className="w-4 h-4 text-blue-500" />, color: 'text-blue-500', tooltip: '一般信息' },
+  { value: 'warn', label: 'WARN', icon: <AlertTriangle className="w-4 h-4 text-amber-500" />, color: 'text-amber-500', tooltip: '警告信息' },
+  { value: 'error', label: 'ERROR', icon: <AlertCircle className="w-4 h-4 text-red-500" />, color: 'text-red-500', tooltip: '错误信息' },
+  { value: 'fatal', label: 'FATAL', icon: <Skull className="w-4 h-4 text-red-600" />, color: 'text-red-600 font-bold', tooltip: '致命错误' },
 ]
 
 function getLevelIcon(level?: number | string) {
@@ -88,17 +88,38 @@ function getLevelBg(level?: number | string) {
   return 'bg-glass/5 border-glass-border/10'
 }
 
+/** 获取日志级别的样式类 */
+function getLevelStyle(levelName?: string) {
+  const l = levelName?.toUpperCase()
+  switch (l) {
+    case 'DEBUG':
+      return 'bg-gray-500/10 text-gray-500'
+    case 'INFO':
+      return 'bg-blue-500/10 text-blue-500'
+    case 'WARN':
+      return 'bg-amber-500/10 text-amber-500'
+    case 'ERROR':
+      return 'bg-red-500/10 text-red-500'
+    case 'FATAL':
+      return 'bg-red-600/20 text-red-600 font-bold'
+    default:
+      return 'bg-glass/10 text-fg/60'
+  }
+}
+
 /** 自定义下拉选择器组件 */
 function CustomSelect<T extends string>({
   value,
   onChange,
   options,
   className,
+  width,
 }: {
   value: T
   onChange: (value: T) => void
-  options: { value: T; label: string; icon?: React.ReactNode }[]
+  options: { value: T; label: string; icon?: React.ReactNode; color?: string; tooltip?: string }[]
   className?: string
+  width?: string
 }) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -117,11 +138,12 @@ function CustomSelect<T extends string>({
   }, [open])
 
   return (
-    <div ref={containerRef} className={cn('relative z-20', className)}>
+    <div ref={containerRef} className={cn('relative z-20', className)} style={{ width }}>
       <button
         ref={buttonRef}
         type="button"
         onClick={() => setOpen(!open)}
+        title={currentOption.tooltip}
         className={cn(
           'flex items-center gap-2 h-9 px-3 rounded-xl text-sm w-full',
           'bg-glass/10 hover:bg-glass/20 transition-colors',
@@ -130,14 +152,14 @@ function CustomSelect<T extends string>({
         )}
       >
         {currentOption.icon}
-        <span className="text-fg/80">{currentOption.label}</span>
-        <ChevronDown className={cn('w-3.5 h-3.5 text-fg/50 transition-transform ml-auto', open && 'rotate-180')} />
+        <span className={cn('text-fg/80 flex-1 text-left', currentOption.color)}>{currentOption.label}</span>
+        <ChevronDown className={cn('w-3.5 h-3.5 text-fg/50 transition-transform flex-shrink-0', open && 'rotate-180')} />
       </button>
 
       {open && (
         <div 
           className="absolute top-full left-0 mt-1 z-[100] py-1 rounded-xl bg-bg/95 backdrop-blur-xl border border-glass-border/30 shadow-2xl"
-          style={{ minWidth: buttonRef.current?.offsetWidth ?? 140 }}
+          style={{ minWidth: width || (buttonRef.current?.offsetWidth ?? 140) }}
         >
           {options.map(opt => (
             <button
@@ -147,14 +169,15 @@ function CustomSelect<T extends string>({
                 onChange(opt.value)
                 setOpen(false)
               }}
+              title={opt.tooltip}
               className={cn(
                 'w-full flex items-center gap-2 px-3 py-2 text-sm text-left',
                 'hover:bg-glass/30 transition-colors',
-                opt.value === value && 'bg-primary/10 text-primary',
+                opt.value === value && 'bg-primary/10',
               )}
             >
               {opt.icon}
-              <span>{opt.label}</span>
+              <span className={opt.color || (opt.value === value ? 'text-primary' : '')}>{opt.label}</span>
             </button>
           ))}
         </div>
@@ -270,6 +293,11 @@ export function LogsTab({ token }: LogsTabProps) {
     return () => stopStreaming()
   }, [type])
 
+  // 级别变化时自动搜索
+  useEffect(() => {
+    loadLogs(1)
+  }, [level])
+
   useEffect(() => {
     return () => stopStreaming()
   }, [])
@@ -277,9 +305,9 @@ export function LogsTab({ token }: LogsTabProps) {
   const totalPages = Math.ceil(total / limit)
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 flex-shrink-0">
         <div>
           <h2 className="text-xl font-semibold text-fg tracking-tight">日志查看</h2>
           <p className="mt-1 text-sm text-fg/60">查看系统日志、请求日志、错误日志和审计日志。</p>
@@ -306,13 +334,14 @@ export function LogsTab({ token }: LogsTabProps) {
       </div>
 
       {/* Filters */}
-      <div className="glass-panel rounded-2xl p-4 flex flex-wrap items-center gap-3 relative z-10">
+      <div className="glass-panel rounded-2xl p-4 flex flex-wrap items-center gap-3 relative z-10 mt-6 flex-shrink-0">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-fg/40" />
           <CustomSelect
             value={type}
             onChange={setType}
             options={LOG_TYPES}
+            width="130px"
           />
         </div>
 
@@ -320,6 +349,7 @@ export function LogsTab({ token }: LogsTabProps) {
           value={level}
           onChange={setLevel}
           options={LOG_LEVELS}
+          width="130px"
         />
 
         <div className="relative flex-1 min-w-[200px]">
@@ -341,8 +371,8 @@ export function LogsTab({ token }: LogsTabProps) {
       </div>
 
       {/* Log List */}
-      <div className="glass-panel rounded-2xl overflow-hidden">
-        <div className="divide-y divide-glass-border/10">
+      <div className="glass-panel rounded-2xl overflow-hidden flex flex-col mt-6 flex-1 min-h-0">
+        <div className="divide-y divide-glass-border/10 overflow-y-auto flex-1">
           {logs.length === 0 && !loading && (
             <div className="p-8 text-center text-fg/50 text-sm">暂无日志数据</div>
           )}
@@ -374,9 +404,7 @@ export function LogsTab({ token }: LogsTabProps) {
                       {log.levelName && (
                         <span className={cn(
                           'text-xs px-2 py-0.5 rounded font-medium',
-                          log.levelName === 'ERROR' || log.levelName === 'FATAL' ? 'bg-red-500/10 text-red-500' :
-                          log.levelName === 'WARN' ? 'bg-amber-500/10 text-amber-500' :
-                          'bg-glass/10 text-fg/60'
+                          getLevelStyle(log.levelName)
                         )}>
                           {log.levelName}
                         </span>
@@ -433,7 +461,7 @@ export function LogsTab({ token }: LogsTabProps) {
 
         {/* Pagination */}
         {!streaming && totalPages > 1 && (
-          <div className="border-t border-glass-border/10 p-4 flex items-center justify-between">
+          <div className="border-t border-glass-border/10 p-4 flex items-center justify-between flex-shrink-0">
             <div className="text-xs text-fg/50">
               共 {total} 条，第 {page}/{totalPages} 页
             </div>
