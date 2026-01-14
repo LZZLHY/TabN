@@ -12,32 +12,23 @@ import {
   RotateCcw,
   CheckCircle2,
   AlertCircle,
-  GitCommit,
-  FileCode,
-  Clock,
-  User,
   Zap,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { apiFetch } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
 import { cn } from '../../utils/cn'
 
-interface CommitInfo {
-  hash: string
-  message: string
-  date: string
-  author: string
-}
-
 interface VersionInfo {
   current: string
   latest: string
   hasUpdate: boolean
-  commits: CommitInfo[]
-  changedFiles: string[]
+  releaseNotes: string
+  releaseDate: string
   needsRestart: boolean
   needsDeps: boolean
+  hasGit: boolean
 }
 
 export function UpdateTab() {
@@ -59,9 +50,12 @@ export function UpdateTab() {
       }
       setVersionInfo(resp.data)
       if (resp.data.hasUpdate) {
-        toast.success(`发现 ${resp.data.commits.length} 个新提交`)
+        toast.success(`发现新版本 v${resp.data.latest}`)
       } else {
         toast.success('已是最新版本')
+      }
+      if (!resp.data.hasGit) {
+        toast.warning('当前环境没有 Git，无法自动更新')
       }
     } catch (error) {
       toast.error('检查更新失败')
@@ -165,15 +159,6 @@ export function UpdateTab() {
     }
   }, [token])
 
-  // 分类变更文件
-  const categorizeFiles = (files: string[]) => {
-    const backend = files.filter(f => f.startsWith('backend/'))
-    const frontend = files.filter(f => f.startsWith('frontend/'))
-    const scripts = files.filter(f => f.startsWith('scripts/'))
-    const other = files.filter(f => !f.startsWith('backend/') && !f.startsWith('frontend/') && !f.startsWith('scripts/'))
-    return { backend, frontend, scripts, other }
-  }
-
   return (
     <div className="space-y-6">
       {/* 标题 */}
@@ -208,11 +193,11 @@ export function UpdateTab() {
               {versionInfo?.hasUpdate ? '有新版本可用' : '已是最新版本'}
             </div>
             <div className="text-sm text-fg/60">
-              当前版本: <code className="px-1.5 py-0.5 bg-glass/10 rounded">{versionInfo?.current || '未知'}</code>
+              当前版本: <code className="px-1.5 py-0.5 bg-glass/10 rounded">v{versionInfo?.current || '未知'}</code>
               {versionInfo?.hasUpdate && (
                 <>
                   {' → '}
-                  <code className="px-1.5 py-0.5 bg-primary/10 text-primary rounded">{versionInfo.latest}</code>
+                  <code className="px-1.5 py-0.5 bg-primary/10 text-primary rounded">v{versionInfo.latest}</code>
                 </>
               )}
             </div>
@@ -267,132 +252,55 @@ export function UpdateTab() {
         )}
       </div>
 
-      {/* 提交列表 */}
-      {versionInfo?.commits && versionInfo.commits.length > 0 && (
-        <div className="glass-panel rounded-2xl p-6">
-          <h3 className="text-lg font-medium text-fg mb-4 flex items-center gap-2">
-            <GitCommit className="w-5 h-5" />
-            待更新提交 ({versionInfo.commits.length})
-          </h3>
-          <div className="space-y-3">
-            {versionInfo.commits.map((commit) => (
-              <div key={commit.hash} className="flex items-start gap-3 p-3 bg-glass/5 rounded-xl">
-                <code className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono shrink-0">
-                  {commit.hash}
-                </code>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-fg truncate">{commit.message}</div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-fg/50">
-                    <span className="flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      {commit.author}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(commit.date).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 变更文件 */}
-      {versionInfo?.changedFiles && versionInfo.changedFiles.length > 0 && (
-        <div className="glass-panel rounded-2xl p-6">
-          <h3 className="text-lg font-medium text-fg mb-4 flex items-center gap-2">
-            <FileCode className="w-5 h-5" />
-            变更文件 ({versionInfo.changedFiles.length})
-          </h3>
-          <div className="space-y-4">
-            {(() => {
-              const { backend, frontend, scripts, other } = categorizeFiles(versionInfo.changedFiles)
-              return (
-                <>
-                  {backend.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-fg/60 mb-2">后端 ({backend.length})</div>
-                      <div className="flex flex-wrap gap-1">
-                        {backend.slice(0, 10).map(f => (
-                          <code key={f} className="px-2 py-0.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded text-xs">
-                            {f.replace('backend/', '')}
-                          </code>
-                        ))}
-                        {backend.length > 10 && (
-                          <span className="text-xs text-fg/50">+{backend.length - 10} 更多</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {frontend.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-fg/60 mb-2">前端 ({frontend.length})</div>
-                      <div className="flex flex-wrap gap-1">
-                        {frontend.slice(0, 10).map(f => (
-                          <code key={f} className="px-2 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded text-xs">
-                            {f.replace('frontend/', '')}
-                          </code>
-                        ))}
-                        {frontend.length > 10 && (
-                          <span className="text-xs text-fg/50">+{frontend.length - 10} 更多</span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  {scripts.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-fg/60 mb-2">脚本 ({scripts.length})</div>
-                      <div className="flex flex-wrap gap-1">
-                        {scripts.map(f => (
-                          <code key={f} className="px-2 py-0.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded text-xs">
-                            {f.replace('scripts/', '')}
-                          </code>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {other.length > 0 && (
-                    <div>
-                      <div className="text-xs font-medium text-fg/60 mb-2">其他 ({other.length})</div>
-                      <div className="flex flex-wrap gap-1">
-                        {other.map(f => (
-                          <code key={f} className="px-2 py-0.5 bg-glass/10 text-fg/70 rounded text-xs">
-                            {f}
-                          </code>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )
-            })()}
+      {/* 无 Git 警告 */}
+      {versionInfo && !versionInfo.hasGit && (
+        <div className="glass-panel rounded-2xl p-6 border border-amber-500/20 bg-amber-500/5">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-medium text-fg">无法自动更新</div>
+              <p className="mt-1 text-sm text-fg/60">
+                当前环境没有安装 Git，无法使用自动更新功能。
+                请手动从 GitHub 下载最新版本并替换文件。
+              </p>
+              <a 
+                href="https://github.com/LZZLHY/start/releases" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-block mt-3 text-sm text-primary hover:underline"
+              >
+                前往 GitHub 下载 →
+              </a>
+            </div>
           </div>
         </div>
       )}
 
       {/* 手动操作 */}
-      <div className="glass-panel rounded-2xl p-6">
-        <h3 className="text-lg font-medium text-fg mb-4">手动操作</h3>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="glass" onClick={pullOnly} disabled={loading}>
-            <Download className="w-4 h-4 mr-2" />
-            仅拉取代码
-          </Button>
-          <Button variant="glass" onClick={installDeps} disabled={loading}>
-            <Package className="w-4 h-4 mr-2" />
-            安装依赖
-          </Button>
-          <Button variant="glass" onClick={restartService} disabled={loading} className="text-red-500 hover:bg-red-50/10">
-            <RotateCcw className="w-4 h-4 mr-2" />
-            重启服务
-          </Button>
+      {versionInfo?.hasGit && (
+        <div className="glass-panel rounded-2xl p-6">
+          <h3 className="text-lg font-medium text-fg mb-4">手动操作</h3>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="glass" onClick={pullOnly} disabled={loading}>
+              <Download className="w-4 h-4 mr-2" />
+              仅拉取代码
+            </Button>
+            <Button variant="glass" onClick={installDeps} disabled={loading}>
+              <Package className="w-4 h-4 mr-2" />
+              安装依赖
+            </Button>
+            <Button variant="glass" onClick={restartService} disabled={loading} className="text-red-500 hover:bg-red-50/10">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              重启服务
+            </Button>
+          </div>
+          <p className="mt-3 text-xs text-fg/50">
+            提示：一键更新会自动判断是否需要安装依赖和重启服务。手动操作仅在特殊情况下使用。
+          </p>
         </div>
-        <p className="mt-3 text-xs text-fg/50">
-          提示：一键更新会自动判断是否需要安装依赖和重启服务。手动操作仅在特殊情况下使用。
-        </p>
-      </div>
+      )}
     </div>
   )
 }
