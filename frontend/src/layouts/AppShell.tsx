@@ -20,6 +20,13 @@ export function AppShell() {
   const refreshMe = useAuthStore((s) => s.refreshMe)
   const token = useAuthStore((s) => s.token)
 
+  // 首次加载时，如果没有 token，重置外观设置（避免关机重启后显示上一个用户的设置）
+  useEffect(() => {
+    if (!token) {
+      useAppearanceStore.getState().resetAppearance()
+    }
+  }, []) // 只在首次加载时执行
+
   const { backgroundUrl, bingCopyright } = useBackgroundImage()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [marketOpen, setMarketOpen] = useState(false)

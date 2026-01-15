@@ -678,7 +678,7 @@ export function BookmarkDrawer({ open, onClose }: BookmarkDrawerProps) {
       </div>
 
       {/* 拖拽覆盖层 */}
-      {drag.activeId && (
+      {drag.activeId && createPortal(
         <div ref={drag.overlayRef} style={drag.overlayStyle}>
           {(() => {
             const it = allItems.find((x) => x.id === drag.activeId)
@@ -699,18 +699,19 @@ export function BookmarkDrawer({ open, onClose }: BookmarkDrawerProps) {
               : []
             const showFavicon = Boolean(favicon)
             return (
-              <div className="bm-inner grid place-items-center select-none">
-                <div
-                  ref={drag.overlayBoxRef}
-                  className={cn(
-                    'bookmark-icon h-12 w-12 rounded-[var(--start-radius)] overflow-hidden grid place-items-center shadow-2xl select-none',
-                    isFolder
-                      ? 'bg-glass/20 border border-glass-border/20 p-1'
-                      : showFavicon
-                        ? 'bg-white/70'
-                        : 'bg-primary/15 text-primary font-semibold',
-                  )}
-                >
+              <div className="bm-inner">
+                <div className="grid place-items-center select-none">
+                  <div
+                    ref={drag.overlayBoxRef}
+                    className={cn(
+                      'bookmark-icon h-12 w-12 rounded-[var(--start-radius)] overflow-hidden grid place-items-center shadow-2xl select-none',
+                      isFolder
+                        ? 'bg-glass/20 border border-glass-border/20 p-1'
+                        : showFavicon
+                          ? 'bg-white/70'
+                          : 'bg-primary/15 text-primary font-semibold',
+                    )}
+                  >
                   {isFolder ? (
                     <div className="grid grid-cols-3 gap-0.5 w-full h-full content-start">
                       {folderItems.map((sub) => {
@@ -746,14 +747,16 @@ export function BookmarkDrawer({ open, onClose }: BookmarkDrawerProps) {
                       <span className={cn(showFavicon ? 'hidden' : '')}>{letter}</span>
                     </>
                   )}
-                </div>
-                <div className="mt-1.5 text-[11px] text-fg/80 truncate w-16 text-center">
-                  {it.name}
+                  </div>
+                  <div className="mt-1.5 text-[11px] text-fg/80 truncate w-16 text-center">
+                    {it.name}
+                  </div>
                 </div>
               </div>
             )
           })()}
-        </div>
+        </div>,
+        document.body
       )}
 
 

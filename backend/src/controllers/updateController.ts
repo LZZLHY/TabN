@@ -345,8 +345,8 @@ router.post('/deps', requireAuth, requireRoot, async (_req: AuthedRequest, res: 
 /**
  * POST /api/admin/update/restart - 重启服务
  * 
- * Linux 服务器重启策略：
- * 1. 使用 spawn 启动新的后端进程（detached）
+ * 重启策略：
+ * 1. 使用 spawn/exec 启动新的后端进程（detached）
  * 2. 新进程启动后，当前进程退出
  * 3. 这样可以实现无缝重启
  */
@@ -361,26 +361,31 @@ router.post('/restart', requireAuth, requireRoot, async (_req: AuthedRequest, re
     setTimeout(async () => {
       logger.info('执行重启')
       
-      // 在 Linux 上，使用 spawn 启动新进程
-      if (process.platform !== 'win32') {
-        const backendDir = path.join(ROOT_DIR, 'backend')
-        
-        // 启动新的后端进程
+      const backendDir = path.join(ROOT_DIR, 'backend')
+      
+      if (process.platform === 'win32') {
+        // Windows: 使用 exec + PowerShell Start-Process 完全隐藏窗口
+        const psCmd = `Start-Process -WindowStyle Hidden -FilePath 'npm.cmd' -ArgumentList 'run','dev' -WorkingDirectory '${backendDir.replace(/'/g, "''")}'`
+        exec(`powershell -Command "${psCmd}"`, { windowsHide: true })
+        logger.info('Windows: 新进程已启动（隐藏窗口）')
+      } else {
+        // Linux/Mac: 使用 spawn 启动新进程
         const child = spawn('npm', ['run', 'dev'], {
           cwd: backendDir,
           detached: true,
           stdio: 'ignore',
           env: { ...process.env }
         })
-        
-        // 让子进程独立运行
         child.unref()
-        
-        logger.info('新进程已启动，当前进程即将退出')
+        logger.info('Linux: 新进程已启动')
       }
       
-      // 退出当前进程
-      process.exit(0)
+      logger.info('当前进程即将退出')
+      
+      // 给一点时间让新进程启动
+      setTimeout(() => {
+        process.exit(0)
+      }, 500)
     }, 1000)
   } catch (error) {
     logger.error('重启失败', { error })
@@ -418,9 +423,14 @@ router.post('/full', requireAuth, requireRoot, async (req: AuthedRequest, res: R
       res.json({ ok: true, data: { message: '更新完成，服务即将重启' } })
       
       setTimeout(() => {
-        // 在 Linux 上，使用 spawn 启动新进程
-        if (process.platform !== 'win32') {
-          const backendDir = path.join(ROOT_DIR, 'backend')
+        const backendDir = path.join(ROOT_DIR, 'backend')
+        
+        if (process.platform === 'win32') {
+          // Windows: 使用 exec + PowerShell Start-Process 完全隐藏窗口
+          const psCmd = `Start-Process -WindowStyle Hidden -FilePath 'npm.cmd' -ArgumentList 'run','dev' -WorkingDirectory '${backendDir.replace(/'/g, "''")}'`
+          exec(`powershell -Command "${psCmd}"`, { windowsHide: true })
+        } else {
+          // Linux/Mac: 使用 spawn 启动新进程
           const child = spawn('npm', ['run', 'dev'], {
             cwd: backendDir,
             detached: true,
@@ -429,7 +439,11 @@ router.post('/full', requireAuth, requireRoot, async (req: AuthedRequest, res: R
           })
           child.unref()
         }
-        process.exit(0)
+        
+        // 给一点时间让新进程启动
+        setTimeout(() => {
+          process.exit(0)
+        }, 500)
       }, 1000)
       return
     }

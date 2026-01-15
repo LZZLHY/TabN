@@ -284,6 +284,7 @@ export function useBookmarkDrag(args: {
   const startPointerRef = useRef<XY | null>(null)
   const pointerRef = useRef<XY | null>(null)
   const grabOffsetRef = useRef<XY>({ x: 24, y: 24 })
+  const originalWidthRef = useRef<number | null>(null) // 保存原始元素的宽度，用于 overlay
   const pointerIdRef = useRef<number | null>(null)
   const isDragConfirmedRef = useRef(false) // 标记是否真的进入了拖拽状态（移动距离超过阈值）
   const overlayRef = useRef<HTMLDivElement | null>(null)
@@ -331,12 +332,15 @@ export function useBookmarkDrag(args: {
     if (!activeId || !overlayPos) return { display: 'none' } as const
     const p = overlayPos
     const off = grabOffsetRef.current
+    const w = originalWidthRef.current
     return {
       position: 'fixed',
       left: `${p.x - off.x}px`,
       top: `${p.y - off.y}px`,
       zIndex: 9999,
       pointerEvents: 'none',
+      // 关键修复：设置 overlay 的宽度与原始元素一致，确保内容居中位置相同
+      ...(w != null ? { width: `${w}px` } : {}),
     } as const
   }, [activeId, overlayPos])
 
@@ -654,15 +658,23 @@ export function useBookmarkDrag(args: {
         inner.style.setProperty('will-change', 'transform,opacity', 'important')
       }
       // 用整块 tile（icon+文字）的 rect 计算抓取偏移，确保“按住哪里就吸附哪里”
-      const r = (activeHiddenInnerRef.current ?? el).getBoundingClientRect()
+      // 关键修复：使用 .bm-inner 内部的 grid 容器的 rect
+      // 因为原始元素的 .bm-inner 宽度由 grid cell 决定（较宽），而 overlay 的 .bm-inner 是 fit-content（较窄）
+      // 但两者内部的 grid 容器宽度是一致的（由内容决定），所以用它来计算偏移可以避免位移
+      const inner = activeHiddenInnerRef.current ?? el
+      const contentEl = inner.querySelector('.grid.place-items-center') as HTMLElement | null
+      const r = (contentEl ?? inner).getBoundingClientRect()
       const ox = p.x - r.left
       const oy = p.y - r.top
       grabOffsetRef.current = {
         x: Math.max(0, Math.min(ox, r.width)),
         y: Math.max(0, Math.min(oy, r.height)),
       }
+      // 保存原始元素的宽度，用于 overlay 定位
+      originalWidthRef.current = r.width
     } else {
       grabOffsetRef.current = { x: 24, y: 24 }
+      originalWidthRef.current = null
     }
 
     // 最后再进入拖拽态（避免 React 更新前出现一帧“原图标仍可见”）

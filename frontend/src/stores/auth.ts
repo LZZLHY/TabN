@@ -79,6 +79,9 @@ export const useAuthStore = create<AuthState>()(
         if (!token) return
         const resp = await apiFetch<{ user: User }>('/api/auth/me', { method: 'GET', token })
         if (!resp.ok) {
+          // token 过期或无效，重置所有用户相关设置
+          useAppearanceStore.getState().resetAppearance()
+          useBookmarkDndStore.getState().resetBookmarkDnd()
           set({ token: '', user: null })
           return
         }
