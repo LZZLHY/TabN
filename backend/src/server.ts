@@ -1,5 +1,6 @@
 import express from 'express'
 import cors from 'cors'
+import os from 'node:os'
 import { env } from './env'
 import { authRouter } from './routes/auth'
 import { usersRouter } from './routes/users'
@@ -64,10 +65,29 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ ok: false, message: '服务器内部错误' })
 })
 
+/**
+ * 获取本机 IP 地址（用于日志显示）
+ * 优先返回非内部的 IPv4 地址
+ */
+function getLocalIP(): string {
+  const interfaces = os.networkInterfaces()
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      // 跳过内部地址和 IPv6
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address
+      }
+    }
+  }
+  return 'localhost'
+}
+
 const HOST = env.HOST || '0.0.0.0'
 app.listen(env.PORT, HOST, () => {
   const startupTime = Date.now() - startTime
-  logger.info(`Server started on http://${HOST}:${env.PORT}`, { startupTime: `${startupTime}ms` })
+  // 日志显示时，如果是 0.0.0.0 则显示实际 IP
+  const displayHost = HOST === '0.0.0.0' ? getLocalIP() : HOST
+  logger.info(`Server started on http://${displayHost}:${env.PORT}`, { startupTime: `${startupTime}ms` })
   
   // 将启动时间存储到全局变量，供 API 查询
   ;(global as any).__SERVER_START_TIME__ = startTime
