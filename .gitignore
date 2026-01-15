@@ -64,6 +64,7 @@ backend/storage/user-settings/*.json
 
 # Developer notes (not for GitHub)
 DEVLOG.md
+DEVELOPER_NOTES.md
 
 # Word temp files
 ~$*.docx
