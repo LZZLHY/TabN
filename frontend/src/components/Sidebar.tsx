@@ -1,4 +1,4 @@
-import { Bookmark, Home, LogIn, LogOut, Menu, Settings, Store, User } from 'lucide-react'
+import { Bookmark, Home, LogIn, LogOut, Menu, Settings, Shield, Store, User } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -196,17 +196,35 @@ export function Sidebar({ onOpenSettings, onOpenMarket }: Props) {
           <SidebarLabel expanded={expanded}>我的书签</SidebarLabel>
         </button>
 
-        <button
-          type="button"
-          className={cn(itemBase, itemIdle, 'text-left')}
-          onClick={() => (expanded ? onOpenMarket() : setSidebarExpanded(true))}
-          title="拓展商城"
-        >
-          <IconWrapper>
-            <Store className="h-5 w-5" />
-          </IconWrapper>
-          <SidebarLabel expanded={expanded}>拓展商城</SidebarLabel>
-        </button>
+        {/* 拓展商城入口 - 仅 ROOT 用户可见（功能开发中） */}
+        {user?.role === 'ROOT' && (
+          <button
+            type="button"
+            className={cn(itemBase, itemIdle, 'text-left')}
+            onClick={() => (expanded ? onOpenMarket() : setSidebarExpanded(true))}
+            title="拓展商城"
+          >
+            <IconWrapper>
+              <Store className="h-5 w-5" />
+            </IconWrapper>
+            <SidebarLabel expanded={expanded}>拓展商城</SidebarLabel>
+          </button>
+        )}
+
+        {user?.role === 'ROOT' && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              cn(itemBase, isActive ? itemActive : itemIdle)
+            }
+            title="管理后台"
+          >
+            <IconWrapper>
+              <Shield className="h-5 w-5" />
+            </IconWrapper>
+            <SidebarLabel expanded={expanded}>管理后台</SidebarLabel>
+          </NavLink>
+        )}
 
         {user ? (
           <>
