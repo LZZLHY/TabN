@@ -47,6 +47,8 @@ interface ServerStatus {
   uptimeMs: number
   totalUptime: string
   totalUptimeMs: number
+  currentVersion: string
+  currentPatch: number
 }
 
 // 更新状态
@@ -488,7 +490,7 @@ export function UpdateTab() {
               {versionInfo?.hasUpdate ? '有新版本可用' : '已是最新版本'}
             </div>
             <div className="text-sm text-fg/60">
-              当前版本: <code className="px-1.5 py-0.5 bg-glass/10 rounded">v{versionInfo?.current || '未知'}{versionInfo?.currentPatch ? ` (${versionInfo.currentPatch})` : ''}</code>
+              当前版本: <code className="px-1.5 py-0.5 bg-glass/10 rounded">v{versionInfo?.current || serverStatus?.currentVersion || '未知'}{(versionInfo?.currentPatch || serverStatus?.currentPatch) ? ` (${versionInfo?.currentPatch || serverStatus?.currentPatch})` : ''}</code>
               {versionInfo?.hasUpdate && (
                 <>
                   {' → '}

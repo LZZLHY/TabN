@@ -1,5 +1,8 @@
 import type { Response } from 'express'
 import { z } from 'zod'
+import path from 'path'
+import fs from 'fs'
+import { fileURLToPath } from 'url'
 import type { AuthedRequest } from '../types/auth'
 import { prisma } from '../prisma'
 import { fail, ok } from '../utils/http'
@@ -8,6 +11,13 @@ import { readProjectSettings, writeProjectSettings } from '../services/projectSe
 import { getHeatRanking } from '../services/clickStats'
 import { getSiteDisplayName } from '../utils/siteNormalizer'
 import { uptimeTracker } from '../services/uptimeTracker'
+
+// ESM 兼容的 __dirname
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// 项目根目录
+const ROOT_DIR = path.resolve(__dirname, '../../..')
 
 // --- Helpers ---
 
@@ -408,6 +418,18 @@ export async function getServerStatus(req: AuthedRequest, res: Response) {
   const uptime = Date.now() - startTime
   const totalUptimeMs = uptimeTracker.getTotalUptime()
 
+  // 获取当前版本
+  let currentVersion = 'unknown'
+  let currentPatch = 0
+  try {
+    const pkgPath = path.join(ROOT_DIR, 'package.json')
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+    currentVersion = pkg.version || 'unknown'
+    currentPatch = pkg.patchVersion || 0
+  } catch {
+    // 忽略错误
+  }
+
   // 格式化运行时长
   const formatUptime = (ms: number) => {
     const seconds = Math.floor(ms / 1000)
@@ -434,6 +456,8 @@ export async function getServerStatus(req: AuthedRequest, res: Response) {
     uptimeMs: uptime,
     totalUptime: formatUptime(totalUptimeMs),
     totalUptimeMs: totalUptimeMs,
+    currentVersion,
+    currentPatch,
   })
 }
 
