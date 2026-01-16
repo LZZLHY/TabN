@@ -28,6 +28,7 @@ import { GlobalToaster } from '../../components/GlobalToaster'
 import { ServerStatus } from '../../components/ServerStatus'
 import { apiFetch } from '../../services/api'
 import { useApplyAppearance } from '../../hooks/useApplyAppearance'
+import { useUpdateChecker } from '../../hooks/useUpdateChecker'
 import { useAuthStore, type User } from '../../stores/auth'
 import { cn } from '../../utils/cn'
 import { LogsTab } from './LogsTab'
@@ -105,6 +106,10 @@ export function AdminPage() {
 
   const isAdmin = Boolean(me && (me.role === 'ADMIN' || me.role === 'ROOT'))
   const isRoot = me?.role === 'ROOT'
+
+  // 自动检测更新（仅管理员）
+  // Requirement 1.1, 1.2, 1.6: 页面加载时检测一次，不重复检测
+  useUpdateChecker({ enabled: isAdmin })
 
   // 从 URL hash 读取初始 tab
   type TabType = 'users' | 'bookmarks' | 'extensions' | 'project' | 'profile' | 'logs' | 'update'

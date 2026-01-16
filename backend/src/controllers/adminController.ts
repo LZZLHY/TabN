@@ -7,6 +7,7 @@ import { hashPassword, verifyPassword } from '../services/auth'
 import { readProjectSettings, writeProjectSettings } from '../services/projectSettings'
 import { getHeatRanking } from '../services/clickStats'
 import { getSiteDisplayName } from '../utils/siteNormalizer'
+import { uptimeTracker } from '../services/uptimeTracker'
 
 // --- Helpers ---
 
@@ -405,6 +406,7 @@ export async function getServerStatus(req: AuthedRequest, res: Response) {
   const startTime = (global as any).__SERVER_START_TIME__ || Date.now()
   const startupDuration = (global as any).__SERVER_STARTUP_DURATION__ || 0
   const uptime = Date.now() - startTime
+  const totalUptimeMs = uptimeTracker.getTotalUptime()
 
   // 格式化运行时长
   const formatUptime = (ms: number) => {
@@ -430,6 +432,8 @@ export async function getServerStatus(req: AuthedRequest, res: Response) {
     startupDuration: `${startupDuration}ms`,
     uptime: formatUptime(uptime),
     uptimeMs: uptime,
+    totalUptime: formatUptime(totalUptimeMs),
+    totalUptimeMs: totalUptimeMs,
   })
 }
 

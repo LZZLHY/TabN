@@ -45,6 +45,8 @@ interface ServerStatus {
   startupDuration: string
   uptime: string
   uptimeMs: number
+  totalUptime: string
+  totalUptimeMs: number
 }
 
 // 更新状态
@@ -63,6 +65,7 @@ export function UpdateTab() {
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
   const [displayUptime, setDisplayUptime] = useState<string>('加载中...')
+  const [displayTotalUptime, setDisplayTotalUptime] = useState<string>('加载中...')
   
   // 更新状态
   const [updateState, setUpdateState] = useState<UpdateState>({ phase: 'idle' })
@@ -118,14 +121,23 @@ export function UpdateTab() {
   }, [fetchServerStatus])
 
   // 动态更新运行时长（每秒更新一次）
+  // Requirement 4.4: 每秒更新显示
   useEffect(() => {
     if (!serverStatus?.startTime) return
     
     const startTime = new Date(serverStatus.startTime).getTime()
+    const baseTotalUptimeMs = serverStatus.totalUptimeMs || 0
+    const baseSessionUptimeMs = serverStatus.uptimeMs || 0
     
     const updateUptime = () => {
-      const uptime = Date.now() - startTime
-      setDisplayUptime(formatUptime(uptime))
+      // 计算本次会话运行时长
+      const sessionUptime = Date.now() - startTime
+      setDisplayUptime(formatUptime(sessionUptime))
+      
+      // 计算总运行时长：基础总时长 + (当前会话时长 - 基础会话时长)
+      // 这样可以保持总时长与会话时长同步增长
+      const totalUptime = baseTotalUptimeMs + (sessionUptime - baseSessionUptimeMs)
+      setDisplayTotalUptime(formatUptime(totalUptime))
     }
     
     // 立即更新一次
@@ -134,7 +146,7 @@ export function UpdateTab() {
     // 每秒更新
     const interval = setInterval(updateUptime, 1000)
     return () => clearInterval(interval)
-  }, [serverStatus?.startTime])
+  }, [serverStatus?.startTime, serverStatus?.totalUptimeMs, serverStatus?.uptimeMs])
 
   // 检查更新（silent 模式不显示"已是最新版本"提示）
   const checkUpdate = useCallback(async (silent = false) => {
@@ -163,17 +175,8 @@ export function UpdateTab() {
     }
   }, [token])
 
-  // 进入页面时自动检查更新（静默模式，只有有更新才提示）
-  useEffect(() => {
-    if (!token) return
-    
-    // 添加小延迟确保 toast 组件已挂载
-    const timer = setTimeout(() => {
-      checkUpdate(true)
-    }, 500)
-    
-    return () => clearTimeout(timer)
-  }, [token]) // token 变化时重新检查
+  // 注意：自动更新检测已移至 AdminPage 统一处理（useUpdateChecker hook）
+  // Requirement 1.6: 不重复执行更新检测
 
   // 执行更新
   const doUpdate = useCallback(async () => {
@@ -424,7 +427,7 @@ export function UpdateTab() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <div className="p-4 bg-glass/5 rounded-xl">
             <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
               <Clock className="w-4 h-4" />
@@ -438,10 +441,20 @@ export function UpdateTab() {
           <div className="p-4 bg-glass/5 rounded-xl">
             <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
               <Zap className="w-4 h-4" />
-              运行时长
+              本次运行
             </div>
             <div className="text-lg font-medium text-fg">
               {displayUptime}
+            </div>
+          </div>
+          
+          <div className="p-4 bg-glass/5 rounded-xl">
+            <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
+              <Clock className="w-4 h-4" />
+              总运行时长
+            </div>
+            <div className="text-lg font-medium text-fg">
+              {displayTotalUptime}
             </div>
           </div>
           

@@ -15,6 +15,7 @@ import { initLogger, createLogger } from './services/logger'
 import { getLogStorage } from './services/logStorage'
 import { requestLogger } from './middleware/requestLogger'
 import { errorLogger, setupGlobalErrorHandlers } from './middleware/errorLogger'
+import { uptimeTracker } from './services/uptimeTracker'
 
 // 记录启动时间
 const startTime = Date.now()
@@ -83,7 +84,7 @@ function getLocalIP(): string {
 }
 
 const HOST = env.HOST || '0.0.0.0'
-app.listen(env.PORT, HOST, () => {
+app.listen(env.PORT, HOST, async () => {
   const startupTime = Date.now() - startTime
   // 日志显示时，如果是 0.0.0.0 则显示实际 IP
   const displayHost = HOST === '0.0.0.0' ? getLocalIP() : HOST
@@ -92,6 +93,20 @@ app.listen(env.PORT, HOST, () => {
   // 将启动时间存储到全局变量，供 API 查询
   ;(global as any).__SERVER_START_TIME__ = startTime
   ;(global as any).__SERVER_STARTUP_DURATION__ = startupTime
+
+  // 初始化运行时长追踪器
+  await uptimeTracker.initialize()
+  logger.info('UptimeTracker initialized')
 })
+
+// 注册进程退出处理器，确保运行时长数据被保存
+async function gracefulShutdown(signal: string) {
+  logger.info(`Received ${signal}, shutting down gracefully...`)
+  await uptimeTracker.shutdown()
+  process.exit(0)
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
 
 

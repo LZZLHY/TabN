@@ -97,3 +97,10 @@ model ClickStat {
   @@index([userId])
   @@index([siteId])
 }
+
+model SystemConfig {
+  id        String   @id @default("system")
+  key       String   @unique
+  value     String   // JSON 格式存储
+  updatedAt DateTime @updatedAt
+}
