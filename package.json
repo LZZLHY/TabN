@@ -1,0 +1,23 @@
+{
+  "name": "tabn",
+  "version": "1.4.0",
+  "patchVersion": 10281,
+  "private": true,
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "start": "node scripts/start-all.js",
+    "dev": "node scripts/start-all.js",
+    "build:shared": "npm run build -w shared",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:restart": "docker compose restart"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "concurrently": "^9.1.0"
+  }
+}

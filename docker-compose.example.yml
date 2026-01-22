@@ -1,0 +1,28 @@
+# TabN 数据库配置模板
+# ============================================
+# 请勿直接使用此文件！
+# 
+# 安装方法：
+#   curl -fsSL https://raw.githubusercontent.com/LZZLHY/TabN/main/scripts/install.sh | bash
+#
+# 安装脚本会交互式询问数据库配置，并自动生成 docker-compose.yml
+# ============================================
+
+name: TabN
+
+services:
+  postgres:
+    container_name: TabN-postgres
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: your_database_name
+      POSTGRES_USER: your_username
+      POSTGRES_PASSWORD: your_secure_password
+    ports:
+      - "127.0.0.1:5432:5432"  # 仅允许本机访问，安全
+    volumes:
+      - TabN-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  TabN-postgres-data:

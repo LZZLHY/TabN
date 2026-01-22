@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+  ROOT
+}
+
+enum ExtensionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String  @id @default(cuid())
+  username     String  @unique
+  passwordHash String
+  email        String? @unique
+  phone        String? @unique
+  nickname     String  @unique
+  role         Role    @default(USER)
+  tokenVersion Int     @default(0)
+
+  bookmarks  Bookmark[]
+  extensions Extension[]
+  clickStats ClickStat[]
+  apiKey     APIKey?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([phone])
+}
+
+enum BookmarkType {
+  LINK
+  FOLDER
+}
+
+enum IconType {
+  URL
+  BASE64
+}
+
+model Bookmark {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name String
+  url  String?
+  note String?
+
+  type     BookmarkType @default(LINK)
+  parentId String?
+  parent   Bookmark?    @relation("FolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children Bookmark[]   @relation("FolderChildren")
+
+  // 新增字段 - 标签和图标
+  tags     String[]  @default([]) // 标签数组
+  iconUrl  String? // 自定义图标 URL
+  iconData String? // Base64 图标数据
+  iconType IconType? // 图标类型
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Extension {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  sourceUrl   String?
+  status      ExtensionStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model ClickStat {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siteId      String // 规范化的站点标识符，如 "https://www.baidu.com"
+  clickCount  Int      @default(0)
+  lastClickAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, siteId])
+  @@index([userId])
+  @@index([siteId])
+}
+
+model SystemConfig {
+  id        String   @id @default("system")
+  key       String   @unique
+  value     String // JSON 格式存储
+  updatedAt DateTime @updatedAt
+}
+
+
+model APIKey {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}

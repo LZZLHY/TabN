@@ -1,0 +1,74 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.lcov
+
+# Production build
+dist/
+build/
+
+# Environment variables (local config)
+.env
+.env.local
+.env.*.local
+backend/env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Kiro
+.kiro/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Prisma - migrations 需要提交，方便协作
+# 但不要提交 generated client
+
+# Database files
+*.db
+*.sqlite
+
+# Docker Compose (由安装脚本生成，包含敏感信息)
+docker-compose.yml
+
+# Cache
+.cache/
+.parcel-cache/
+.npm/
+.eslintcache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Log files
+*.log
+backend/logs/**/*.log
+
+# User data (runtime generated)
+backend/storage/
+
+# Process ID files
+.start/
+
+# Developer notes (not for GitHub)
+
+#DEVLOG.md
+#DEVELOPER_NOTES.md
+
+# Word temp files
+~$*.docx
