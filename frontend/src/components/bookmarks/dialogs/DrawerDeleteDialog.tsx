@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import { Button } from '../../ui/Button'
 import { apiFetch } from '../../../services/api'
@@ -116,8 +117,8 @@ export function DrawerDeleteDialog({
     ? 'bg-amber-600 border-amber-600 hover:bg-amber-700 text-white'
     : 'bg-red-600 border-red-600 hover:bg-red-700 text-white'
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
       <div 
         className={`absolute inset-0 bg-black/40 ${isClosing ? 'backdrop-exit' : 'backdrop-enter'}`} 
         onClick={onClose} 
@@ -136,6 +137,7 @@ export function DrawerDeleteDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

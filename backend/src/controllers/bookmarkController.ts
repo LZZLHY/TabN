@@ -50,6 +50,7 @@ const UpdateSchema = z.object({
   iconUrl: z.string().trim().optional().nullable(),
   iconData: z.string().optional().nullable(),
   iconType: z.nativeEnum(IconType).optional().nullable(),
+  iconBg: z.string().trim().optional().nullable(),  // 图标背景：null/default=原始, transparent=透明, #RRGGBB=自定义颜色
 })
 
 /**
@@ -74,6 +75,15 @@ function validateIconFields(data: {
     if (!iconUrl) {
       return { valid: false, error: '图标类型为 URL 时必须提供 iconUrl' }
     }
+    // 支持 source: 前缀的图标来源标记
+    const validSources = ['auto', 'google', 'duckduckgo', 'iconhorse']
+    if (iconUrl.startsWith('source:')) {
+      const sourceKey = iconUrl.slice(7)
+      if (validSources.includes(sourceKey)) {
+        return { valid: true, iconUrl, iconData: null, iconType: IconType.URL }
+      }
+      return { valid: false, error: '图标来源无效' }
+    }
     // 验证 URL 格式
     if (!validateIconUrl(iconUrl)) {
       return { valid: false, error: '图标 URL 格式无效' }
@@ -95,6 +105,17 @@ function validateIconFields(data: {
 
   // 如果只提供了 iconUrl 但没有 iconType，自动设置为 URL 类型
   if (iconUrl && !iconType) {
+    // 支持 source: 前缀的图标来源标记（如 source:google, source:duckduckgo）
+    const validSources = ['auto', 'google', 'duckduckgo', 'iconhorse']
+    if (iconUrl.startsWith('source:')) {
+      const sourceKey = iconUrl.slice(7)
+      if (validSources.includes(sourceKey)) {
+        // 图标来源标记，直接存储
+        return { valid: true, iconUrl, iconData: null, iconType: IconType.URL }
+      }
+      return { valid: false, error: '图标来源无效' }
+    }
+    // 普通 URL 验证
     if (!validateIconUrl(iconUrl)) {
       return { valid: false, error: '图标 URL 格式无效' }
     }
@@ -294,6 +315,8 @@ export async function updateBookmark(req: AuthedRequest, res: Response) {
         iconData: iconData.iconData,
         iconType: iconData.iconType,
       } : {}),
+      // 更新图标背景
+      ...(parsed.data.iconBg !== undefined ? { iconBg: parsed.data.iconBg || null } : {}),
     },
   })
 
@@ -376,6 +399,24 @@ export async function deleteBookmark(req: AuthedRequest, res: Response) {
   })
 
   return ok(res, { id, deletedCount })
+}
+
+/**
+ * 批量更新所有书签的图标背景
+ * POST /bookmarks/batch-update-bg
+ */
+export async function batchUpdateIconBg(req: AuthedRequest, res: Response) {
+  const userId = req.auth?.userId
+  if (!userId) return fail(res, 401, '未登录')
+
+  const { iconBg } = req.body as { iconBg: string | null }
+
+  // 使用原生 SQL 更新用户所有书签的 iconBg
+  const result = await prisma.$executeRaw`
+    UPDATE "Bookmark" SET "iconBg" = ${iconBg} WHERE "userId" = ${userId}
+  `
+
+  return ok(res, { updated: result })
 }
 
 /**

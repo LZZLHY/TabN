@@ -22,7 +22,19 @@ export type BookmarkContext = 'shortcut' | 'drawer'
 export type BookmarkType = 'LINK' | 'FOLDER'
 
 /**
- * 图标类型
+ * 图标获取来源
+ * - AUTO: 自动获取（使用默认 favicon 服务）
+ * - GOOGLE: Google Favicon 服务
+ * - DUCKDUCKGO: DuckDuckGo Favicon 服务
+ * - ICONHORSE: Icon Horse 服务
+ * - CUSTOM_URL: 自定义图标 URL
+ * - CUSTOM_API: 自定义 API（用户添加的第三方服务）
+ * - BASE64: Base64 编码的图标数据
+ */
+export type IconSource = 'AUTO' | 'GOOGLE' | 'DUCKDUCKGO' | 'ICONHORSE' | 'CUSTOM_URL' | 'CUSTOM_API' | 'BASE64'
+
+/**
+ * 图标类型（兼容旧版）
  * - URL: 图标为外部 URL
  * - BASE64: 图标为 Base64 编码的数据
  * - null: 无自定义图标
@@ -52,7 +64,7 @@ export interface Bookmark {
   parentId: string | null
   /** 书签标签数组 */
   tags: string[]
-  /** 自定义图标 URL（当 iconType 为 'URL' 时使用） */
+  /** 自定义图标 URL（可存储来源标记如 source:google 或自定义 URL） */
   iconUrl: string | null
   /** Base64 编码的图标数据（当 iconType 为 'BASE64' 时使用） */
   iconData: string | null

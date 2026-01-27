@@ -6,19 +6,33 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '../services/api'
 import { useAuthStore } from '../stores/auth'
+import { getIconUrl } from '../utils/iconSource'
 
 export interface RecentBookmark {
   id: string
   name: string
   url: string
   favicon: string | null
+  iconUrl?: string | null
+  iconType?: string | null
+  iconData?: string | null
   lastClickAt: string
 }
 
-/** 从 URL 生成 favicon URL */
-function getFaviconUrl(url: string): string {
+/** 从书签获取 favicon URL（支持自定义图标来源） */
+function getBookmarkFavicon(bookmark: { url: string; iconUrl?: string | null; iconType?: string | null; iconData?: string | null }): string {
+  // 优先使用 Base64 图标
+  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
+    return bookmark.iconData
+  }
+  // 使用 iconUrl（可能是来源标记或自定义 URL）
+  if (bookmark.iconUrl) {
+    const iconUrl = getIconUrl(bookmark.url, bookmark.iconUrl)
+    if (iconUrl) return iconUrl
+  }
+  // 回退到 Google favicon
   try {
-    const host = new URL(url).hostname
+    const host = new URL(bookmark.url).hostname
     return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`
   } catch {
     return ''
@@ -54,7 +68,7 @@ export function useRecentBookmarks(limit: number = 8) {
         // 为每个书签生成 favicon URL
         const items = resp.data.items.map(item => ({
           ...item,
-          favicon: item.favicon || getFaviconUrl(item.url),
+          favicon: item.favicon || getBookmarkFavicon(item),
         }))
         setRecentBookmarks(items)
       }

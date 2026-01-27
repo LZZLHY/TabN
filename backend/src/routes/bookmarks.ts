@@ -5,6 +5,7 @@ import {
   listBookmarks,
   listTags,
   updateBookmark,
+  batchUpdateIconBg,
 } from '../controllers/bookmarkController'
 import { recordBookmarkClick, getUserClickStats, getRecentClickedBookmarks } from '../controllers/clickController'
 import { requireAuth } from '../middleware/auth'
@@ -16,6 +17,8 @@ bookmarksRouter.get('/stats', requireAuth, getUserClickStats)
 bookmarksRouter.get('/recent', requireAuth, getRecentClickedBookmarks)
 // 标签相关路由（放在 /:id 之前，避免被拦截）
 bookmarksRouter.get('/tags', requireAuth, listTags)
+// 批量更新图标背景
+bookmarksRouter.post('/batch-update-bg', requireAuth, batchUpdateIconBg)
 
 bookmarksRouter.get('/', requireAuth, listBookmarks)
 bookmarksRouter.post('/', requireAuth, createBookmark)

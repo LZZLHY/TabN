@@ -7,6 +7,7 @@ export { LoginPromptDialog } from './LoginPromptDialog'
 export { DrawerDeleteDialog } from './DrawerDeleteDialog'
 export { DrawerCreateDialog } from './DrawerCreateDialog'
 export { DrawerEditDialog } from './DrawerEditDialog'
+export { DrawerIconDialog } from './DrawerIconDialog'
 export { DrawerSavePromptDialog } from './DrawerSavePromptDialog'
 export { DrawerLoginPrompt } from './DrawerLoginPrompt'
 

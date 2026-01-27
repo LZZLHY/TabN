@@ -8,6 +8,8 @@ import { useBookmarkDrawerStore } from '../../stores/bookmarkDrawer'
 import { useBookmarkDndStore } from '../../stores/bookmarkDnd'
 import { useSearchFocusStore } from '../../stores/searchFocus'
 import { useAppearanceStore } from '../../stores/appearance'
+import { useSettingsDialogStore } from '../../stores/settingsDialog'
+import { usePageLoadStore } from '../../stores/pageLoad'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { usePullGestures } from '../../hooks/usePullGestures'
 import { cn } from '../../utils/cn'
@@ -17,11 +19,14 @@ export function HomePage() {
   const setDrawerOpen = useBookmarkDrawerStore((s) => s.setOpen)
   const searchFocused = useSearchFocusStore((s) => s.isFocused)
   const isDragging = useBookmarkDndStore((s) => s.isDragging)
-  const homeLayoutMode = useAppearanceStore((s) => s.homeLayoutMode)
   const homeFixedPosition = useAppearanceStore((s) => s.homeFixedPosition)
+  const dockVisible = useAppearanceStore((s) => s.dockVisible)
+  const openSettings = useSettingsDialogStore((s) => s.setOpen)
+  const isPageLoaded = usePageLoadStore((s) => s.isLoaded)
   const isMobile = useIsMobile()
   const containerRef = useRef<HTMLDivElement>(null)
   const [keyboardOffset, setKeyboardOffset] = useState(0)
+
 
   // 移动端虚拟键盘适配：使用 visualViewport API 检测键盘高度
   // 只有首页搜索框聚焦时才触发上移，书签页/快捷栏输入框不触发
@@ -124,72 +129,49 @@ export function HomePage() {
       )}
 
       {/* 首页内容 */}
-      {/* 时钟+搜索框区域 */}
-      {homeLayoutMode === 'fixed' ? (
-        // 固定位置模式：时钟+搜索框固定在指定位置
-        <div 
-          className="absolute left-0 right-0 flex flex-col items-center gap-2 sm:gap-3 w-full transition-transform duration-300 ease-out z-10"
-          style={{ 
-            top: `${homeFixedPosition}vh`,
-            transform: `translateY(calc(-50% - ${keyboardOffset}px))` 
-          }}
-        >
-          <div className="relative z-50">
-            <Clock />
-          </div>
-          <div className="relative z-50 w-full flex justify-center">
-            <SearchBox />
-          </div>
+      {/* 时钟+搜索框区域 - 固定位置模式 */}
+      <div 
+        className="absolute left-0 right-0 flex flex-col items-center gap-2 sm:gap-3 w-full transition-transform duration-300 ease-out z-10"
+        style={{ 
+          top: `${homeFixedPosition}vh`,
+          transform: `translateY(calc(-50% - ${keyboardOffset}px))` 
+        }}
+      >
+        <div className="relative z-50">
+          <Clock />
         </div>
-      ) : (
-        // 动态挤压模式：时钟+搜索框+快捷栏垂直居中
-        // 移动端：快捷栏在时钟搜索框下方，整体居中
-        // 桌面端：只有时钟+搜索框居中，快捷栏在底部 Dock
-        <div 
-          className="flex flex-col items-center gap-2 sm:gap-3 w-full transition-transform duration-300 ease-out"
-          style={{ transform: `translateY(calc(-3rem - ${keyboardOffset}px))` }}
-        >
-          <div className="relative z-50">
-            <Clock />
-          </div>
-          <div className="relative z-50 w-full flex justify-center">
-            <SearchBox />
-          </div>
-          {/* 移动端：快捷栏在这里显示（居中布局） */}
-          {isMobile && (
-            <div
-              className={cn(
-                'transition-all duration-500 ease-out',
-                searchFocused && 'blur-sm opacity-60 pointer-events-none',
-              )}
-            >
-              <BookmarkGrid />
-            </div>
-          )}
+        <div className="relative z-50 w-full flex justify-center">
+          <SearchBox />
         </div>
-      )}
+      </div>
 
       {/* 桌面端：底部 Dock 栏 */}
-      {!isMobile && (
+      {!isMobile && dockVisible && (
         <div
           className={cn(
-            'fixed bottom-6 left-1/2 -translate-x-1/2 z-40 transition-all duration-300 ease-out',
+            'fixed bottom-6 left-1/2 -translate-x-1/2 z-40 transition-transform duration-500 ease-out',
             searchFocused && 'blur-sm opacity-60 pointer-events-none',
+            // 页面加载动画：从底部弹出（不使用 opacity 避免毛玻璃变透明）
+            isPageLoaded ? 'translate-y-0' : 'translate-y-8',
           )}
         >
-          <BookmarkGrid variant="dock" />
+          <BookmarkGrid variant="dock" onOpenSettings={() => openSettings(true)} />
         </div>
       )}
 
-      {/* 移动端固定模式：快捷栏居中显示 */}
-      {isMobile && homeLayoutMode === 'fixed' && (
+      {/* 移动端：书签 Dock 栏（位于导航栏上方，增加间距） */}
+      {isMobile && (
         <div
           className={cn(
-            'transition-all duration-500 ease-out',
+            'fixed bottom-[calc(env(safe-area-inset-bottom)+100px)] left-0 right-0 z-40 px-4 transition-transform duration-500 ease-out',
             searchFocused && 'blur-sm opacity-60 pointer-events-none',
+            // 页面加载动画：从底部弹出（不使用 opacity 避免毛玻璃变透明）
+            isPageLoaded ? 'translate-y-0' : 'translate-y-8',
           )}
         >
-          <BookmarkGrid />
+          <div className="mx-auto max-w-md flex justify-center">
+            <BookmarkGrid variant="dock" onOpenSettings={() => openSettings(true)} />
+          </div>
         </div>
       )}
       

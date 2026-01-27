@@ -3,11 +3,9 @@ import { persist } from 'zustand/middleware'
 import type { SortMode } from '../types/bookmark'
 
 export type ThemeMode = 'system' | 'light' | 'dark'
-export type BackgroundType = 'bing' | 'custom'
+export type BackgroundType = 'bing' | 'picsum' | 'custom' | 'api'
 export type ClockHourCycle = '24' | '12'
 export type SearchEngine = 'baidu' | 'bing' | 'google' | 'custom'
-/** 首页布局模式：dynamic=动态挤压（快捷栏越多时钟搜索框上移），fixed=固定位置 */
-export type HomeLayoutMode = 'dynamic' | 'fixed'
 
 export type AppearanceState = {
   /** 深色模式策略 */
@@ -18,6 +16,10 @@ export type AppearanceState = {
   backgroundType: BackgroundType
   /** 自定义背景图 URL */
   backgroundCustomUrl: string
+  /** 自定义壁纸 API URL（返回图片的接口地址） */
+  backgroundApiUrl: string
+  /** 背景明暗度（0-100），0为全黑，100为原图 */
+  backgroundDimming: number
 
   /** 左侧栏是否展开（记住习惯） */
   sidebarExpanded: boolean
@@ -48,7 +50,7 @@ export type AppearanceState = {
   customSearchUrl: string
   /** 搜索历史显示条数，0 表示关闭，范围 0-20 */
   searchHistoryCount: number
-  /** 搜索建议/历史每行高度（px），范围 32-56 */
+  /** 搜索建议/历史每行高度（px），范围 16-36 */
   searchRowHeight: number
   /** 最近打开书签显示数量，范围 1-12 */
   recentBookmarksCount: number
@@ -61,6 +63,10 @@ export type AppearanceState = {
   bookmarkDrawerSortMode: SortMode
   /** 是否锁定排序（禁止拖拽） */
   bookmarkSortLocked: boolean
+  /** 书签图标大小（px），范围 48-96 */
+  bookmarkIconSize: number
+  /** 书签图标间距（px），范围根据图标大小动态调整 */
+  bookmarkIconGap: number
 
   /** 搜索框流光边框是否启用 */
   searchGlowBorder: boolean
@@ -68,19 +74,32 @@ export type AppearanceState = {
   searchGlowLight: boolean
   /** 搜索框光效是否跟随线条移动 */
   searchGlowLightMove: boolean
+  /** 搜索建议框不透明度（%），0=透明水玻璃，100=纯色卡片 */
+  searchDropdownOpacity: number
+  /** 搜索建议框模糊度（px），0=无模糊，128=最大模糊 */
+  searchDropdownBlur: number
 
   /** 移动端底部导航是否隐藏文字 */
   mobileNavHideText: boolean
 
-  /** 首页布局模式：dynamic=动态挤压，fixed=固定位置 */
-  homeLayoutMode: HomeLayoutMode
-  /** 固定模式下时钟+搜索框的垂直位置（vh），范围 15-50 */
+  /** 时钟+搜索框的垂直位置（vh），范围 15-50 */
   homeFixedPosition: number
+
+  /** 是否显示底部 Dock 栏 */
+  dockVisible: boolean
+  /** Dock 栏是否显示书签页入口图标 */
+  dockShowBookmarks: boolean
+  /** Dock 栏是否显示设置图标 */
+  dockShowSettings: boolean
+  /** Dock 栏新书签添加位置: 'left' 最左边, 'right' 最右边 */
+  dockAddPosition: 'left' | 'right'
 
   setMode: (mode: ThemeMode) => void
   setAccent: (hex: string) => void
   setBackgroundType: (t: BackgroundType) => void
   setBackgroundCustomUrl: (url: string) => void
+  setBackgroundApiUrl: (url: string) => void
+  setBackgroundDimming: (v: number) => void
   toggleSidebar: () => void
   setSidebarExpanded: (expanded: boolean) => void
   setSidebarAutoHide: (v: boolean) => void
@@ -101,12 +120,19 @@ export type AppearanceState = {
   setRecentBookmarksMode: (mode: 'fixed' | 'dynamic') => void
   setBookmarkDrawerSortMode: (mode: SortMode) => void
   setBookmarkSortLocked: (locked: boolean) => void
+  setBookmarkIconSize: (size: number) => void
+  setBookmarkIconGap: (gap: number) => void
   setSearchGlowBorder: (enabled: boolean) => void
   setSearchGlowLight: (enabled: boolean) => void
   setSearchGlowLightMove: (enabled: boolean) => void
+  setSearchDropdownOpacity: (opacity: number) => void
+  setSearchDropdownBlur: (blur: number) => void
   setMobileNavHideText: (hide: boolean) => void
-  setHomeLayoutMode: (mode: HomeLayoutMode) => void
   setHomeFixedPosition: (position: number) => void
+  setDockVisible: (visible: boolean) => void
+  setDockShowBookmarks: (show: boolean) => void
+  setDockShowSettings: (show: boolean) => void
+  setDockAddPosition: (position: 'left' | 'right') => void
   resetAppearance: () => void
 }
 
@@ -116,6 +142,7 @@ const DEFAULTS: Pick<
   | 'accent'
   | 'backgroundType'
   | 'backgroundCustomUrl'
+  | 'backgroundApiUrl'
   | 'sidebarExpanded'
   | 'sidebarAutoHide'
   | 'sidebarAutoHideDelay'
@@ -135,17 +162,27 @@ const DEFAULTS: Pick<
   | 'recentBookmarksMode'
   | 'bookmarkDrawerSortMode'
   | 'bookmarkSortLocked'
+  | 'bookmarkIconSize'
+  | 'bookmarkIconGap'
+  | 'backgroundDimming'
   | 'searchGlowBorder'
   | 'searchGlowLight'
   | 'searchGlowLightMove'
+  | 'searchDropdownOpacity'
+  | 'searchDropdownBlur'
   | 'mobileNavHideText'
-  | 'homeLayoutMode'
   | 'homeFixedPosition'
+  | 'dockVisible'
+  | 'dockShowBookmarks'
+  | 'dockShowSettings'
+  | 'dockAddPosition'
 > = {
   mode: 'system',
   accent: '#3b82f6',
   backgroundType: 'bing',
   backgroundCustomUrl: '',
+  backgroundApiUrl: '',
+  backgroundDimming: 100,
   sidebarExpanded: false,
   sidebarAutoHide: false,
   sidebarAutoHideDelay: 3,
@@ -159,18 +196,25 @@ const DEFAULTS: Pick<
   searchEngine: 'bing',
   customSearchUrl: '',
   searchHistoryCount: 10,
-  searchRowHeight: 40,
+  searchRowHeight: 32,
   recentBookmarksCount: 8,
   recentBookmarksEnabled: true,
   recentBookmarksMode: 'dynamic',
   bookmarkDrawerSortMode: 'custom',
   bookmarkSortLocked: false,
+  bookmarkIconSize: 64,
+  bookmarkIconGap: 52,
   searchGlowBorder: false,
   searchGlowLight: false,
   searchGlowLightMove: false,
+  searchDropdownOpacity: 50,
+  searchDropdownBlur: 24,
   mobileNavHideText: false,
-  homeLayoutMode: 'dynamic',
   homeFixedPosition: 30,
+  dockVisible: true,
+  dockShowBookmarks: true,
+  dockShowSettings: true,
+  dockAddPosition: 'left',
 }
 
 export const useAppearanceStore = create<AppearanceState>()(
@@ -182,6 +226,10 @@ export const useAppearanceStore = create<AppearanceState>()(
       setBackgroundType: (backgroundType) => set({ backgroundType }),
       setBackgroundCustomUrl: (backgroundCustomUrl) =>
         set({ backgroundCustomUrl }),
+      setBackgroundApiUrl: (backgroundApiUrl) =>
+        set({ backgroundApiUrl }),
+      setBackgroundDimming: (v) =>
+        set({ backgroundDimming: Math.max(0, Math.min(100, v)) }),
       toggleSidebar: () => set((s) => ({ sidebarExpanded: !s.sidebarExpanded })),
       setSidebarExpanded: (sidebarExpanded) => set({ sidebarExpanded }),
       setSidebarAutoHide: (sidebarAutoHide) => set({ sidebarAutoHide }),
@@ -200,25 +248,36 @@ export const useAppearanceStore = create<AppearanceState>()(
       setSearchHistoryCount: (v) =>
         set({ searchHistoryCount: Math.max(0, Math.min(20, v)) }),
       setSearchRowHeight: (v) =>
-        set({ searchRowHeight: Math.max(32, Math.min(56, v)) }),
+        set({ searchRowHeight: Math.max(16, Math.min(36, v)) }),
       setRecentBookmarksCount: (v) =>
         set({ recentBookmarksCount: Math.max(1, Math.min(12, v)) }),
       setRecentBookmarksEnabled: (recentBookmarksEnabled) => set({ recentBookmarksEnabled }),
       setRecentBookmarksMode: (recentBookmarksMode) => set({ recentBookmarksMode }),
       setBookmarkDrawerSortMode: (bookmarkDrawerSortMode) => set({ bookmarkDrawerSortMode }),
       setBookmarkSortLocked: (bookmarkSortLocked) => set({ bookmarkSortLocked }),
+      setBookmarkIconSize: (v) =>
+        set({ bookmarkIconSize: Math.max(48, Math.min(96, v)) }),
+      setBookmarkIconGap: (v) =>
+        set({ bookmarkIconGap: Math.max(20, Math.min(100, v)) }),
       setSearchGlowBorder: (searchGlowBorder) => set({ searchGlowBorder }),
       setSearchGlowLight: (searchGlowLight) => set({ searchGlowLight }),
       setSearchGlowLightMove: (searchGlowLightMove) => set({ searchGlowLightMove }),
+      setSearchDropdownOpacity: (v) =>
+        set({ searchDropdownOpacity: Math.max(0, Math.min(100, v)) }),
+      setSearchDropdownBlur: (v) =>
+        set({ searchDropdownBlur: Math.max(0, Math.min(128, v)) }),
       setMobileNavHideText: (mobileNavHideText) => set({ mobileNavHideText }),
-      setHomeLayoutMode: (homeLayoutMode) => set({ homeLayoutMode }),
       setHomeFixedPosition: (v) =>
         set({ homeFixedPosition: Math.max(15, Math.min(50, v)) }),
+      setDockVisible: (dockVisible) => set({ dockVisible }),
+      setDockShowBookmarks: (dockShowBookmarks) => set({ dockShowBookmarks }),
+      setDockShowSettings: (dockShowSettings) => set({ dockShowSettings }),
+      setDockAddPosition: (dockAddPosition) => set({ dockAddPosition }),
       resetAppearance: () => set({ ...DEFAULTS }),
     }),
     {
       name: 'start:appearance',
-      version: 10,
+      version: 11,
       partialize: (s) => ({
         mode: s.mode,
         accent: s.accent,
@@ -243,12 +302,20 @@ export const useAppearanceStore = create<AppearanceState>()(
         recentBookmarksMode: s.recentBookmarksMode,
         bookmarkDrawerSortMode: s.bookmarkDrawerSortMode,
         bookmarkSortLocked: s.bookmarkSortLocked,
+        bookmarkIconSize: s.bookmarkIconSize,
+        bookmarkIconGap: s.bookmarkIconGap,
+        backgroundDimming: s.backgroundDimming,
         searchGlowBorder: s.searchGlowBorder,
         searchGlowLight: s.searchGlowLight,
         searchGlowLightMove: s.searchGlowLightMove,
+        searchDropdownOpacity: s.searchDropdownOpacity,
+        searchDropdownBlur: s.searchDropdownBlur,
         mobileNavHideText: s.mobileNavHideText,
-        homeLayoutMode: s.homeLayoutMode,
         homeFixedPosition: s.homeFixedPosition,
+        dockVisible: s.dockVisible,
+        dockShowBookmarks: s.dockShowBookmarks,
+        dockShowSettings: s.dockShowSettings,
+        dockAddPosition: s.dockAddPosition,
       }),
     },
   ),

@@ -6,11 +6,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#0a0a0a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="TabN" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/tabn.png" />
     <title>TabN</title>
+    <style>
+      /* 防止刷新时闪黑：在 React 渲染前显示缓存的背景图 */
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #0a0a0a;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+      body, #root {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: transparent !important;
+      }
+    </style>
+    <script>
+      // 在 React 渲染前同步读取缓存的背景图并应用到 html 元素
+      (function() {
+        try {
+          // 读取用户设置的壁纸类型
+          var appearanceRaw = localStorage.getItem('start:appearance');
+          var bgType = 'bing'; // 默认
+          if (appearanceRaw) {
+            var appearance = JSON.parse(appearanceRaw);
+            if (appearance && appearance.state && appearance.state.backgroundType) {
+              bgType = appearance.state.backgroundType;
+            }
+          }
+          
+          var bgUrl = null;
+          
+          if (bgType === 'bing') {
+            var cache = localStorage.getItem('start:bingDaily');
+            if (cache) {
+              var parsed = JSON.parse(cache);
+              var today = new Date().toLocaleDateString('sv-SE');
+              if (parsed && parsed.date === today && parsed.url) {
+                bgUrl = parsed.url;
+              }
+            }
+          } else if (bgType === 'picsum') {
+            var picsumCache = localStorage.getItem('start:picsumCache');
+            if (picsumCache) {
+              var picsumParsed = JSON.parse(picsumCache);
+              if (picsumParsed && picsumParsed.url) {
+                bgUrl = picsumParsed.url;
+              }
+            }
+          } else if (bgType === 'custom') {
+            if (appearanceRaw) {
+              var app = JSON.parse(appearanceRaw);
+              if (app && app.state && app.state.backgroundCustomUrl) {
+                bgUrl = app.state.backgroundCustomUrl;
+              }
+            }
+          } else if (bgType === 'api') {
+            var apiCache = localStorage.getItem('start:apiCache');
+            if (apiCache) {
+              var apiParsed = JSON.parse(apiCache);
+              if (apiParsed && apiParsed.result) {
+                bgUrl = apiParsed.result;
+              }
+            }
+          }
+          
+          if (bgUrl) {
+            document.documentElement.style.backgroundImage = 'url("' + bgUrl + '")';
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

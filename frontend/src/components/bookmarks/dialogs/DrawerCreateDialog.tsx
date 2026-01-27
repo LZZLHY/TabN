@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { Loader2 } from 'lucide-react'
 import { cn } from '../../../utils/cn'
 import { Button } from '../../ui/Button'
@@ -65,8 +66,8 @@ export function DrawerCreateDialog({
 }: DrawerCreateDialogProps) {
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
       <div 
         className={`absolute inset-0 bg-black/40 ${isClosing ? 'backdrop-exit' : 'backdrop-enter'}`} 
         onClick={onCloseWithReset} 
@@ -164,6 +165,7 @@ export function DrawerCreateDialog({
           <Button variant="primary" onClick={onCreate}>创建</Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

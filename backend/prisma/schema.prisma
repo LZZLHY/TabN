@@ -70,6 +70,7 @@ model Bookmark {
   iconUrl  String? // 自定义图标 URL
   iconData String? // Base64 图标数据
   iconType IconType? // 图标类型
+  iconBg   String? // 图标背景：null/default=原始, transparent=透明, #RRGGBB=自定义颜色
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

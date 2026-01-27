@@ -2,17 +2,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
-import { MoreHorizontal } from 'lucide-react'
+import { LayoutGrid, MoreHorizontal, Settings } from 'lucide-react'
 import { apiFetch } from '../services/api'
 import { useAuthStore } from '../stores/auth'
+import { useAppearanceStore } from '../stores/appearance'
 import { useBookmarkDndStore } from '../stores/bookmarkDnd'
 import { useBookmarkDrawerStore } from '../stores/bookmarkDrawer'
+import { useBookmarkRefreshStore } from '../stores/bookmarkRefresh'
+import { useBookmarkCacheStore } from '../stores/bookmarkCache'
 import { cn } from '../utils/cn'
 import { normalizeUrl } from '../utils/url'
+import { getIconUrl } from '../utils/iconSource'
 import { Favicon } from './Favicon'
 import { Button } from './ui/Button'
 import { useTitleFetch } from '../hooks/useTitleFetch'
 import { useClickTracker } from '../hooks/useClickTracker'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 // 从 bookmarks 模块导入共享组件和工具
 import {
@@ -27,14 +32,15 @@ import {
   GridDeleteDialog,
   GridCreateDialog,
   GridEditDialog,
+  DrawerIconDialog,
   FolderModal,
-  useBookmarkOrder,
   useBookmarkDrag,
   useShortcutSet,
   getOrder,
   saveOrder,
   updateOrderAfterCreateFolder,
   getSortedFolderChildren,
+  getNextFolderName,
 } from './bookmarks'
 
 // --- Helpers ---
@@ -42,22 +48,88 @@ import {
 type BookmarkGridProps = {
   /** 显示样式：grid=网格（移动端），dock=底部Dock栏（桌面端） */
   variant?: 'grid' | 'dock'
+  /** 打开设置页回调 */
+  onOpenSettings?: () => void
 }
 
-export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
+export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridProps) {
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
   const openDrawer = useBookmarkDrawerStore((s) => s.setOpen)
+  const dockShowBookmarks = useAppearanceStore((s) => s.dockShowBookmarks)
+  const dockShowSettings = useAppearanceStore((s) => s.dockShowSettings)
   const isDock = variant === 'dock'
+  const isMobile = useIsMobile()
+
+  // --- 书签缓存 ---
+  const cachedItems = useBookmarkCacheStore((s) => s.items)
+  const cachedTags = useBookmarkCacheStore((s) => s.tags)
+  const cacheLoading = useBookmarkCacheStore((s) => s.loading)
+  const setCacheItems = useBookmarkCacheStore((s) => s.setItems)
+  const setCacheTags = useBookmarkCacheStore((s) => s.setTags)
+  const setCacheLoading = useBookmarkCacheStore((s) => s.setLoading)
+  const updateCacheLoadTime = useBookmarkCacheStore((s) => s.updateLastLoadTime)
+  const isCacheValid = useBookmarkCacheStore((s) => s.isCacheValid)
 
   // --- State ---
-
-  const [allItems, setAllItems] = useState<Bookmark[]>([]) // Flat list
-  const [loading, setLoading] = useState(false)
-  const [activeFolderId, setActiveFolderId] = useState<string | null>(null) // null = Root
-  const [folderModalOpen, setFolderModalOpen] = useState(false)
-  const [folderOriginRect, setFolderOriginRect] = useState<DOMRect | null>(null)
+  // 使用缓存 store 的数据，本地状态仅用于临时更新
+  const allItems = cachedItems
+  const loading = cacheLoading
+  const setAllItems = setCacheItems
+  const setLoading = setCacheLoading
+  // 文件夹栈：支持多级文件夹逐级打开/关闭
+  const [folderStack, setFolderStack] = useState<Array<{ id: string; originRect: DOMRect | null }>>([])
+  const activeFolderId = folderStack.length > 0 ? folderStack[folderStack.length - 1].id : null
+  const folderModalOpen = folderStack.length > 0
+  // 打开动画使用栈顶位置，关闭动画也使用栈顶位置（收缩到当前文件夹图标）
+  const folderOpenOriginRect = folderStack.length > 0 ? folderStack[folderStack.length - 1].originRect : null
+  const folderCloseOriginRect = folderStack.length > 0 ? folderStack[folderStack.length - 1].originRect : null
+  
+  // 关闭动画层：用于在一级文件夹上面显示二级的关闭动画
+  const [closingFolder, setClosingFolder] = useState<{
+    id: string
+    originRect: DOMRect | null
+  } | null>(null)
+  
+  // 标记一级文件夹不需要打开动画（从二级返回时）
+  const [skipOpenAnimation, setSkipOpenAnimation] = useState(false)
+  
+  // 文件夹栈操作函数
+  const openFolder = useCallback((folderId: string, originRect: DOMRect | null) => {
+    setFolderStack(prev => [...prev, { id: folderId, originRect }])
+  }, [])
+  
+  const closeCurrentFolder = useCallback(() => {
+    if (folderStack.length > 1) {
+      // 关闭二级返回一级：设置关闭动画层，然后切换到一级
+      const closingItem = folderStack[folderStack.length - 1]
+      setClosingFolder(closingItem)
+      setSkipOpenAnimation(true) // 一级文件夹不需要打开动画
+      setFolderStack(prev => prev.slice(0, -1))
+      // 动画完成后清理
+      setTimeout(() => {
+        setClosingFolder(null)
+        setSkipOpenAnimation(false)
+      }, 350)
+    } else {
+      // 关闭一级：正常关闭
+      setFolderStack(prev => prev.slice(0, -1))
+    }
+  }, [folderStack])
+  
+  const closeAllFolders = useCallback(() => {
+    setFolderStack([])
+  }, [])
+  
+  // 兼容旧 API 的 setter（用于子组件）
+  const setActiveFolderId = useCallback((id: string | null) => {
+    if (id === null) {
+      setFolderStack([])
+    } else {
+      setFolderStack([{ id, originRect: null }])
+    }
+  }, [])
 
   // UI States
   const [menu, setMenu] = useState<MenuState>({ open: false })
@@ -111,6 +183,10 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
 
   // 登录提示模态框
   const [loginPromptOpen, setLoginPromptOpen] = useState(false)
+  
+  // 图标编辑对话框
+  const [iconEditOpen, setIconEditOpen] = useState(false)
+  const [iconEditItem, setIconEditItem] = useState<Bookmark | null>(null)
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_customIconOk, _setCustomIconOk] = useState<Record<string, boolean>>({})
@@ -140,7 +216,40 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
     cleanupInvalidIds,
     replaceShortcutsAt,
     replaceShortcutWithChildren,
+    setShortcutOrder,
+    trimToMaxItems,
   } = useShortcutSet(user?.id)
+
+  // 监听屏幕宽度变化，自动裁剪超出的图标
+  useEffect(() => {
+    // 初始化时立即执行一次
+    trimToMaxItems()
+    
+    let rafId: number | null = null
+    let lastWidth = window.innerWidth
+    
+    const handleResize = () => {
+      const currentWidth = window.innerWidth
+      // 只在宽度减小时立即检测（防止挤压）
+      if (currentWidth < lastWidth) {
+        // 取消之前的 RAF，立即执行
+        if (rafId) cancelAnimationFrame(rafId)
+        trimToMaxItems()
+      }
+      lastWidth = currentWidth
+      
+      // 延迟再次检测确保状态正确
+      rafId = requestAnimationFrame(() => {
+        trimToMaxItems()
+      })
+    }
+    
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (rafId) cancelAnimationFrame(rafId)
+    }
+  }, [trimToMaxItems])
 
   // --- Click Tracker ---
   const { trackClick } = useClickTracker()
@@ -151,10 +260,11 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
     return allItems.filter(x => x.type === 'FOLDER' && x.id !== activeFolderId)
   }, [allItems, activeFolderId])
 
-  // Dock栏显示所有在 shortcutSet 中的书签（不限制 parentId，允许任意位置的书签/文件夹添加到 Dock）
+  // Dock栏显示所有在 shortcutSet 中的书签（按 shortcutIds 顺序排列）
+  // shortcutIds 的顺序就是显示顺序，不需要额外排序
   const currentItems = useMemo(() => {
-    const shortcutIdSet = new Set(shortcutIds)
-    return allItems.filter((x) => shortcutIdSet.has(x.id))
+    const itemMap = new Map(allItems.map((x) => [x.id, x]))
+    return shortcutIds.map((id) => itemMap.get(id)).filter(Boolean) as Bookmark[]
   }, [allItems, shortcutIds])
 
   const idToItem = useMemo(() => {
@@ -163,14 +273,8 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
     return m
   }, [currentItems])
 
-  // 快捷栏始终使用根目录排序，不受 activeFolderId 影响
-  const order = useBookmarkOrder({
-    userId: user?.id,
-    folderId: null, // 始终使用根目录
-    itemIds: currentItems.map((x) => x.id),
-    context: 'shortcut',
-  })
-  const visibleIds = order.visibleIds
+  // 直接使用 shortcutIds 作为显示顺序，不需要 useBookmarkOrder 重新排序
+  const visibleIds = shortcutIds.filter((id) => idToItem.has(id))
 
   const activeFolder = useMemo(() => {
     return allItems.find((x) => x.id === activeFolderId)
@@ -178,8 +282,14 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
 
   // --- Actions ---
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forceRefresh = false) => {
     if (!token) return
+    
+    // 如果缓存有效且不是强制刷新，跳过加载
+    if (!forceRefresh && isCacheValid()) {
+      return
+    }
+    
     setLoading(true)
     try {
       const resp = await apiFetch<{ items: Bookmark[] }>('/api/bookmarks', {
@@ -188,17 +298,21 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
       })
       if (!resp.ok) return
       setAllItems(resp.data.items)
+      updateCacheLoadTime()
       // 清理无效的快捷方式 ID
       const validIds = resp.data.items.map(x => x.id)
       cleanupInvalidIds(validIds)
     } finally {
       setLoading(false)
     }
-  }, [token, cleanupInvalidIds])
+  }, [token, cleanupInvalidIds, isCacheValid, setAllItems, setLoading, updateCacheLoadTime])
 
   // Load all tags for autocomplete
   const loadTags = useCallback(async () => {
     if (!token) return
+    // 如果缓存有 tags，跳过加载
+    if (cachedTags.length > 0) return
+    
     try {
       const resp = await apiFetch<{ tags: string[] }>('/api/bookmarks/tags', {
         method: 'GET',
@@ -206,24 +320,30 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
       })
       if (resp.ok) {
         setAllTags(resp.data.tags)
+        setCacheTags(resp.data.tags)
       }
     } catch {
       // Ignore errors - tags are optional for autocomplete
     }
-  }, [token])
+  }, [token, cachedTags.length, setCacheTags])
 
   // 当用户退出登录时清空书签数据
+  const clearCache = useBookmarkCacheStore((s) => s.clearCache)
   useEffect(() => {
     if (!token) {
-      setAllItems([])
+      clearCache()
       setAllTags([])
-      setActiveFolderId(null)
+      closeAllFolders()
     }
-  }, [token])
+  }, [token, closeAllFolders, clearCache])
 
+  // 首次加载 - 使用 requestIdleCallback 延迟执行，不阻塞首屏渲染
   useEffect(() => {
-    void load()
-    void loadTags()
+    const scheduleLoad = window.requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1))
+    scheduleLoad(() => {
+      void load()
+      void loadTags()
+    })
   }, [load, loadTags])
 
   // 当 shortcutIds 变化时，检查是否有新的 ID 不在 allItems 中，如果有则重新加载
@@ -234,6 +354,14 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
       void load()
     }
   }, [shortcutIds, allItems, token, load])
+
+  // 监听全局书签刷新事件（当书签页更新书签时触发）
+  const refreshCount = useBookmarkRefreshStore((s) => s.refreshCount)
+  useEffect(() => {
+    if (refreshCount > 0 && token) {
+      void load()
+    }
+  }, [refreshCount, token, load])
 
   useEffect(() => {
     const close = () => {
@@ -294,12 +422,16 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
   const createFolderWithItems = async (baseItem: Bookmark, incomingItem: Bookmark, originalOrder: string[]) => {
     if (!token || !user) return
     
+    // 获取所有文件夹名称，计算下一个可用的名称
+    const folderNames = allItems.filter(x => x.type === 'FOLDER').map(x => x.name)
+    const folderName = getNextFolderName('收藏夹', folderNames)
+    
     // 1. 创建文件夹
     const folderResp = await apiFetch<{ item: Bookmark }>('/api/bookmarks', {
       method: 'POST',
       token,
       body: JSON.stringify({
-        name: '收藏夹',
+        name: folderName,
         type: 'FOLDER',
         parentId: activeFolderId
       })
@@ -381,19 +513,10 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
     resetCreateForm()
     
     // 快捷栏创建的书签自动添加到快捷方式集合（仅 LINK 类型）
+    // addShortcut 会自动将新书签添加到开头，超出限制时踢出末尾
     if (createType === 'LINK') {
       addShortcut(resp.data.item.id)
     }
-    
-    // Append to current order
-    const pid = createParentId ?? activeFolderId
-    // 关键：如果当前层级还没有持久化顺序（localStorage 为空），直接 append 会导致新项走“extras”顺序（可能被接口返回顺序放到最前）。
-    // 所以这里以“当前正在显示的顺序”为基准，把新项追加到末尾（也就是原加号的位置）。
-    const currentOrder = getOrder(user!.id, pid)
-    const base = currentOrder.length ? currentOrder : visibleIds
-    const newOrder = [...base.filter((x) => x !== resp.data.item.id), resp.data.item.id]
-    saveOrder(user!.id, pid, newOrder)
-    order.setOrder(newOrder)
     
     // Refresh tags for autocomplete
     await Promise.all([load(), loadTags()])
@@ -411,7 +534,7 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
 
   const drag = useBookmarkDrag({
     visibleIds,
-    setVisibleIds: order.setOrder,
+    setVisibleIds: setShortcutOrder,
     getItemById: (id: string) => {
       const it = idToItem.get(id)
       return it ? { id: it.id, type: it.type } : null
@@ -429,8 +552,7 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
       await createFolderWithItems(baseItem, incoming, originalOrder)
     },
     onPersistReorder: (ids: string[]) => {
-      order.persist(ids)
-      order.setOrder(ids)
+      setShortcutOrder(ids)
     },
     options: {
       prePush: dndPrePush,
@@ -458,12 +580,12 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
         if (item.type === 'FOLDER') {
           // 使用模态框打开文件夹
           const target = e?.currentTarget || e?.target
+          let rect: DOMRect | null = null
           if (target instanceof HTMLElement) {
             const iconEl = target.querySelector('.bookmark-icon') || target
-            setFolderOriginRect(iconEl.getBoundingClientRect())
+            rect = iconEl.getBoundingClientRect()
           }
-          setActiveFolderId(item.id)
-          setFolderModalOpen(true)
+          openFolder(item.id, rect)
         } else if (item.url) {
           trackClick(item.id)
           window.open(item.url, '_blank', 'noopener,noreferrer')
@@ -488,21 +610,60 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
         isDock ? 'inline-flex' : 'w-[min(720px,100%)]'
       )}>
         {isDock ? (
-          // Dock 模式：macOS 风格底部栏
-          <div className="flex items-center gap-1 px-3 py-3 rounded-2xl bg-white/20 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-2xl">
-            {/* 添加按钮 */}
-            <div className="grid place-items-center group px-1">
-              <button
-                type="button"
-                className="select-none cursor-pointer outline-none focus:outline-none focus:ring-0"
-                onClick={() => setLoginPromptOpen(true)}
-              >
-                <div className="bookmark-icon h-12 w-12 rounded-xl grid place-items-center bg-white/40 dark:bg-white/10 text-fg/60 transition-all duration-200 group-hover:scale-125 group-hover:-translate-y-3 group-hover:bg-white/60 dark:group-hover:bg-white/20">
-                  <span className="text-2xl leading-none">+</span>
+          // Dock 模式：macOS 风格底部栏（移动端非登录态显示空 dock）
+          isMobile ? null : (
+            <div className="flex items-center gap-1 px-3 py-3 rounded-2xl bg-white/20 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-2xl">
+              {/* 书签页入口 */}
+              {dockShowBookmarks && (
+                <div className="grid place-items-center group px-1">
+                  <button
+                    type="button"
+                    className="select-none cursor-pointer outline-none focus:outline-none focus:ring-0"
+                    onClick={() => openDrawer(true)}
+                    title="我的书签"
+                  >
+                    <div className="bookmark-icon h-12 w-12 rounded-xl grid place-items-center bg-white/40 dark:bg-white/10 text-fg/60 transition-all duration-200 group-hover:scale-125 group-hover:-translate-y-3 group-hover:bg-white/60 dark:group-hover:bg-white/20">
+                      <LayoutGrid className="w-6 h-6" />
+                    </div>
+                  </button>
                 </div>
-              </button>
+              )}
+              
+              {/* 设置入口 */}
+              {dockShowSettings && onOpenSettings && (
+                <div className="grid place-items-center group px-1">
+                  <button
+                    type="button"
+                    className="select-none cursor-pointer outline-none focus:outline-none focus:ring-0"
+                    onClick={onOpenSettings}
+                    title="设置"
+                  >
+                    <div className="bookmark-icon h-12 w-12 rounded-xl grid place-items-center bg-white/40 dark:bg-white/10 text-fg/60 transition-all duration-200 group-hover:scale-125 group-hover:-translate-y-3 group-hover:bg-white/60 dark:group-hover:bg-white/20">
+                      <Settings className="w-6 h-6" />
+                    </div>
+                  </button>
+                </div>
+              )}
+              
+              {/* 分隔线 */}
+              {(dockShowBookmarks || dockShowSettings) && (
+                <div className="w-px h-10 bg-white/30 dark:bg-white/10 mx-1" />
+              )}
+              
+              {/* 添加按钮 */}
+              <div className="grid place-items-center group px-1">
+                <button
+                  type="button"
+                  className="select-none cursor-pointer outline-none focus:outline-none focus:ring-0"
+                  onClick={() => setLoginPromptOpen(true)}
+                >
+                  <div className="bookmark-icon h-12 w-12 rounded-xl grid place-items-center bg-white/40 dark:bg-white/10 text-fg/60 transition-all duration-200 group-hover:scale-125 group-hover:-translate-y-3 group-hover:bg-white/60 dark:group-hover:bg-white/20">
+                    <span className="text-2xl leading-none">+</span>
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
+          )
         ) : (
           // 网格模式
           <div className="flex items-center justify-center py-8">
@@ -547,8 +708,18 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
     )
   }
 
-  // Dock 模式最大图标数
-  const DOCK_MAX_ITEMS = 12
+  // Dock 模式最大图标数（根据屏幕宽度动态计算）
+  const getDesktopMaxItems = () => {
+    if (typeof window === 'undefined') return 12
+    const width = window.innerWidth
+    // 预留空间：左侧边栏(80px) + 功能按钮(约200px: 书签入口+设置+分隔线+添加按钮) + dock栏padding(24px) + 额外安全边距(100px)
+    // 增加安全边距确保在挤压发生之前就踢出图标
+    const reservedWidth = 80 + 200 + 24 + 100
+    const availableWidth = width - reservedWidth
+    const itemWidth = 56
+    return Math.max(4, Math.min(20, Math.floor(availableWidth / itemWidth)))
+  }
+  const DOCK_MAX_ITEMS = getDesktopMaxItems()
 
   return (
     <div className={cn(
@@ -564,60 +735,88 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
              <div className="text-xs text-fg/60">Dock栏</div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={load} disabled={loading}>刷新</Button>
+            <Button variant="ghost" size="sm" onClick={() => load(true)} disabled={loading}>刷新</Button>
           </div>
         </div>
       )}
 
       {/* Dock 模式：macOS 风格底部栏 */}
       {isDock ? (
-        <div className="flex items-center gap-1 px-3 py-3 rounded-2xl bg-white/20 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-2xl">
+        <div className="flex items-center justify-center gap-1 px-3 py-3 rounded-2xl bg-white/20 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-2xl">
+          {/* 书签页入口 - 类似 macOS Launchpad（仅桌面端） */}
+          {!isMobile && dockShowBookmarks && (
+            <div className="grid place-items-center group px-1">
+              <button
+                type="button"
+                className="select-none cursor-pointer outline-none focus:outline-none focus:ring-0"
+                onClick={() => openDrawer(true)}
+                title="我的书签"
+              >
+                <div className="bookmark-icon h-12 w-12 rounded-xl grid place-items-center bg-white/40 dark:bg-white/10 text-fg/60 transition-all duration-200 group-hover:scale-125 group-hover:-translate-y-3 group-hover:bg-white/60 dark:group-hover:bg-white/20">
+                  <LayoutGrid className="w-6 h-6" />
+                </div>
+              </button>
+            </div>
+          )}
+          
+          {/* 设置入口（仅桌面端） */}
+          {!isMobile && dockShowSettings && onOpenSettings && (
+            <div className="grid place-items-center group px-1">
+              <button
+                type="button"
+                className="select-none cursor-pointer outline-none focus:outline-none focus:ring-0"
+                onClick={onOpenSettings}
+                title="设置"
+              >
+                <div className="bookmark-icon h-12 w-12 rounded-xl grid place-items-center bg-white/40 dark:bg-white/10 text-fg/60 transition-all duration-200 group-hover:scale-125 group-hover:-translate-y-3 group-hover:bg-white/60 dark:group-hover:bg-white/20">
+                  <Settings className="w-6 h-6" />
+                </div>
+              </button>
+            </div>
+          )}
+          
+          {/* 分隔线（仅桌面端） */}
+          {!isMobile && (dockShowBookmarks || dockShowSettings) && (
+            <div className="w-px h-10 bg-white/30 dark:bg-white/10 mx-1" />
+          )}
+          
           {(() => {
-            const hasMore = visibleIds.length > DOCK_MAX_ITEMS
-            const displayIds = hasMore ? visibleIds.slice(0, DOCK_MAX_ITEMS - 1) : visibleIds
+            // 移动端限制 5 个图标，桌面端限制 12 个
+            const maxItems = isMobile ? 5 : DOCK_MAX_ITEMS
+            // 新图标在左边（数组开头），超出时踢出最右边的旧图标（数组末尾）
+            // 直接截取前 maxItems 个，不需要省略号
+            const displayIds = visibleIds.slice(0, maxItems)
             
             return (
               <>
+                {/* 书签图标：新的在左边，旧的在右边 */}
                 {displayIds.map((id) => idToItem.get(id)).filter(Boolean).map((it) => renderItem(it!, true))}
                 
-                {/* 更多按钮 */}
-                {hasMore && (
-                  <div className="grid place-items-center group px-1">
-                    <button
-                      type="button"
-                      className="select-none cursor-pointer outline-none focus:outline-none focus:ring-0"
-                      onClick={() => openDrawer(true)}
-                    >
-                      <div className="bookmark-icon h-12 w-12 rounded-xl grid place-items-center bg-white/40 dark:bg-white/10 text-fg/60 transition-all duration-200 group-hover:scale-125 group-hover:-translate-y-3 group-hover:bg-white/60 dark:group-hover:bg-white/20">
-                        <MoreHorizontal className="w-6 h-6" />
-                      </div>
-                    </button>
-                  </div>
-                )}
-                
-                {/* 分隔线 */}
-                <div className="w-px h-10 bg-white/30 dark:bg-white/10 mx-1" />
-                
-                {/* 添加按钮 */}
-                <div className="grid place-items-center group px-1">
-                  <button
-                    type="button"
-                    className="select-none cursor-pointer outline-none focus:outline-none focus:ring-0"
-                    onClick={() => {
-                      if (!user) {
-                        setLoginPromptOpen(true)
-                        return
-                      }
-                      setCreateParentId(activeFolderId)
-                      setCreateType('LINK')
-                      setCreateOpen(true)
-                    }}
-                  >
-                    <div className="bookmark-icon h-12 w-12 rounded-xl grid place-items-center bg-white/40 dark:bg-white/10 text-fg/60 transition-all duration-200 group-hover:scale-125 group-hover:-translate-y-3 group-hover:bg-white/60 dark:group-hover:bg-white/20">
-                      <span className="text-2xl leading-none">+</span>
+                {/* 分隔线和添加按钮（仅桌面端） */}
+                {!isMobile && (
+                  <>
+                    <div className="w-px h-10 bg-white/30 dark:bg-white/10 mx-1" />
+                    <div className="grid place-items-center group px-1">
+                      <button
+                        type="button"
+                        className="select-none cursor-pointer outline-none focus:outline-none focus:ring-0"
+                        onClick={() => {
+                          if (!user) {
+                            setLoginPromptOpen(true)
+                            return
+                          }
+                          setCreateParentId(activeFolderId)
+                          setCreateType('LINK')
+                          setCreateOpen(true)
+                        }}
+                      >
+                        <div className="bookmark-icon h-12 w-12 rounded-xl grid place-items-center bg-white/40 dark:bg-white/10 text-fg/60 transition-all duration-200 group-hover:scale-125 group-hover:-translate-y-3 group-hover:bg-white/60 dark:group-hover:bg-white/20">
+                          <span className="text-2xl leading-none">+</span>
+                        </div>
+                      </button>
                     </div>
-                  </button>
-                </div>
+                  </>
+                )}
               </>
             )
           })()}
@@ -704,29 +903,63 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
                       >
                       {isFolder ? (
                         <div className="grid grid-cols-3 gap-0.5 w-full h-full content-start">
-                          {folderItems.map((sub) => (
-                            <div
-                              key={sub.id}
-                              className="w-full pt-[100%] relative bg-black/10 rounded-[2px] overflow-hidden"
-                            >
-                              {sub.url ? (
-                                <Favicon
-                                  url={sub.url}
-                                  name={sub.name}
-                                  size={16}
-                                  className="absolute inset-0 w-full h-full object-cover"
-                                />
-                              ) : null}
-                            </div>
-                          ))}
+                          {folderItems.map((sub) => {
+                            // 检查自定义图标
+                            let subIcon = ''
+                            if (sub.iconType === 'BASE64' && sub.iconData) {
+                              subIcon = sub.iconData
+                            } else if (sub.iconUrl) {
+                              subIcon = getIconUrl(sub.url, sub.iconUrl)
+                            }
+                            return (
+                              <div
+                                key={sub.id}
+                                className="w-full pt-[100%] relative bg-black/10 rounded-[2px] overflow-hidden"
+                              >
+                                {subIcon ? (
+                                  <img
+                                    src={subIcon}
+                                    alt=""
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                    loading="lazy"
+                                  />
+                                ) : sub.url ? (
+                                  <Favicon
+                                    url={sub.url}
+                                    name={sub.name}
+                                    size={16}
+                                    className="absolute inset-0 w-full h-full object-cover"
+                                  />
+                                ) : null}
+                              </div>
+                            )
+                          })}
                         </div>
                       ) : (
-                        <Favicon
-                          url={it.url || ''}
-                          name={it.name}
-                          className="h-full w-full object-cover"
-                          letterClassName="h-full w-full"
-                        />
+                        (() => {
+                          // 检查自定义图标
+                          let customIcon = ''
+                          if (it.iconType === 'BASE64' && it.iconData) {
+                            customIcon = it.iconData
+                          } else if (it.iconUrl) {
+                            customIcon = getIconUrl(it.url, it.iconUrl)
+                          }
+                          return customIcon ? (
+                            <img
+                              src={customIcon}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <Favicon
+                              url={it.url || ''}
+                              name={it.name}
+                              className="h-full w-full object-cover"
+                              letterClassName="h-full w-full"
+                            />
+                          )
+                        })()
                       )}
                       </div>
                       <div className="mt-1.5 text-[11px] text-fg/80 truncate w-16 text-center">
@@ -760,6 +993,10 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
           }
           setEditOpen(true); 
         }}
+        onEditIcon={(item) => {
+          setIconEditItem(item)
+          setIconEditOpen(true)
+        }}
         onDelete={(item, mode) => { setDeleteItem(item); setDeleteMode(mode); setDeleteOpen(true); }}
         onRemoveShortcut={removeShortcut}
         onMoveToFolder={moveToFolder}
@@ -778,7 +1015,7 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
         visibleIds={visibleIds}
         onClose={() => { setDeleteClosing(true); setTimeout(() => { setDeleteOpen(false); setDeleteClosing(false); }, 150); }}
         setActiveFolderId={setActiveFolderId}
-        setOrder={order.setOrder}
+        setOrder={setShortcutOrder}
         removeShortcut={removeShortcut}
         replaceShortcutWithChildren={replaceShortcutWithChildren}
         load={load}
@@ -789,7 +1026,16 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
         isClosing={createClosing}
         parentId={createParentId}
         createType={createType}
-        setCreateType={setCreateType}
+        setCreateType={(type) => {
+          setCreateType(type)
+          // 切换到文件夹类型时，如果名称为空或是自动生成的，预填充下一个可用的文件夹名称
+          if (type === 'FOLDER' && (createName === '' || createNameSource !== 'user')) {
+            const folderNames = allItems.filter(x => x.type === 'FOLDER').map(x => x.name)
+            const suggestedName = getNextFolderName('新建文件夹', folderNames)
+            setCreateName(suggestedName)
+            setCreateNameSource('auto')
+          }
+        }}
         createUrl={createUrl}
         setCreateUrl={setCreateUrl}
         createName={createName}
@@ -832,6 +1078,15 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
         onLogin={() => navigate('/login')}
       />
 
+      {/* 图标编辑对话框 */}
+      <DrawerIconDialog
+        open={iconEditOpen}
+        item={iconEditItem}
+        token={token}
+        onClose={() => setIconEditOpen(false)}
+        onSaved={() => load(true)}
+      />
+
       {/* 文件夹模态框 */}
       <FolderModal
         open={folderModalOpen}
@@ -852,12 +1107,14 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
         allItems={allItems}
         userId={user?.id}
         context="shortcut"
-        originRect={folderOriginRect}
-        getElRef={getEl}
+        openOriginRect={folderOpenOriginRect}
+        closeOriginRect={folderCloseOriginRect}
+        hasParent={folderStack.length > 1}
+        autoClose={false}
+        forceExpanded={skipOpenAnimation}
         onClose={() => {
-          setFolderModalOpen(false)
-          setActiveFolderId(null)
-          setFolderOriginRect(null)
+          // 逐级关闭文件夹
+          closeCurrentFolder()
         }}
         onItemClick={(item) => {
           if (item.url) {
@@ -866,10 +1123,121 @@ export function BookmarkGrid({ variant = 'grid' }: BookmarkGridProps) {
           }
         }}
         onSubFolderClick={(folder, rect) => {
-          setFolderOriginRect(rect)
-          setActiveFolderId(folder.id)
+          // 打开子文件夹（压入栈）
+          openFolder(folder.id, rect)
+        }}
+        onReorder={(newOrder) => {
+          // 保存文件夹内的排序
+          if (user?.id && activeFolderId) {
+            saveOrder(user.id, activeFolderId, newOrder, 'shortcut')
+          }
+        }}
+        onCreateFolder={async (baseItem, incomingItem, originalOrder) => {
+          // 在文件夹内创建子文件夹
+          if (!token || !user || !activeFolderId) return
+          try {
+            // 获取所有文件夹名称，计算下一个可用的名称
+            const folderNames = allItems.filter(x => x.type === 'FOLDER').map(x => x.name)
+            const folderName = getNextFolderName('收藏夹', folderNames)
+            
+            // 1. 创建文件夹
+            const resp = await apiFetch<{ item: Bookmark }>('/api/bookmarks', {
+              method: 'POST',
+              token,
+              body: JSON.stringify({
+                name: folderName,
+                type: 'FOLDER',
+                parentId: activeFolderId,
+              }),
+            })
+            if (!resp.ok) {
+              toast.error(resp.message || '创建文件夹失败')
+              return
+            }
+            const newFolder = resp.data.item
+            
+            // 2. 移动两个书签到新文件夹
+            await Promise.all([
+              apiFetch(`/api/bookmarks/${baseItem.id}`, {
+                method: 'PATCH',
+                token,
+                body: JSON.stringify({ parentId: newFolder.id }),
+              }),
+              apiFetch(`/api/bookmarks/${incomingItem.id}`, {
+                method: 'PATCH',
+                token,
+                body: JSON.stringify({ parentId: newFolder.id }),
+              }),
+            ])
+            
+            // 3. 使用统一的工具函数更新排序
+            updateOrderAfterCreateFolder({
+              userId: user.id,
+              context: 'shortcut',
+              parentId: activeFolderId,
+              baseItemId: baseItem.id,
+              incomingItemId: incomingItem.id,
+              folderId: newFolder.id,
+              currentVisibleIds: originalOrder,
+            })
+            
+            toast.success('已创建收藏夹')
+            
+            // 4. 重新加载数据（强制刷新，绕过缓存）
+            await load(true)
+          } catch {
+            toast.error('创建文件夹失败')
+          }
+        }}
+        onMoveToFolder={async (item, targetFolderId) => {
+          // 移动书签到子文件夹
+          if (!token || !user) return
+          try {
+            const resp = await apiFetch(`/api/bookmarks/${item.id}`, {
+              method: 'PATCH',
+              token,
+              body: JSON.stringify({ parentId: targetFolderId }),
+            })
+            if (resp.ok) {
+              // 更新目标文件夹内部顺序：新项目添加到末尾
+              const folderOrder = getOrder(user.id, targetFolderId, 'shortcut')
+              const newOrder = [...folderOrder.filter(id => id !== item.id), item.id]
+              saveOrder(user.id, targetFolderId, newOrder, 'shortcut')
+              toast.success('已移入收藏夹')
+              await load(true) // 强制刷新，绕过缓存
+            }
+          } catch {
+            toast.error('移动失败')
+          }
+        }}
+        onContextMenu={(item, x, y) => {
+          setMenu({ open: true, x, y, item })
         }}
       />
+      
+      {/* 关闭动画层：在一级文件夹上面显示二级的关闭动画 */}
+      {closingFolder && (() => {
+        const closingFolderData = allItems.find(x => x.id === closingFolder.id)
+        if (!closingFolderData) return null
+        const closingFolderItems = getSortedFolderChildren(allItems.filter(x => x.parentId === closingFolder.id), user?.id, closingFolder.id, 'shortcut')
+        return (
+          <FolderModal
+            open={true}
+            folder={closingFolderData}
+            folderItems={closingFolderItems}
+            allItems={allItems}
+            userId={user?.id}
+            context="shortcut"
+            openOriginRect={closingFolder.originRect}
+            closeOriginRect={closingFolder.originRect}
+            hasParent={false}
+            autoClose={true}
+            onClose={() => {}}
+            onItemClick={() => {}}
+            onSubFolderClick={() => {}}
+          />
+        )
+      })()}
 
     </div>
   )

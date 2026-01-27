@@ -58,11 +58,11 @@ body {
 
 @layer components {
   .glass-panel {
-    @apply bg-glass/15 backdrop-blur-xl border border-glass-border/20 shadow-glass;
+    @apply bg-glass/15 backdrop-blur-xl border border-glass-border/20;
   }
 
   .glass-panel-strong {
-    @apply bg-glass/20 backdrop-blur-2xl border border-glass-border/25 shadow-glass;
+    @apply bg-glass/20 backdrop-blur-2xl border border-glass-border/25;
   }
 
   /* 带主题色边框的模态框面板 */
@@ -439,4 +439,53 @@ body {
 
 .fade-out {
   animation: fadeOut 150ms ease-in forwards;
+}
+
+/* =========================
+   自定义滚动条样式
+   说明：与毛玻璃背景一致的滚动条，全局适用
+   ========================= */
+
+/* Webkit 浏览器（Chrome、Safari、Edge） */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--glass-border) / 0.3);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--glass-border) / 0.5);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--glass-border) / 0.3) transparent;
+}
+
+/* 可选：为特定容器添加更细的滚动条 */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  border: 1px solid transparent;
 }

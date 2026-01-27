@@ -43,10 +43,11 @@ const APPEARANCE_KEYS = [
   'searchGlowBorder',
   'searchGlowLight',
   'searchGlowLightMove',
+  'searchDropdownOpacity',
+  'searchDropdownBlur',
   'bookmarkDrawerSortMode',
   'bookmarkSortLocked',
   'mobileNavHideText',
-  'homeLayoutMode',
   'homeFixedPosition',
 ] as const
 
@@ -260,7 +261,7 @@ export function applySettingsFile(raw: unknown): ApplySettingsResult {
   }
 
   const searchRowHeight = appearanceRaw.searchRowHeight
-  if (isNum(searchRowHeight) && searchRowHeight >= 32 && searchRowHeight <= 56) {
+  if (isNum(searchRowHeight) && searchRowHeight >= 16 && searchRowHeight <= 36) {
     nextA.searchRowHeight = searchRowHeight
     applied.push('搜索/选项行高')
   } else if (typeof searchRowHeight !== 'undefined') {
@@ -315,6 +316,22 @@ export function applySettingsFile(raw: unknown): ApplySettingsResult {
     skipped.push('搜索/光效跟随移动')
   }
 
+  const searchDropdownOpacity = appearanceRaw.searchDropdownOpacity
+  if (isNum(searchDropdownOpacity) && searchDropdownOpacity >= 0 && searchDropdownOpacity <= 100) {
+    nextA.searchDropdownOpacity = searchDropdownOpacity
+    applied.push('搜索/建议框不透明度')
+  } else if (typeof searchDropdownOpacity !== 'undefined') {
+    skipped.push('搜索/建议框不透明度')
+  }
+
+  const searchDropdownBlur = appearanceRaw.searchDropdownBlur
+  if (isNum(searchDropdownBlur) && searchDropdownBlur >= 0 && searchDropdownBlur <= 128) {
+    nextA.searchDropdownBlur = searchDropdownBlur
+    applied.push('搜索/建议框模糊度')
+  } else if (typeof searchDropdownBlur !== 'undefined') {
+    skipped.push('搜索/建议框模糊度')
+  }
+
   // 书签排序设置
   const bookmarkDrawerSortMode = appearanceRaw.bookmarkDrawerSortMode
   if (bookmarkDrawerSortMode === 'custom' || bookmarkDrawerSortMode === 'folders-first' || bookmarkDrawerSortMode === 'links-first' || bookmarkDrawerSortMode === 'alphabetical' || bookmarkDrawerSortMode === 'click-count' || bookmarkDrawerSortMode === 'by-tag') {
@@ -338,14 +355,6 @@ export function applySettingsFile(raw: unknown): ApplySettingsResult {
     applied.push('移动端/隐藏导航文字')
   } else if (typeof mobileNavHideText !== 'undefined') {
     skipped.push('移动端/隐藏导航文字')
-  }
-
-  const homeLayoutMode = appearanceRaw.homeLayoutMode
-  if (homeLayoutMode === 'dynamic' || homeLayoutMode === 'fixed') {
-    nextA.homeLayoutMode = homeLayoutMode
-    applied.push('时钟/布局模式')
-  } else if (typeof homeLayoutMode !== 'undefined') {
-    skipped.push('时钟/布局模式')
   }
 
   const homeFixedPosition = appearanceRaw.homeFixedPosition

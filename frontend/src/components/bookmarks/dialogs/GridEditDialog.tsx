@@ -5,6 +5,7 @@ import { Input } from '../../ui/Input'
 import { TagInput } from '../../ui/TagInput'
 import { apiFetch } from '../../../services/api'
 import { normalizeUrl } from '../../../utils/url'
+import { useBookmarkRefreshStore } from '../../../stores/bookmarkRefresh'
 import type { Bookmark } from '../types'
 
 type GridEditDialogProps = {
@@ -74,6 +75,8 @@ export function GridEditDialog({
     if (resp.ok) {
       toast.success('已更新')
       onClose()
+      // 触发全局刷新，通知其他组件（如书签页）更新数据
+      useBookmarkRefreshStore.getState().triggerRefresh()
       await Promise.all([load(), loadTags()])
     } else {
       toast.error(resp.message)
@@ -81,7 +84,7 @@ export function GridEditDialog({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
       <div 
         className={`absolute inset-0 bg-black/40 ${isClosing ? 'backdrop-exit' : 'backdrop-enter'}`} 
         onClick={onClose} 

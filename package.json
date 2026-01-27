@@ -1,7 +1,7 @@
 {
   "name": "tabn",
-  "version": "1.4.0",
-  "patchVersion": 10281,
+  "version": "1.5.0",
+  "patchVersion": 10401,
   "private": true,
   "workspaces": [
     "shared",

@@ -4,22 +4,31 @@ import {
   saveShortcutSet,
   cleanupShortcutSet,
 } from '../components/bookmarks/shortcutStorage'
+import { useAppearanceStore } from './appearance'
 
-// 快捷栏最大行数
-const MAX_ROWS = 3
+// 移动端 Dock 栏最大图标数
+const MOBILE_MAX_ITEMS = 5
 
-// 每行图标数量（根据屏幕宽度不同）
-const getItemsPerRow = () => {
-  if (typeof window === 'undefined') return 8
+// 计算电脑端 Dock 栏最大图标数（根据屏幕宽度）
+// 每个图标约 56px（48px 图标 + 8px 间距）
+const getDesktopMaxItems = () => {
+  if (typeof window === 'undefined') return 12
   const width = window.innerWidth
-  if (width >= 1024) return 8 // lg
-  if (width >= 768) return 6  // md
-  if (width >= 640) return 5  // sm
-  return 4
+  // 预留空间：左侧边栏(80px) + 功能按钮(约200px: 书签入口+设置+分隔线+添加按钮) + dock栏padding(24px) + 额外安全边距(100px)
+  // 增加安全边距确保在挤压发生之前就踢出图标
+  const reservedWidth = 80 + 200 + 24 + 100
+  const availableWidth = width - reservedWidth
+  const itemWidth = 56
+  return Math.max(4, Math.min(20, Math.floor(availableWidth / itemWidth)))
 }
 
-// 计算最大快捷方式数量（减1是为了给"更多"按钮留位置）
-export const getMaxShortcuts = () => MAX_ROWS * getItemsPerRow() - 1
+// 计算最大快捷方式数量
+export const getMaxShortcuts = () => {
+  if (typeof window === 'undefined') return 12
+  const width = window.innerWidth
+  // 移动端使用固定数量，电脑端根据屏幕宽度计算
+  return width < 768 ? MOBILE_MAX_ITEMS : getDesktopMaxItems()
+}
 
 type ShortcutSetStore = {
   /** 当前用户 ID */
@@ -44,6 +53,10 @@ type ShortcutSetStore = {
   replaceShortcutsAt: (idsToRemove: string[], newId: string, targetId: string) => void
   /** 将文件夹替换为其子项（用于删除文件夹时将子项插入当前显示位置） */
   replaceShortcutWithChildren: (folderId: string, childIds: string[], displayIndex: number) => void
+  /** 设置快捷方式顺序（用于拖拽重排） */
+  setShortcutOrder: (ids: string[]) => void
+  /** 根据当前屏幕宽度裁剪超出的图标 */
+  trimToMaxItems: () => void
 }
 
 export const useShortcutSetStore = create<ShortcutSetStore>((set, get) => ({
@@ -63,7 +76,26 @@ export const useShortcutSetStore = create<ShortcutSetStore>((set, get) => ({
     const { userId, shortcutIds } = get()
     if (!userId) return
     if (shortcutIds.includes(id)) return
-    const next = [...shortcutIds, id]
+    
+    // 根据设置决定添加位置
+    const dockAddPosition = useAppearanceStore.getState().dockAddPosition
+    const maxItems = getMaxShortcuts() // 根据屏幕宽度动态计算
+    
+    let next: string[]
+    if (dockAddPosition === 'left') {
+      // 新书签添加到开头（最左边），超出时踢出末尾（最右边）
+      next = [id, ...shortcutIds]
+      if (next.length > maxItems) {
+        next = next.slice(0, maxItems)
+      }
+    } else {
+      // 新书签添加到末尾（最右边），超出时踢出开头（最左边）
+      next = [...shortcutIds, id]
+      if (next.length > maxItems) {
+        next = next.slice(-maxItems)
+      }
+    }
+    
     saveShortcutSet(userId, next)
     set({ shortcutIds: next })
   },
@@ -157,5 +189,33 @@ export const useShortcutSetStore = create<ShortcutSetStore>((set, get) => ({
     
     saveShortcutSet(userId, result)
     set({ shortcutIds: result })
+  },
+
+  setShortcutOrder: (ids) => {
+    const { userId } = get()
+    if (!userId) return
+    saveShortcutSet(userId, ids)
+    set({ shortcutIds: ids })
+  },
+
+  trimToMaxItems: () => {
+    const { userId, shortcutIds } = get()
+    if (!userId) return
+    const maxItems = getMaxShortcuts()
+    if (shortcutIds.length <= maxItems) return
+    
+    // 根据添加位置设置决定从哪边踢出
+    const dockAddPosition = useAppearanceStore.getState().dockAddPosition
+    let next: string[]
+    if (dockAddPosition === 'left') {
+      // 新书签在左边，踢出右边（末尾）
+      next = shortcutIds.slice(0, maxItems)
+    } else {
+      // 新书签在右边，踢出左边（开头）
+      next = shortcutIds.slice(-maxItems)
+    }
+    
+    saveShortcutSet(userId, next)
+    set({ shortcutIds: next })
   },
 }))

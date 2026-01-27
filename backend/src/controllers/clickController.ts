@@ -103,6 +103,9 @@ export async function getRecentClickedBookmarks(req: AuthedRequest, res: Respons
         id: true,
         name: true,
         url: true,
+        iconUrl: true,
+        iconType: true,
+        iconData: true,
       },
     })
     
@@ -129,6 +132,9 @@ export async function getRecentClickedBookmarks(req: AuthedRequest, res: Respons
           id: bookmark.id,
           name: bookmark.name,
           url: bookmark.url,
+          iconUrl: bookmark.iconUrl,
+          iconType: bookmark.iconType,
+          iconData: bookmark.iconData,
           lastClickAt: click.lastClickAt,
         }
       })

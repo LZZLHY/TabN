@@ -1,11 +1,15 @@
 import { useMemo } from 'react'
 import { matchWithPinyin } from '../utils/pinyin'
+import { getIconUrl } from '../utils/iconSource'
 
 export interface Bookmark {
   id: string
   name: string
   url: string | null
   type: 'LINK' | 'FOLDER'
+  iconUrl?: string | null
+  iconType?: string | null
+  iconData?: string | null
 }
 
 export interface ShortcutMatch {
@@ -18,15 +22,28 @@ export interface ShortcutMatch {
 const DEFAULT_MAX_RESULTS = 5
 
 /**
- * 生成 favicon URL
+ * 从书签获取 favicon URL（支持自定义图标来源）
  */
-function getFaviconUrl(url: string): string {
-  try {
-    const host = new URL(url).hostname
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`
-  } catch {
-    return ''
+function getBookmarkFavicon(bookmark: Bookmark): string {
+  // 优先使用 Base64 图标
+  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
+    return bookmark.iconData
   }
+  // 使用 iconUrl（可能是来源标记或自定义 URL）
+  if (bookmark.iconUrl && bookmark.url) {
+    const iconUrl = getIconUrl(bookmark.url, bookmark.iconUrl)
+    if (iconUrl) return iconUrl
+  }
+  // 回退到 Google favicon
+  if (bookmark.url) {
+    try {
+      const host = new URL(bookmark.url).hostname
+      return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`
+    } catch {
+      return ''
+    }
+  }
+  return ''
 }
 
 /**
@@ -62,7 +79,7 @@ export function matchBookmarks(
         id: bookmark.id,
         name: bookmark.name,
         url: bookmark.url,
-        favicon: getFaviconUrl(bookmark.url),
+        favicon: getBookmarkFavicon(bookmark),
       })
 
       // 达到最大结果数时停止
@@ -100,5 +117,5 @@ export function useShortcutMatcher(
 // 导出纯函数用于测试
 export const shortcutMatcherUtils = {
   matchBookmarks,
-  getFaviconUrl,
+  getBookmarkFavicon,
 }

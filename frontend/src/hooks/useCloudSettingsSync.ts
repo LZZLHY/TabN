@@ -17,19 +17,19 @@ export function useCloudSettingsSync() {
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
 
-  const pulledRef = useRef(false)
   const lastUploadedRef = useRef<string>('')
   const debounceRef = useRef<number | null>(null)
 
-  // 登录后拉取一次
-  useEffect(() => {
-    pulledRef.current = false
-  }, [user?.id])
+  // 使用 sessionStorage 标记本次会话是否已同步（刷新时不重复同步）
+  const getSessionKey = (userId: string | number) => `start:cloudSynced:${userId}`
 
   useEffect(() => {
     if (!token || !user?.id) return
-    if (pulledRef.current) return
-    pulledRef.current = true
+    
+    // 检查本次会话是否已同步
+    const sessionKey = getSessionKey(user.id)
+    if (sessionStorage.getItem(sessionKey)) return
+    sessionStorage.setItem(sessionKey, '1')
 
     ;(async () => {
       const resp = await fetchMySettings(token)

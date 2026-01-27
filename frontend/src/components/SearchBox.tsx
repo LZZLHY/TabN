@@ -20,9 +20,11 @@ type Props = {
   className?: string
   /** 是否禁用全局聚焦状态同步（用于书签页等嵌入场景） */
   disableGlobalFocus?: boolean
+  /** 是否全宽显示（用于移动端书签页） */
+  fullWidth?: boolean
 }
 
-export function SearchBox({ className, disableGlobalFocus = false }: Props) {
+export function SearchBox({ className, disableGlobalFocus = false, fullWidth = false }: Props) {
   const [q, setQ] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)  // 搜索框是否完全展开
@@ -30,6 +32,7 @@ export function SearchBox({ className, disableGlobalFocus = false }: Props) {
   
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // 全局聚焦状态
   const setGlobalFocused = useSearchFocusStore((s) => s.setFocused)
@@ -41,11 +44,11 @@ export function SearchBox({ className, disableGlobalFocus = false }: Props) {
     }
   }, [isFocused, setGlobalFocused, disableGlobalFocus])
 
-  // 聚焦时等待展开动画完成后再显示下拉框
+  // 聚焦时等待展开动画接近完成后再显示下拉框
   useEffect(() => {
     if (!isFocused) return
-    // 等待 500ms 展开动画完成
-    const timer = setTimeout(() => setIsExpanded(true), 500)
+    // 等待 200ms 后显示下拉框
+    const timer = setTimeout(() => setIsExpanded(true), 200)
     return () => {
       clearTimeout(timer)
       setIsExpanded(false)
@@ -192,7 +195,13 @@ export function SearchBox({ className, disableGlobalFocus = false }: Props) {
     if (!isFocused) return
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      // 检查点击是否在搜索框容器内
+      const isInContainer = containerRef.current?.contains(target)
+      // 检查点击是否在下拉框内（portal 渲染到 body）
+      const isInDropdown = dropdownRef.current?.contains(target)
+      
+      if (!isInContainer && !isInDropdown) {
         setIsFocused(false)
       }
     }
@@ -218,8 +227,11 @@ export function SearchBox({ className, disableGlobalFocus = false }: Props) {
     removeFromHistory(text)
   }, [removeFromHistory])
 
-  // 显示下拉框的条件：需要聚焦且展开动画完成
-  const showDropdown = isFocused && isExpanded && (dropdownItems.length > 0 || suggestionsLoading)
+  // 预览模式
+  const isPreviewMode = useSearchFocusStore((s) => s.isPreviewMode)
+  
+  // 显示下拉框的条件：需要聚焦且展开动画完成，或者处于预览模式
+  const showDropdown = (isFocused && isExpanded && (dropdownItems.length > 0 || suggestionsLoading)) || isPreviewMode
 
   // 显示的历史记录（仅在无输入时）
   const displayHistory = !trimmedQuery && searchHistoryCount > 0 ? history : []
@@ -229,7 +241,7 @@ export function SearchBox({ className, disableGlobalFocus = false }: Props) {
       ref={containerRef}
       className={cn(
         'group relative flex items-center transition-all duration-500 ease-out mx-auto',
-        'h-12 rounded-2xl backdrop-blur-xl shadow-glass',
+        'h-12 rounded-2xl backdrop-blur-xl',
         // 边框：开启流光线条时用动画边框，否则用默认边框
         !searchGlowBorder && 'border border-glass-border/20',
         searchGlowBorder && 'glow-border',
@@ -238,13 +250,16 @@ export function SearchBox({ className, disableGlobalFocus = false }: Props) {
         searchGlowLight && isFocused && (searchGlowLightMove ? 'glow-light-move' : 'glow-light-static'),
         // z-index 确保下拉框在其他元素之上
         'z-40',
-        // Initial State: 移动端窄，桌面端也窄
-        'w-48 md:w-64 bg-glass/15',
-        // Hover State: 桌面端悬浮展开（不显示内容）
-        'md:hover:w-[min(620px,90vw)] md:hover:bg-glass/40',
-        // Focus State: 聚焦展开（移动端和桌面端都应用）
+        // 全宽模式：始终占满容器宽度
+        fullWidth ? 'w-full bg-glass/40' : [
+          // Initial State: 移动端窄，桌面端也窄
+          'w-48 md:w-64 bg-glass/15',
+          // Hover State: 桌面端悬浮展开（不显示内容）
+          'md:hover:w-[min(620px,90vw)] md:hover:bg-glass/40',
+          // Focus State: 聚焦展开（移动端和桌面端都应用）
+          'focus-within:w-[min(620px,calc(100vw-2rem))] focus-within:!bg-glass/75',
+        ],
         // 开启流光边框时不显示 ring，用流光效果代替
-        'focus-within:w-[min(620px,calc(100vw-2rem))] focus-within:!bg-glass/75',
         !searchGlowBorder && 'focus-within:ring-2 focus-within:ring-primary/30',
         className,
       )}
@@ -304,9 +319,11 @@ export function SearchBox({ className, disableGlobalFocus = false }: Props) {
         <ArrowRight className="h-5 w-5" />
       </button>
 
-      {/* 搜索下拉框 - 完全独立，固定宽度不受搜索框影响 */}
+      {/* 搜索下拉框 - 使用 portal 渲染到 body 层级，确保 backdropFilter 能正确模糊背景 */}
       <SearchDropdown
         isVisible={showDropdown}
+        anchorRef={containerRef}
+        dropdownRef={dropdownRef}
         shortcuts={trimmedQuery ? shortcuts : []}
         suggestions={trimmedQuery ? suggestions : []}
         history={displayHistory}

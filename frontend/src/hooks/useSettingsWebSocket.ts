@@ -49,6 +49,12 @@ export function useSettingsWebSocket() {
     if (!token || !user?.id) return
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
+    // 开发环境中，如果没有配置 API URL，跳过 WebSocket 连接
+    if (import.meta.env.DEV && !import.meta.env.VITE_API_BASE_URL) {
+      // 开发环境中没有后端，静默跳过
+      return
+    }
+
     // 构建 WebSocket URL
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = import.meta.env.VITE_API_BASE_URL 

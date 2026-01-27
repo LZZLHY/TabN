@@ -1,9 +1,11 @@
+import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import { Button } from '../../ui/Button'
 import { Input } from '../../ui/Input'
 import { TagInput } from '../../ui/TagInput'
 import { apiFetch } from '../../../services/api'
 import { normalizeUrl } from '../../../utils/url'
+import { useBookmarkRefreshStore } from '../../../stores/bookmarkRefresh'
 import type { Bookmark } from '../types'
 
 type DrawerEditDialogProps = {
@@ -20,10 +22,6 @@ type DrawerEditDialogProps = {
   setEditNote: (note: string) => void
   editTags: string[]
   setEditTags: (tags: string[]) => void
-  editIconUrl: string
-  setEditIconUrl: (url: string) => void
-  editIconPreviewError: boolean
-  setEditIconPreviewError: (error: boolean) => void
   // Helpers
   allTags: string[]
   // Callbacks
@@ -49,10 +47,6 @@ export function DrawerEditDialog({
   setEditNote,
   editTags,
   setEditTags,
-  editIconUrl,
-  setEditIconUrl,
-  editIconPreviewError,
-  setEditIconPreviewError,
   allTags,
   onClose,
   onSaved,
@@ -64,7 +58,7 @@ export function DrawerEditDialog({
   const handleSave = async () => {
     if (!token || !item) return
     
-    const body: { name: string; url?: string; note?: string; tags?: string[]; iconUrl?: string | null } = { 
+    const body: { name: string; url?: string; note?: string; tags?: string[] } = { 
       name: editName, 
       tags: editTags 
     }
@@ -72,7 +66,6 @@ export function DrawerEditDialog({
     if (item.type === 'LINK') {
       body.url = normalizeUrl(editUrl)
       body.note = editNote
-      body.iconUrl = editIconUrl.trim() || null
     }
     
     const resp = await apiFetch(`/api/bookmarks/${item.id}`, { 
@@ -85,14 +78,16 @@ export function DrawerEditDialog({
       toast.success('已更新')
       onClose()
       onSaved(item.id)
+      // 触发全局刷新，通知其他组件（如 Dock）更新数据
+      useBookmarkRefreshStore.getState().triggerRefresh()
       await Promise.all([load(), loadTags()])
     } else {
       toast.error(resp.message)
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
       <div 
         className={`absolute inset-0 bg-black/40 ${isClosing ? 'backdrop-exit' : 'backdrop-enter'}`} 
         onClick={onClose} 
@@ -115,39 +110,6 @@ export function DrawerEditDialog({
               <label className="text-xs text-fg/60">备注</label>
               <Input value={editNote} onChange={e => setEditNote(e.target.value)} />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs text-fg/60">自定义图标 URL（可选）</label>
-              <div className="flex items-center gap-2">
-                <Input 
-                  value={editIconUrl} 
-                  onChange={e => {
-                    setEditIconUrl(e.target.value)
-                    setEditIconPreviewError(false)
-                  }}
-                  placeholder="https://example.com/icon.png"
-                  className="flex-1"
-                />
-                {/* Icon preview */}
-                <div className="w-8 h-8 rounded-lg overflow-hidden bg-glass/20 border border-glass-border/20 flex-shrink-0 grid place-items-center">
-                  {editIconUrl.trim() ? (
-                    editIconPreviewError ? (
-                      <span className="text-xs text-fg/40">×</span>
-                    ) : (
-                      <img
-                        src={editIconUrl.trim()}
-                        alt="icon preview"
-                        className="w-full h-full object-cover"
-                        onError={() => setEditIconPreviewError(true)}
-                        onLoad={() => setEditIconPreviewError(false)}
-                      />
-                    )
-                  ) : (
-                    <span className="text-xs text-fg/40">预览</span>
-                  )}
-                </div>
-              </div>
-              <p className="text-[10px] text-fg/40 mt-0.5">留空则使用默认图标</p>
-            </div>
           </>
         )}
         
@@ -166,6 +128,7 @@ export function DrawerEditDialog({
           <Button variant="primary" onClick={handleSave}>保存</Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

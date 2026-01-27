@@ -20,6 +20,10 @@ export type UseShortcutSetReturn = {
   replaceShortcutsAt: (idsToRemove: string[], newId: string, targetId: string) => void
   /** 将文件夹替换为其子项（用于删除文件夹时将子项插入当前显示位置） */
   replaceShortcutWithChildren: (folderId: string, childIds: string[], displayIndex: number) => void
+  /** 设置快捷方式顺序（用于拖拽重排） */
+  setShortcutOrder: (ids: string[]) => void
+  /** 根据当前屏幕宽度裁剪超出的图标 */
+  trimToMaxItems: () => void
 }
 
 /**
@@ -45,5 +49,7 @@ export function useShortcutSet(userId: string | null | undefined): UseShortcutSe
     maxShortcuts: getMaxShortcuts(),
     replaceShortcutsAt: store.replaceShortcutsAt,
     replaceShortcutWithChildren: store.replaceShortcutWithChildren,
+    setShortcutOrder: store.setShortcutOrder,
+    trimToMaxItems: store.trimToMaxItems,
   }
 }

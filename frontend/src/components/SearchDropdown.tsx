@@ -1,6 +1,8 @@
 import { Clock, Search, X, ExternalLink } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '../utils/cn'
+import { useAppearanceStore } from '../stores/appearance'
 
 export type DropdownItem =
   | { type: 'shortcut'; id: string; name: string; url: string; favicon: string }
@@ -25,6 +27,10 @@ interface RecentBookmark {
 interface SearchDropdownProps {
   /** 是否可见 */
   isVisible: boolean
+  /** 锚点元素的 ref，用于定位下拉框 */
+  anchorRef?: React.RefObject<HTMLElement | null>
+  /** 下拉框元素的 ref，用于外部点击检测 */
+  dropdownRef?: React.RefObject<HTMLDivElement | null>
   /** 快捷方式匹配结果 */
   shortcuts: ShortcutMatch[]
   /** 搜索建议 */
@@ -49,6 +55,8 @@ interface SearchDropdownProps {
 
 export function SearchDropdown({
   isVisible,
+  anchorRef,
+  dropdownRef,
   shortcuts,
   suggestions,
   history,
@@ -60,6 +68,54 @@ export function SearchDropdown({
   onSelectItem,
   onDeleteHistory,
 }: SearchDropdownProps) {
+  // 获取样式设置
+  const searchDropdownOpacity = useAppearanceStore((s) => s.searchDropdownOpacity)
+  const searchDropdownBlur = useAppearanceStore((s) => s.searchDropdownBlur)
+  
+  // 计算动态样式
+  // 不透明度：0% -> 0.1, 100% -> 1.0（完全不透明）
+  const bgOpacity = 0.1 + searchDropdownOpacity * 0.009
+  // 模糊度：直接使用设置值（0-128px）
+  const blurValue = searchDropdownBlur
+  
+  // 计算下拉框位置（用于 portal 渲染）
+  const [position, setPosition] = useState<{ top: number; left: number; width: number } | null>(null)
+  
+  useEffect(() => {
+    if (!anchorRef?.current) return
+    
+    const updatePosition = () => {
+      const rect = anchorRef.current?.getBoundingClientRect()
+      if (rect) {
+        setPosition({
+          top: rect.bottom + 8, // 8px 间距
+          left: rect.left + rect.width / 2,
+          width: Math.min(620, window.innerWidth - 32),
+        })
+      }
+    }
+    
+    // 立即计算位置
+    updatePosition()
+    
+    // 延迟再次计算，确保搜索框展开动画完成后位置正确
+    const timer = setTimeout(updatePosition, 100)
+    
+    // 使用 ResizeObserver 监听搜索框尺寸变化
+    const resizeObserver = new ResizeObserver(updatePosition)
+    resizeObserver.observe(anchorRef.current)
+    
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+    
+    return () => {
+      clearTimeout(timer)
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [anchorRef, isVisible])
+  
   // 动态模式：计算能显示多少个书签
   const containerRef = useRef<HTMLDivElement>(null)
   const [visibleCount, setVisibleCount] = useState(recentBookmarks.length)
@@ -123,20 +179,42 @@ export function SearchDropdown({
 
   let currentIndex = 0
 
-  return (
+  // 如果有 anchorRef，使用 portal 渲染到 body 层级
+  // 这样 backdropFilter 才能正确模糊背景图片
+  const dropdownContent = (
     <div
+      ref={dropdownRef}
       className={cn(
-        // 固定宽度，完全独立于搜索框
-        'absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50',
-        'w-[min(620px,calc(100vw-2rem))]',
-        'rounded-2xl border border-glass-border/20 backdrop-blur-xl shadow-glass',
-        'bg-glass/75 overflow-hidden',
+        'rounded-2xl border border-glass-border/25 shadow-glass',
+        'overflow-hidden',
         // 缓入缓出动画
         'transition-all duration-300 ease-out',
-        isVisible
+        // 非 portal 模式下的动画
+        !anchorRef && (isVisible
           ? 'opacity-100 translate-y-0 scale-100'
-          : 'opacity-0 -translate-y-2 scale-95 pointer-events-none',
+          : 'opacity-0 -translate-y-2 scale-95 pointer-events-none'),
+        // portal 模式下的动画（不使用 translate-y，因为会和 transform 冲突）
+        anchorRef && (isVisible
+          ? 'opacity-100 scale-100'
+          : 'opacity-0 scale-95 pointer-events-none'),
+        // 根据是否使用 portal 决定定位方式
+        anchorRef ? 'fixed z-[9999]' : 'absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-[min(620px,calc(100vw-2rem))]',
       )}
+      style={{
+        // 模糊度和不透明度（模糊度为0时不应用 backdropFilter）
+        ...(blurValue > 0 ? {
+          backdropFilter: `blur(${blurValue}px)`,
+          WebkitBackdropFilter: `blur(${blurValue}px)`,
+        } : {}),
+        backgroundColor: `rgb(var(--glass) / ${bgOpacity})`,
+        // portal 模式下使用计算的位置，动画通过 top 偏移实现
+        ...(anchorRef && position ? {
+          top: isVisible ? position.top : position.top - 8,
+          left: position.left,
+          transform: 'translateX(-50%)',
+          width: position.width,
+        } : {}),
+      }}
     >
       <div className="max-h-[min(320px,50vh)] overflow-y-auto py-2 overscroll-contain">
         {/* 最近点击的书签区域 */}
@@ -340,5 +418,12 @@ export function SearchDropdown({
       </div>
     </div>
   )
+
+  // 如果有 anchorRef，使用 portal 渲染到 body 层级
+  if (anchorRef) {
+    return createPortal(dropdownContent, document.body)
+  }
+
+  return dropdownContent
 }
 

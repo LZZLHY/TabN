@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import { Button } from '../../ui/Button'
 
@@ -32,8 +33,8 @@ export function DrawerSavePromptDialog({
     toast.success('已保存为自定义排序')
   }
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={handleCancel} />
       <div className="relative w-full max-w-sm glass-modal rounded-[var(--start-radius)] p-6 shadow-2xl modal-enter">
         <h3 className="font-semibold text-lg">保存排序</h3>
@@ -45,6 +46,7 @@ export function DrawerSavePromptDialog({
           <Button variant="primary" onClick={handleSave}>保存</Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

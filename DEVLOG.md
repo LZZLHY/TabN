@@ -452,6 +452,9 @@
 
 **开始时间**: 2026-01-22 05:46:00 (北京时间)
 
+**结束时间**: 2026-01-23 02:00:00 (北京时间)
+**发布时间**: 2026-01-23 03:11:00 (北京时间)
+
 | 编号 | 时间 | 描述 | 涉及文件 | 开发者 |
 |------|------|------|----------|--------|
 | #10242 | 2026-01-22 05:52:00 | 设置页面重构：新增搜索栏功能，支持搜索所有设置项并快速跳转到对应分类 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
@@ -494,3 +497,136 @@
 | #10279 | 2026-01-23 01:35:00 | Docker Compose 项目名统一为 TabN：所有脚本生成的 docker-compose.yml 添加 name: TabN，容器名改为 TabN-postgres | [setup.bat](scripts/setup.bat), [install.sh](scripts/install.sh), [install.bat](scripts/install.bat), [docker-compose.example.yml](docker-compose.example.yml) | lovedhy |
 | #10280 | 2026-01-23 01:45:00 | .gitignore 简化：backend/storage/ 整个目录忽略，替代原来的 backend/storage/user-settings/*.json | [.gitignore](.gitignore) | lovedhy |
 | #10281 | 2026-01-23 01:50:00 | start.sh 添加共享模块构建检查：启动时检查 shared/dist 是否存在，不存在则自动运行 npm install && npm run build:shared | [start.sh](scripts/start.sh) | lovedhy |
+| *#10282** | 2026-01-23 02:25:00 | ⚠️ **CI 热修复**：修复 BookmarkDrawer.tsx 中 loading 变量未使用的 ESLint 错误 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| *#10283** | 2026-01-23 02:35:00 | ⚠️ **脚本修复**：tabn.sh 所有 read 命令改为从 /dev/tty 读取，修复 CentOS 等系统上菜单选择失效问题 | [tabn.sh](scripts/tabn.sh) | lovedhy |
+| *#10284** | 2026-01-23 02:45:00 | ⚠️ **脚本修复**：install.sh 所有 read 命令改为从 /dev/tty 读取，修复通过 curl pipe 安装时输入失效问题 | [install.sh](scripts/install.sh) | lovedhy |
+| *#10285** | 2026-01-23 03:05:00 | ⚠️ **Vite 修复**：vite.config.ts 添加 allowedHosts: true，允许通过自定义域名访问开发服务器 | [vite.config.ts](frontend/vite.config.ts) | lovedhy |
+| *#10286** | 2026-01-23 03:10:00 | ⚠️ **脚本修复**：tabn.sh 更新功能改用 git fetch + reset --hard，避免强制推送后 git pull 分支分叉错误 | [tabn.sh](scripts/tabn.sh) | lovedhy |
+
+---
+
+## v1.5.0
+
+**开始时间**: 2026-01-23 03:12:00 (北京时间)
+
+**结束时间**: 2026-01-27 13:45:00 (北京时间)
+
+**发布时间**: 2026-01-27 13:45:00 (北京时间)
+
+| 编号 | 时间 | 描述 | 涉及文件 | 开发者 |
+|------|------|------|----------|--------|
+| #10287 | 2026-01-23 03:28:00 | 删除 homeLayoutMode 选项：移除动态挤压模式，只保留固定位置模式，修复垂直位置滑块无效的问题 | [appearance.ts](frontend/src/stores/appearance.ts), [Home/index.tsx](frontend/src/pages/Home/index.tsx), [settingsFile.ts](frontend/src/utils/settingsFile.ts), [settingsController.ts](backend/src/controllers/settingsController.ts) | lovedhy |
+| #10288 | 2026-01-23 04:00:00 | 设置页面重构：将侧边栏设置移入桌面板块，新增独立的"书签"顶级分类 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10289 | 2026-01-23 04:00:00 | 书签板块新增图标大小设置：滑块调整 48-96px，拖动时自动打开书签页预览，显示浮动预览条 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [appearance.ts](frontend/src/stores/appearance.ts) | lovedhy |
+| #10290 | 2026-01-23 04:00:00 | 书签页图标动态大小：DrawerBookmarkItem、加号按钮、骨架屏、拖拽覆盖层均响应 bookmarkIconSize 设置 | [DrawerBookmarkItem.tsx](frontend/src/components/bookmarks/DrawerBookmarkItem.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10291 | 2026-01-23 04:30:00 | 书签板块新增图标圆角设置：滑块调整 0-48px，拖动时自动打开书签页预览，显示浮动预览条 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10292 | 2026-01-23 04:50:00 | 预览模式优化：新增 isPreviewMode 标记，预览时不操作浏览器 history，避免松手后返回桌面 | [bookmarkDrawer.ts](frontend/src/stores/bookmarkDrawer.ts), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx), [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10293 | 2026-01-23 05:30:00 | 书签板块新增图标间距设置：滑块调整 20-100px，电脑端默认 52px，移动端默认 36px，拖动时预览 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [appearance.ts](frontend/src/stores/appearance.ts) | lovedhy |
+| #10294 | 2026-01-23 05:30:00 | 书签页布局优化：使用 CSS Grid auto-fill 配合 justify-content: center，每行从左开始但整体居中，左右边距相同 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10295 | 2026-01-24 05:40:00 | 桌面板块新增背景明暗度设置：滑块调整 0-100%，浅色模式默认 100%，深色模式默认 70%，拖动时预览 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [appearance.ts](frontend/src/stores/appearance.ts), [AppShell.tsx](frontend/src/layouts/AppShell.tsx) | lovedhy |
+| #10296 | 2026-01-24 05:50:00 | 移除底部阴影效果：glass-panel、glass-panel-strong、搜索框移除 shadow-glass，仅保留毛玻璃效果 | [index.css](frontend/src/index.css), [SearchBox.tsx](frontend/src/components/SearchBox.tsx) | lovedhy |
+| #10297 | 2026-01-24 05:55:00 | 设置页面毛玻璃统一：顶部栏、左侧导航栏、内容区域统一使用 bg-glass/15 backdrop-blur-md，卡片使用 bg-glass/35 更突出 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10298 | 2026-01-24 06:10:00 | 全局滚动条样式：新增与毛玻璃背景一致的自定义滚动条，宽度 10px，支持 Webkit 和 Firefox，提供 scrollbar-thin 工具类 | [index.css](frontend/src/index.css) | lovedhy |
+| #10299 | 2026-01-24 06:55:00 | 设置页响应式布局修复：使用 isDesktop hook（≥1024px）判断侧边栏显示，768-1024px 范围显示列表导航而非空白 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10300 | 2026-01-24 07:00:00 | 设置页宽度变化响应：添加 prevIsDesktop ref，从桌面端切换到非桌面端时自动重置 tab 显示列表页 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10301 | 2026-01-24 07:10:00 | 移动端华为风格设置页：<768px 时顶部栏、搜索框、卡片使用浅色白底/深色黑底+灰卡片，≥768px 保持毛玻璃效果 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10302 | 2026-01-24 07:25:00 | 新增 settingsDialog store：全局管理设置弹窗状态，支持从任意位置打开设置页 | [settingsDialog.ts](frontend/src/stores/settingsDialog.ts), [AppShell.tsx](frontend/src/layouts/AppShell.tsx) | lovedhy |
+| #10303 | 2026-01-24 07:30:00 | 底部 Dock 栏新增书签页入口：LayoutGrid 图标点击打开书签抽屉，支持登录态和非登录态 | [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx), [Home/index.tsx](frontend/src/pages/Home/index.tsx) | lovedhy |
+| #10304 | 2026-01-24 07:30:00 | 底部 Dock 栏新增设置入口：Settings 图标点击打开设置页，位于书签入口右侧 | [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx) | lovedhy |
+| #10305 | 2026-01-24 07:32:00 | 设置页新增 Dock 栏图标控制：可单独显示/隐藏书签页入口和设置入口图标 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [appearance.ts](frontend/src/stores/appearance.ts) | lovedhy |
+| #10306 | 2026-01-24 07:34:00 | 设置页新增 Dock 栏显示开关：可完全隐藏底部 Dock 栏，关闭后子选项自动隐藏 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [appearance.ts](frontend/src/stores/appearance.ts), [Home/index.tsx](frontend/src/pages/Home/index.tsx) | lovedhy |
+| #10307 | 2026-01-24 08:30:00 | Dock 栏新书签添加位置设置：新增 dockAddPosition 选项，可选择新书签添加到最左边或最右边 | [appearance.ts](frontend/src/stores/appearance.ts), [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [shortcutSet.ts](frontend/src/stores/shortcutSet.ts) | lovedhy |
+| #10308 | 2026-01-24 08:35:00 | Dock 栏添加/踢出逻辑：根据 dockAddPosition 设置决定添加位置和踢出方向，超出限制时自动踢出对侧图标 | [shortcutSet.ts](frontend/src/stores/shortcutSet.ts) | lovedhy |
+| #10309 | 2026-01-24 08:40:00 | 电脑端 Dock 栏动态容量：根据屏幕宽度动态计算最大图标数量，预留左侧边栏和功能按钮空间 | [shortcutSet.ts](frontend/src/stores/shortcutSet.ts), [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx) | lovedhy |
+| #10310 | 2026-01-24 08:45:00 | Dock 栏自动裁剪：新增 trimToMaxItems 方法，屏幕缩小时自动踢出超出的图标，防止溢出 | [shortcutSet.ts](frontend/src/stores/shortcutSet.ts), [useShortcutSet.ts](frontend/src/components/bookmarks/useShortcutSet.ts) | lovedhy |
+| #10311 | 2026-01-24 08:50:00 | Dock 栏 resize 监听优化：屏幕宽度减小时立即执行裁剪，使用 requestAnimationFrame 确保在渲染前完成 | [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx) | lovedhy |
+| #10312 | 2026-01-24 08:55:00 | 移除 useBookmarkOrder 依赖：Dock 栏直接使用 shortcutIds 作为显示顺序，新增 setShortcutOrder 方法支持拖拽重排 | [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx), [shortcutSet.ts](frontend/src/stores/shortcutSet.ts), [useShortcutSet.ts](frontend/src/components/bookmarks/useShortcutSet.ts) | lovedhy |
+| #10313 | 2026-01-24 09:40:00 | 设置页 SettingItem 组件改为水平布局：标签和说明在左侧，控件在右侧，fullWidth 模式保持垂直布局用于滑块 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10314 | 2026-01-24 09:40:00 | 设置页 Toggle 组件改为左右滑动开关样式：使用主题色 rgb(var(--primary)) 作为开启背景，白色圆形滑块带阴影 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10315 | 2026-01-24 09:42:00 | 设置页所有滑块设置项添加 fullWidth 属性：时钟大小、首页布局、背景明暗、图标大小/间距/圆角等全宽显示 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10316 | 2026-01-24 09:43:00 | 设置页内容卡片居中：添加 mx-auto 使 max-w-3xl 的内容区域在右侧面板中居中显示 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10317 | 2026-01-24 09:35:00 | 新书签位置按钮样式统一：改用 SegButton 组件替代自定义按钮，与其他分段选项保持一致风格 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10318 | 2026-01-24 09:55:00 | 移除首页背景来源文字：删除左下角的"背景：Bing 每日一图"显示 | [AppShell.tsx](frontend/src/layouts/AppShell.tsx) | lovedhy |
+| #10319 | 2026-01-24 09:55:00 | 背景设置卡片重构：改为预览窗口布局，支持必应每日、Picsum、自定义图片、自定义 API 四种来源 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [appearance.ts](frontend/src/stores/appearance.ts), [useBackgroundImage.ts](frontend/src/hooks/useBackgroundImage.ts) | lovedhy |
+| #10320 | 2026-01-24 10:05:00 | 后端设置 schema 扩展：添加 backgroundApiUrl、backgroundDimming、bookmarkIconSize、bookmarkIconGap、dockVisible、dockShowBookmarks、dockShowSettings、dockAddPosition 字段，所有字段添加默认值支持旧格式兼容 | [settingsController.ts](backend/src/controllers/settingsController.ts) | lovedhy |
+| #10321 | 2026-01-24 10:13:00 | 修复吐司消息重复弹出：添加 toastShownRef 防止云端同步消息多次显示 | [useCloudSettingsSync.ts](frontend/src/hooks/useCloudSettingsSync.ts) | lovedhy |
+| #10322 | 2026-01-24 10:15:00 | 移除 Unsplash 壁纸来源：从前端类型、hook、设置页面和后端 schema 中删除 unsplash 选项 | [appearance.ts](frontend/src/stores/appearance.ts), [useBackgroundImage.ts](frontend/src/hooks/useBackgroundImage.ts), [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [settingsController.ts](backend/src/controllers/settingsController.ts) | lovedhy |
+| #10323 | 2026-01-24 10:17:00 | 添加壁纸下载按钮：在背景设置卡片底部添加"下载当前壁纸"按钮，使用 fetch+Blob 方式下载跨域图片 | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx) | lovedhy |
+| #10324 | 2026-01-24 10:22:00 | 背景切换预加载：新图片加载完成后再切换显示，避免切换过程中黑屏现象 | [AppShell.tsx](frontend/src/layouts/AppShell.tsx) | lovedhy |
+| #10325 | 2026-01-24 11:20:00 | 新增自定义书签图标功能：支持自动竞速、Google、DuckDuckGo、Icon Horse、自定义 URL 五种图标来源 | [iconSource.ts](frontend/src/utils/iconSource.ts), [IconSourceSelector.tsx](frontend/src/components/bookmarks/IconSourceSelector.tsx) | lovedhy |
+| #10326 | 2026-01-24 11:20:00 | 图标来源存储格式：使用 iconUrl 字段存储来源标记（source:google 等）或自定义 URL，无需数据库迁移 | [iconSource.ts](frontend/src/utils/iconSource.ts) | lovedhy |
+| #10327 | 2026-01-24 11:20:00 | 图标来源选择器 UI：预览缩略图网格、当前使用来源检测与标记、自定义 URL 输入框 | [IconSourceSelector.tsx](frontend/src/components/bookmarks/IconSourceSelector.tsx) | lovedhy |
+| #10328 | 2026-01-24 11:20:00 | 书签编辑对话框集成图标来源选择：DrawerEditDialog 和 GridEditDialog 均支持图标来源设置 | [DrawerEditDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerEditDialog.tsx), [GridEditDialog.tsx](frontend/src/components/bookmarks/dialogs/GridEditDialog.tsx) | lovedhy |
+| #10329 | 2026-01-24 11:20:00 | 书签图标渲染适配：BookmarkIcon、BookmarkItem、DrawerBookmarkItem 使用 getIconUrl 解析图标来源 | [BookmarkIcon.tsx](frontend/src/components/bookmarks/BookmarkIcon.tsx), [BookmarkItem.tsx](frontend/src/components/bookmarks/BookmarkItem.tsx), [DrawerBookmarkItem.tsx](frontend/src/components/bookmarks/DrawerBookmarkItem.tsx) | lovedhy |
+| #10330 | 2026-01-24 11:20:00 | 后端图标验证适配：支持 source: 前缀的图标来源标记，避免误报 URL 格式无效 | [bookmarkController.ts](backend/src/controllers/bookmarkController.ts) | lovedhy |
+| #10331 | 2026-01-24 11:40:00 | 新增全局书签刷新机制：书签页和 Dock 编辑后互相通知刷新，解决图标更新不同步问题 | [bookmarkRefresh.ts](frontend/src/stores/bookmarkRefresh.ts), [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10332 | 2026-01-24 22:10:00 | 文件夹弹窗样式重构：改为 iOS 风格水平布局，标题居中，支持水平滚动 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx) | lovedhy |
+| #10333 | 2026-01-24 22:10:00 | 文件夹内图标同步：添加 FolderItemIcon 和 FolderPreviewIcon 组件，支持自定义图标和错误回退 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkIcon.tsx](frontend/src/components/bookmarks/BookmarkIcon.tsx) | lovedhy |
+| #10334 | 2026-01-24 22:15:00 | 搜索建议框图标统一：后端 /api/bookmarks/recent 返回 iconUrl 字段，前端使用 getIconUrl 解析 | [clickController.ts](backend/src/controllers/clickController.ts), [useRecentBookmarks.ts](frontend/src/hooks/useRecentBookmarks.ts), [useShortcutMatcher.ts](frontend/src/hooks/useShortcutMatcher.ts) | lovedhy |
+| #10335 | 2026-01-24 22:20:00 | 拖拽图标同步：BookmarkGrid 和 BookmarkDrawer 拖拽覆盖层支持自定义图标显示 | [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx), [DragOverlay.tsx](frontend/src/components/bookmarks/DragOverlay.tsx) | lovedhy |
+| #10336 | 2026-01-24 22:30:00 | 文件夹内图标大小和间距跟随设置：使用 bookmarkIconSize 和 bookmarkIconGap 控制显示 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx) | lovedhy |
+| #10337 | 2026-01-24 22:45:00 | 文件夹内拖拽功能：集成 useBookmarkDrag hook，支持排序、建夹、移动到子文件夹 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10338 | 2026-01-24 22:50:00 | 修复文件夹内快速拖拽图标超出范围：将 bm-inner 放在内层，与书签页结构保持一致 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx) | lovedhy |
+| #10339 | 2026-01-24 23:00:00 | 统一文件夹预览图标逻辑：所有组件使用与 FolderItemIconContent 一致的图标解析逻辑 | [DrawerBookmarkItem.tsx](frontend/src/components/bookmarks/DrawerBookmarkItem.tsx), [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkIcon.tsx](frontend/src/components/bookmarks/BookmarkIcon.tsx) | lovedhy |
+| #10340 | 2026-01-25 14:08:00 | 修复最后一行单图标拖拽触发上一行换位：初始化 lastInsertIndex 和 lastReorderRef，使滞回逻辑在拖拽开始时生效 | [useBookmarkDrag.ts](frontend/src/components/bookmarks/useBookmarkDrag.ts) | lovedhy |
+| #10341 | 2026-01-25 14:10:00 | 修复图标放入文件夹后的补位动画：始终保存位置快照，moveToFolder 添加 triggerAnimation 参数 | [useBookmarkDrag.ts](frontend/src/components/bookmarks/useBookmarkDrag.ts), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10342 | 2026-01-25 14:15:00 | 修复文件夹预览圆角裁切：给预览网格添加 p-[8%] 内边距 | [DrawerBookmarkItem.tsx](frontend/src/components/bookmarks/DrawerBookmarkItem.tsx), [BookmarkIcon.tsx](frontend/src/components/bookmarks/BookmarkIcon.tsx), [DragOverlay.tsx](frontend/src/components/bookmarks/DragOverlay.tsx), [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx) | lovedhy |
+| #10343 | 2026-01-25 14:20:00 | 文件夹弹窗布局优化：固定3列网格显示，ESC键优先关闭文件夹，增加弹窗宽度和标题字体 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10344 | 2026-01-25 14:35:00 | 文件夹内右键菜单支持：添加 onContextMenu 回调到 FolderModal | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10345 | 2026-01-25 14:45:00 | 修复弹窗图层问题：所有 Drawer 弹窗使用 createPortal 渲染到 document.body，调整 z-index 层级 | [DrawerContextMenu.tsx](frontend/src/components/bookmarks/DrawerContextMenu.tsx), [DrawerEditDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerEditDialog.tsx), [DrawerDeleteDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerDeleteDialog.tsx), [DrawerCreateDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerCreateDialog.tsx), [DrawerLoginPrompt.tsx](frontend/src/components/bookmarks/dialogs/DrawerLoginPrompt.tsx), [DrawerSavePromptDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerSavePromptDialog.tsx) | lovedhy |
+| #10346 | 2026-01-25 14:55:00 | 桌面端书签页布局优化：搜索框居中显示，排序选择器和关闭按钮固定在右侧 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10347 | 2026-01-25 15:20:00 | 移动端书签页布局适配：标题在左上角，排序图标/设置/关闭按钮在右上角，全宽搜索框在下方 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx), [SortModeIconButton.tsx](frontend/src/components/SortModeIconButton.tsx), [SearchBox.tsx](frontend/src/components/SearchBox.tsx) | lovedhy |
+| #10348 | 2026-01-26 04:15:00 | 搜索建议框样式设置：添加不透明度和模糊度两个独立滑块，使用 createPortal 渲染到 body 层级解决 backdropFilter 无法模糊背景的问题，适配浅色/深色主题 | [SearchDropdown.tsx](frontend/src/components/SearchDropdown.tsx), [SearchBox.tsx](frontend/src/components/SearchBox.tsx), [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [appearance.ts](frontend/src/stores/appearance.ts) | lovedhy |
+| #10349 | 2026-01-26 04:28:00 | 修复搜索建议框问题：修复删除历史记录时关闭搜索框、建议框错位、点击外部无法关闭等问题，加快建议框弹出速度（200ms） | [SearchDropdown.tsx](frontend/src/components/SearchDropdown.tsx), [SearchBox.tsx](frontend/src/components/SearchBox.tsx) | lovedhy |
+| #10350 | 2026-01-26 04:47:00 | 搜索建议框样式设置预览功能：拖动滑块时隐藏设置页显示搜索建议框预览效果，添加预览模式状态到 searchFocus store | [SettingsDialog.tsx](frontend/src/components/SettingsDialog.tsx), [SearchBox.tsx](frontend/src/components/SearchBox.tsx), [searchFocus.ts](frontend/src/stores/searchFocus.ts) | lovedhy |
+| #10351 | 2026-01-26 05:05:00 | 开发环境优化：修复 WebSocket 和 Bing CORS 错误，添加 mobile-web-app-capable meta 标签，添加控制台欢迎语句（版本号、ASCII 艺术字、版权信息），搜索建议框设置项支持云端同步 | [main.tsx](frontend/src/main.tsx), [index.html](frontend/index.html), [useSettingsWebSocket.ts](frontend/src/hooks/useSettingsWebSocket.ts), [bing.ts](frontend/src/services/bing.ts), [settingsFile.ts](frontend/src/utils/settingsFile.ts) | lovedhy |
+| #10352 | 2026-01-26 07:45:00 | 嵌套文件夹动画重构：支持多级文件夹逐级打开/关闭，使用文件夹栈管理打开状态 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx), [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx) | lovedhy |
+| #10353 | 2026-01-26 07:45:00 | 二级文件夹打开动画：从子文件夹图标位置展开，使用 flushSync 确保动画起点正确 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx) | lovedhy |
+| #10354 | 2026-01-26 07:45:00 | 关闭二级返回一级优化：一级文件夹立即显示（forceExpanded），二级关闭动画在上层执行（autoClose） | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx), [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx) | lovedhy |
+| #10355 | 2026-01-26 07:45:00 | 修复二级关闭动画闪屏：autoClose 模式不显示背景遮罩，延迟 50ms 开始关闭动画避免空窗期 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx) | lovedhy |
+| #10356 | 2026-01-26 08:15:00 | 修复文件夹内子文件夹换位后打开显示为空：文件夹切换时重置 dragOrderOverride，添加 visibleIds 验证逻辑 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx) | lovedhy |
+| #10357 | 2026-01-26 08:20:00 | 文件夹内叠加建夹功能：参考书签页 createFolderWithItems 逻辑，使用 updateOrderAfterCreateFolder 正确更新排序 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10358 | 2026-01-26 08:25:00 | 文件夹内拖拽补位动画：建夹和移动到子文件夹后触发 triggerFillAnimation，使用 dragRef 在回调中访问 drag 对象 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10359 | 2026-01-26 08:28:00 | 文件夹内移动到子文件夹顺序插入：参考书签页 moveToFolder 逻辑，更新目标文件夹内部顺序并保存到 localStorage | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10360 | 2026-01-26 08:30:00 | 修复文件夹内释放逻辑：根据被删除项的 parentId 获取正确的顺序，确保释放时按顺序插入子项 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10361 | 2026-01-26 08:50:00 | 嵌套文件夹预览功能：拖拽文件夹时显示嵌套文件夹内的图标预览（2x2 网格），支持三层嵌套显示 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx), [DrawerBookmarkItem.tsx](frontend/src/components/bookmarks/DrawerBookmarkItem.tsx), [BookmarkIcon.tsx](frontend/src/components/bookmarks/BookmarkIcon.tsx), [DragOverlay.tsx](frontend/src/components/bookmarks/DragOverlay.tsx), [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx) | lovedhy |
+| #10362 | 2026-01-26 09:00:00 | 文件夹自动命名功能：叠加建夹命名为"收藏夹N"，加号创建命名为"新建文件夹N"，自动查找最小可用数字 | [folderOperations.ts](frontend/src/components/bookmarks/folderOperations.ts), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx), [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx) | lovedhy |
+| #10363 | 2026-01-26 09:10:00 | 文件夹内右键菜单"移出当前文件夹"功能：将书签移至上级文件夹（插入到当前文件夹的下一个位置），最后一个书签移出时自动删除空文件夹 | [DrawerContextMenu.tsx](frontend/src/components/bookmarks/DrawerContextMenu.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10364 | 2026-01-26 09:13:00 | 代码清理：移除 FolderModal 未使用的 getElRef prop，修复 useEffect 同步 setState 警告（使用 useLayoutEffect + flushSync） | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx), [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx) | lovedhy |
+| #10365 | 2026-01-26 09:53:00 | 右键菜单二级菜单功能：添加到文件夹改为翻页式二级菜单，支持搜索过滤、可滚动列表、滑动动画效果 | [DrawerContextMenu.tsx](frontend/src/components/bookmarks/DrawerContextMenu.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10366 | 2026-01-26 11:06:00 | 文件夹内拖出图标功能：拖拽图标到文件夹外悬停 400ms 自动关闭文件夹，图标保持拖拽状态继续在书签页拖拽 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx), [useBookmarkDrag.ts](frontend/src/components/bookmarks/useBookmarkDrag.ts) | lovedhy |
+| #10367 | 2026-01-26 11:06:00 | 拖拽状态交接机制：添加 takeoverDrag 方法接管拖拽状态，传递 grabOffset 保持抓取位置一致 | [useBookmarkDrag.ts](frontend/src/components/bookmarks/useBookmarkDrag.ts) | lovedhy |
+| #10368 | 2026-01-26 11:06:00 | 修复拖拽状态残留：添加 cleanup effect 确保组件卸载时重置 isDragging 状态，避免禁止光标问题 | [useBookmarkDrag.ts](frontend/src/components/bookmarks/useBookmarkDrag.ts) | lovedhy |
+| #10369 | 2026-01-26 11:06:00 | 修复拖出时图标瞬移：使用 pendingHideId 在渲染时预先隐藏元素，避免从末尾瞬移到鼠标位置 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10370 | 2026-01-26 11:06:00 | 修复拖出时预占位问题：添加网格边界检查，指针不在书签区域内时不显示插入位置预占位 | [useBookmarkDrag.ts](frontend/src/components/bookmarks/useBookmarkDrag.ts) | lovedhy |
+| #10371 | 2026-01-26 11:06:00 | 拖出关闭动画优化：使用 closingFolder 状态显示关闭动画层，二级文件夹收缩到一级文件夹位置 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10372 | 2026-01-26 23:20:00 | 右键菜单编辑二级菜单：将"编辑"改为二级菜单，包含"更改信息"和"更改图标"两个选项 | [DrawerContextMenu.tsx](frontend/src/components/bookmarks/DrawerContextMenu.tsx) | lovedhy |
+| #10373 | 2026-01-26 23:20:00 | 独立图标编辑对话框：创建 DrawerIconDialog 组件，专门用于更改书签图标，复用 IconSourceSelector | [DrawerIconDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerIconDialog.tsx) | lovedhy |
+| #10374 | 2026-01-26 23:20:00 | 编辑信息对话框精简：从 DrawerEditDialog 中移除图标编辑功能，图标编辑移至独立对话框 | [DrawerEditDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerEditDialog.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10375 | 2026-01-27 00:10:00 | 书签页后台恢复状态同步：添加 visibilitychange 和 pageshow 事件处理，从后台恢复时同步 shouldRender/isVisible 状态，确保 history.state 正确 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10376 | 2026-01-27 00:10:00 | 防止后台恢复时意外关闭：添加 lastVisibleTime 检查，页面恢复后 500ms 内忽略 popstate 事件，防止浏览器恢复时意外触发关闭 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10377 | 2026-01-27 00:30:00 | 书签数据全局缓存：创建 bookmarkCache store，使用 Zustand 管理书签数据缓存，避免页面切换时重复加载 | [bookmarkCache.ts](frontend/src/stores/bookmarkCache.ts) | lovedhy |
+| #10378 | 2026-01-27 00:30:00 | 首页状态持久化优化：BookmarkGrid 和 BookmarkDrawer 使用全局缓存，缓存有效期 5 分钟内跳过 API 请求 | [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10379 | 2026-01-27 02:42:00 | 背景图加载优化：HTML 内联脚本在 React 渲染前同步读取缓存的背景图 URL 并应用到 html 元素，避免刷新时闪黑 | [index.html](frontend/index.html), [AppShell.tsx](frontend/src/layouts/AppShell.tsx) | lovedhy |
+| #10380 | 2026-01-27 02:42:00 | 背景图缓存机制：使用 IndexedDB 缓存 Base64 图片数据，localStorage 缓存 URL，支持 Bing/Picsum/API/Custom 四种壁纸类型 | [useBackgroundImage.ts](frontend/src/hooks/useBackgroundImage.ts) | lovedhy |
+| #10381 | 2026-01-27 02:42:00 | Bing 每日壁纸多 API 备选：添加 bing.biturl.top、bing.img.run、bingw.jasonzeng.dev 三个第三方 API，依次尝试，全部失败时使用固定回退图片 | [bing.ts](frontend/src/services/bing.ts) | lovedhy |
+| #10382 | 2026-01-27 02:42:00 | Picsum 壁纸优化：使用 sessionStorage 标记本次会话是否已加载新图片，刷新时保持上一张缓存图片，避免重复加载和闪黑 | [useBackgroundImage.ts](frontend/src/hooks/useBackgroundImage.ts) | lovedhy |
+| #10383 | 2026-01-27 02:42:00 | 云端同步优化：使用 sessionStorage 标记本次会话是否已同步，刷新时不重复拉取云端设置和弹出吐司消息 | [useCloudSettingsSync.ts](frontend/src/hooks/useCloudSettingsSync.ts) | lovedhy |
+| #10384 | 2026-01-27 03:11:00 | 修复侧边栏弹出动画毛玻璃失效：移除 opacity 动画，只保留 translate-x 位移动画，使用 transition-transform 避免影响 backdrop-blur | [AppShell.tsx](frontend/src/layouts/AppShell.tsx) | lovedhy |
+| #10385 | 2026-01-27 03:11:00 | 修复底部 Dock 栏弹出动画毛玻璃失效：移除 opacity 动画，只保留 translate-y 位移动画，桌面端和移动端 Dock 栏均已修复 | [Home/index.tsx](frontend/src/pages/Home/index.tsx) | lovedhy |
+| #10386 | 2026-01-27 11:20:00 | Dock 栏右键菜单编辑二级菜单：添加"更改信息"和"更改图标"选项，与书签页右键菜单功能一致 | [GridContextMenu.tsx](frontend/src/components/bookmarks/GridContextMenu.tsx) | lovedhy |
+| #10387 | 2026-01-27 11:20:00 | Dock 栏编辑信息对话框精简：移除图标编辑功能，图标编辑移至独立的 DrawerIconDialog 对话框 | [GridEditDialog.tsx](frontend/src/components/bookmarks/dialogs/GridEditDialog.tsx), [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx) | lovedhy |
+| #10388 | 2026-01-27 11:20:00 | 图标编辑对话框预览修复：优先使用书签已有的 BASE64 图标数据或自定义 URL，否则使用 DuckDuckGo 作为默认预览 | [DrawerIconDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerIconDialog.tsx) | lovedhy |
+| #10389 | 2026-01-27 11:20:00 | 图标编辑保存后刷新修复：Dock 栏和书签页图标编辑保存后触发全局刷新和强制加载（load(true)），确保图标更改立即生效 | [DrawerIconDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerIconDialog.tsx), [BookmarkGrid.tsx](frontend/src/components/BookmarkGrid.tsx), [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10390 | 2026-01-27 12:35:00 | 图标背景自定义功能：添加 iconBg 字段支持毛玻璃、自定义色、透明三种背景模式 | [schema.prisma](backend/prisma/schema.prisma), [bookmarkController.ts](backend/src/controllers/bookmarkController.ts), [types.ts](frontend/src/components/bookmarks/types.ts) | lovedhy |
+| #10391 | 2026-01-27 12:35:00 | 图标背景编辑 UI：在图标编辑对话框中添加背景选择区域，支持毛玻璃强度调节和主题色开关 | [DrawerIconDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerIconDialog.tsx) | lovedhy |
+| #10392 | 2026-01-27 12:35:00 | 图标背景渲染：DrawerBookmarkItem 和 BookmarkIcon 组件根据 iconBg 字段渲染对应背景样式 | [DrawerBookmarkItem.tsx](frontend/src/components/bookmarks/DrawerBookmarkItem.tsx), [BookmarkIcon.tsx](frontend/src/components/bookmarks/BookmarkIcon.tsx) | lovedhy |
+| #10393 | 2026-01-27 12:35:00 | 自定义色卡优化：10 种标准色（白灰红橙黄绿青蓝紫粉），点击展开 6 级渐变色，支持颜色选择器和十六进制输入 | [DrawerIconDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerIconDialog.tsx) | lovedhy |
+| #10394 | 2026-01-27 12:35:00 | 图标预览背景实时预览：编辑对话框中的图标预览卡片实时显示当前选择的背景效果 | [DrawerIconDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerIconDialog.tsx) | lovedhy |
+| #10395 | 2026-01-27 12:35:00 | 主题色勾选框样式：使用自定义样式替代原生 checkbox，勾选时显示主题色背景和白色勾号 | [DrawerIconDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerIconDialog.tsx) | lovedhy |
+| #10396 | 2026-01-27 12:35:00 | 批量应用背景功能：添加"应用到全部"按钮，将当前背景设置应用到用户所有书签 | [DrawerIconDialog.tsx](frontend/src/components/bookmarks/dialogs/DrawerIconDialog.tsx), [bookmarkController.ts](backend/src/controllers/bookmarkController.ts), [bookmarks.ts](backend/src/routes/bookmarks.ts) | lovedhy |
+| #10397 | 2026-01-27 13:00:00 | 书签页图标悬浮动效：鼠标悬浮时放大 110% + 阴影，点击时缩小 95%，150ms ease-out 过渡 | [DrawerBookmarkItem.tsx](frontend/src/components/bookmarks/DrawerBookmarkItem.tsx) | lovedhy |
+| #10398 | 2026-01-27 13:00:00 | 文件夹弹窗内图标悬浮动效：与书签页一致的悬浮放大和点击缩小效果 | [FolderModal.tsx](frontend/src/components/bookmarks/FolderModal.tsx) | lovedhy |
+| #10399 | 2026-01-27 13:40:00 | 修复拖拽图标到文件夹外部的缓存问题：直接更新缓存数据而不是等待 API 返回，确保 DOM 立即渲染 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10400 | 2026-01-27 13:40:00 | 拖拽接管优化：使用双重 requestAnimationFrame 等待 React 状态更新和 DOM 渲染完成后再接管拖拽 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |
+| #10401 | 2026-01-27 13:40:00 | 关闭动画层快照：保存文件夹内容快照（排除被拖拽图标），避免 load() 后数据变化导致显示问题 | [BookmarkDrawer.tsx](frontend/src/components/BookmarkDrawer.tsx) | lovedhy |

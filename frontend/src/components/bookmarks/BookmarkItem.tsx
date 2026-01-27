@@ -1,9 +1,8 @@
-import { Folder } from 'lucide-react'
+import { useState } from 'react'
 import { cn } from '../../utils/cn'
-import { Favicon } from '../Favicon'
 import { Tooltip } from '../ui/Tooltip'
 import { DraggableBookmarkItem } from './DraggableItem'
-import { getSortedFolderChildren } from './folderOperations'
+import { BookmarkIcon } from './BookmarkIcon'
 import type { Bookmark } from './types'
 import type { BookmarkContext } from '../../types/bookmark'
 
@@ -44,28 +43,12 @@ export function BookmarkItem({
   onLongPress,
   onCancelDrag,
 }: BookmarkItemProps) {
-  const isFolder = item.type === 'FOLDER'
   const isCombineCandidate = combineCandidateId === item.id
   const isCombineTarget = combineTargetId === item.id
-  
-  const folderItems = isFolder 
-    ? getSortedFolderChildren(allItems.filter(x => x.parentId === item.id), userId, item.id, context).slice(0, 9) 
-    : []
-
   const showCombine = isCombineCandidate || isCombineTarget
-  const iconRing = isCombineTarget
-    ? 'ring-2 ring-primary ring-offset-2'
-    : isCombineCandidate
-      ? 'ring-2 ring-primary/60 ring-offset-2'
-      : ''
   
-  // Dock 模式样式
-  // 关键：当有拖拽进行时（activeDragId !== null），禁用 hover 动画
-  // 因为 hover 动画会改变元素矩形，导致 hitItem 检测不稳定
-  const isDragging = activeDragId !== null
-  const dockIconClass = dockMode && !isDragging
-    ? 'group-hover:scale-125 group-hover:-translate-y-3' 
-    : ''
+  // 自定义图标失败状态
+  const [customIconFailed, setCustomIconFailed] = useState(false)
 
   return (
     <DraggableBookmarkItem
@@ -122,61 +105,18 @@ export function BookmarkItem({
         delay={600}
       >
       <div className={cn('grid place-items-center', dockMode ? 'group px-1' : '')}>
-        <div
-          className={cn(
-            'bookmark-icon h-12 w-12 overflow-hidden grid place-items-center transition-all duration-200 relative',
-            dockMode ? 'rounded-xl' : 'rounded-[var(--start-radius)]',
-            isFolder
-              ? dockMode 
-                ? 'bg-white/30 dark:bg-white/10 border border-white/40 dark:border-white/20 p-[2px]'
-                : 'bg-glass/20 border border-glass-border/20 p-[2px]'
-              : dockMode
-                ? 'bg-white/40 dark:bg-white/15'
-                : 'bg-primary/15 text-primary font-semibold',
-            iconRing,
-            showCombine && 'scale-[1.03]',
-            dockIconClass,
-          )}
-        >
-          {/* 叠加创建收藏夹：在目标图标上显示"文件夹框"覆盖提示 */}
-          {showCombine && !isFolder ? (
-            <div className={cn(
-              'absolute inset-0 bg-glass/25 border border-primary/60 grid place-items-center',
-              dockMode ? 'rounded-xl' : 'rounded-[var(--start-radius)]'
-            )}>
-              <Folder className="w-5 h-5 text-primary" />
-            </div>
-          ) : null}
-
-          <div className={cn('absolute inset-0', showCombine && !isFolder ? 'opacity-15' : 'opacity-100')}>
-            {isFolder ? (
-              <div className="grid grid-cols-3 gap-0.5 w-full h-full content-start">
-                {folderItems.map((sub) => (
-                  <div
-                    key={sub.id}
-                    className="w-full pt-[100%] relative bg-black/10 rounded-[2px] overflow-hidden"
-                  >
-                    {sub.url ? (
-                      <Favicon
-                        url={sub.url}
-                        name={sub.name}
-                        size={16}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <Favicon
-                url={item.url || ''}
-                name={item.name}
-                className="h-full w-full object-cover"
-                letterClassName="h-full w-full"
-              />
-            )}
-          </div>
-        </div>
+        <BookmarkIcon
+          bookmark={item}
+          allItems={allItems}
+          userId={userId}
+          context={context}
+          showCombine={showCombine}
+          isCombineTarget={isCombineTarget}
+          isCombineCandidate={isCombineCandidate}
+          dockMode={dockMode}
+          customIconFailed={customIconFailed}
+          onCustomIconError={() => setCustomIconFailed(true)}
+        />
         {/* Dock 模式不显示文字标签 */}
         {!dockMode && <div className="mt-1.5 text-[11px] text-fg/80 truncate w-16 text-center">{item.name}</div>}
       </div>

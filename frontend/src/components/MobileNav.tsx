@@ -108,10 +108,11 @@ export function MobileNav({ onOpenSettings, settingsOpen }: Props) {
       <nav
         className={cn(
           'mx-auto max-w-md',
-          'glass-panel-strong rounded-2xl'
+          'flex items-center justify-around gap-1 px-3 py-3 rounded-2xl',
+          'bg-white/20 dark:bg-black/20 backdrop-blur-xl border border-white/30 dark:border-white/10 shadow-2xl'
         )}
       >
-        <div className="flex items-center justify-around py-1.5">
+        <div className="flex items-center justify-around flex-1">
           {/* ROOT 用户: 首页 - 设置 - 书签 - 管理 - 退出 */}
           {/* 普通用户: 首页 - 书签 - 设置 - 登录/退出 */}
           {isRoot ? (

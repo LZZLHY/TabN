@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { Button } from '../../ui/Button'
 
 type DrawerLoginPromptProps = {
@@ -16,8 +17,8 @@ export function DrawerLoginPrompt({
 }: DrawerLoginPromptProps) {
   if (!open) return null
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm glass-modal rounded-[var(--start-radius)] p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-200">
         <h3 className="font-semibold text-lg">需要登录</h3>
@@ -29,6 +30,7 @@ export function DrawerLoginPrompt({
           <Button variant="primary" onClick={() => { onClose(); onLogin() }}>去登录</Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

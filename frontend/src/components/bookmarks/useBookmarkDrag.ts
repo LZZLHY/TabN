@@ -243,10 +243,14 @@ function pickInsertIndexFromRows(args: {
 }
 
 // 重置意图行记录（在拖拽开始时调用）
-function resetIntendedRow() {
+// initialIndex: 被拖拽图标的原始索引，用于防止拖拽开始时立即触发换位
+function resetIntendedRow(initialIndex?: number) {
   lastRowBoundsSnapshot = null
   lastIntendedRow = null
-  lastInsertIndex = null
+  // 关键修复：设置初始插入索引为被拖拽图标的原始位置
+  // 这样在拖拽开始时，即使最后一行只有一个图标（拖拽后变空），
+  // 也不会立即触发换位到上一行
+  lastInsertIndex = initialIndex ?? null
 }
 
 export function useBookmarkDrag(args: {
@@ -324,6 +328,21 @@ export function useBookmarkDrag(args: {
   useEffect(() => {
     visibleIdsRef.current = visibleIds
   }, [visibleIds])
+  
+  // 组件卸载时清理拖拽状态，防止 isDragging 残留
+  useEffect(() => {
+    return () => {
+      // 如果组件卸载时正在拖拽，清理全局拖拽状态
+      if (activeIdRef.current) {
+        useBookmarkDndStore.getState().setIsDragging(false)
+      }
+      // 清理事件监听器
+      if (cleanupListenersRef.current) {
+        try { cleanupListenersRef.current() } catch { /* ignore */ }
+        cleanupListenersRef.current = null
+      }
+    }
+  }, [])
 
   const clearCombine = useCallback(() => {
     combineHoverRef.current = null
@@ -380,8 +399,30 @@ export function useBookmarkDrag(args: {
 
     const idsNow = visibleIdsRef.current
     const rects = computeRects()
+    
     if (!rects.length) {
       // 没有其他元素时，清除 combine 状态
+      if (combineCandidateIdRef.current || combineTargetIdRef.current) clearCombine()
+      hoveredIdRef.current = null
+      return
+    }
+    
+    // 计算书签网格的边界区域
+    // 只有当指针在网格区域内（或稍微扩展的区域）时，才执行预挤压
+    let gridTop = Infinity, gridBottom = -Infinity, gridLeft = Infinity, gridRight = -Infinity
+    for (const it of rects) {
+      gridTop = Math.min(gridTop, it.rect.top)
+      gridBottom = Math.max(gridBottom, it.rect.bottom)
+      gridLeft = Math.min(gridLeft, it.rect.left)
+      gridRight = Math.max(gridRight, it.rect.right)
+    }
+    // 扩展边界，允许一定的容差（半个图标大小）
+    const padding = 32
+    const isInGridArea = p.x >= gridLeft - padding && p.x <= gridRight + padding && 
+                         p.y >= gridTop - padding && p.y <= gridBottom + padding
+    
+    // 如果指针不在网格区域内，清除 combine 状态但不执行预挤压
+    if (!isInGridArea) {
       if (combineCandidateIdRef.current || combineTargetIdRef.current) clearCombine()
       hoveredIdRef.current = null
       return
@@ -652,7 +693,12 @@ export function useBookmarkDrag(args: {
     dropRevealIdRef.current = null
     lastReorderRef.current = null
     isDragConfirmedRef.current = false // 重置拖拽确认标记
-    resetIntendedRow() // 重置意图行记录
+    
+    // 关键修复：计算被拖拽图标的原始索引，用于初始化 lastInsertIndex
+    // 这样在拖拽开始时，即使最后一行只有一个图标（拖拽后变空），
+    // 也不会立即触发换位到上一行
+    const originalIndex = visibleIdsRef.current.indexOf(id)
+    resetIntendedRow(originalIndex >= 0 ? originalIndex : undefined)
 
     pointerIdRef.current = ev.pointerId
     const p = getPointerXYFromEvent(ev)
@@ -663,6 +709,13 @@ export function useBookmarkDrag(args: {
     finalOrderRef.current = null
     // 关键：在按下时就保存原始顺序，避免 prePush 修改后再保存
     originalOrderRef.current = [...visibleIdsRef.current]
+    
+    // 关键修复：初始化 lastReorderRef，使滞回逻辑在第一次计算时生效
+    // 这样在拖拽刚开始时，即使最后一行只有一个图标（拖拽后变空），
+    // 也不会立即触发换位到上一行
+    if (p) {
+      lastReorderRef.current = { idx: originalIndex, x: p.x, y: p.y, t: performance.now() }
+    }
 
     const el = (targetEl as HTMLElement | null) ?? getEl(id) ?? null
     // 关键修复：不在 onPointerDown 时立即隐藏元素和显示 overlay
@@ -1065,11 +1118,12 @@ export function useBookmarkDrag(args: {
           const isCreatingFolder = target.type !== 'FOLDER'
           
           // 关键：在动画开始前保存位置快照，用于后续的补位动画
-          // 这样可以确保保存的是 A 和 B 还可见时的正确布局
+          // 这样可以确保保存的是拖拽项还可见时的正确布局
+          // 无论是放入现有文件夹还是创建新文件夹，都需要保存位置
           if (isCreatingFolder) {
             folderCreationTargetIdRef.current = targetId // 保存目标 ID
-            savePositions()
           }
+          savePositions() // 始终保存位置快照，用于补位动画
           
           await animateMergeToTarget(targetId, isCreatingFolder)
           
@@ -1148,6 +1202,134 @@ export function useBookmarkDrag(args: {
     setActiveId(null)
     activeIdRef.current = null
     endInternal()
+  }
+
+  // 接管拖拽状态（从其他组件转移过来的拖拽）
+  // 用于文件夹内拖拽到外部时，关闭文件夹后由书签页接管继续拖拽
+  const takeoverDrag = (itemId: string, pointerPos: { x: number; y: number }, grabOffset?: { x: number; y: number }) => {
+    // 如果当前已有拖拽，先取消
+    if (activeIdRef.current) {
+      onDragCancel()
+    }
+    
+    // 清理之前的状态
+    clearCombine()
+    resetOverlayAnim()
+    sessionRef.current += 1
+    
+    // 关键修复：确保 visibleIdsRef.current 包含被拖拽的图标
+    // 因为 React 状态更新是异步的，load() 完成后 visibleIds 可能还没有更新
+    // 如果 itemId 不在 visibleIdsRef.current 中，手动添加到末尾
+    if (!visibleIdsRef.current.includes(itemId)) {
+      const newIds = [...visibleIdsRef.current, itemId]
+      visibleIdsRef.current = newIds
+      setVisibleIds(newIds)
+    }
+    
+    // 设置拖拽状态
+    activeIdRef.current = itemId
+    setActiveId(itemId)
+    isDragConfirmedRef.current = true
+    pointerRef.current = pointerPos
+    startPointerRef.current = pointerPos
+    setOverlayPos(pointerPos)
+    
+    // 使用传入的抓取偏移量，或默认居中
+    grabOffsetRef.current = grabOffset ?? { x: 32, y: 32 }
+    originalWidthRef.current = 64
+    
+    // 保存原始顺序（包含被拖拽的图标）
+    originalOrderRef.current = [...visibleIdsRef.current]
+    
+    // 重置位置检测状态，使用当前指针位置计算插入位置
+    // 不设置初始索引，让系统根据指针位置重新计算
+    resetIntendedRow()
+    lastReorderRef.current = null
+    
+    // 设置全局拖拽状态
+    useBookmarkDndStore.getState().setIsDragging(true)
+    
+    // 延迟查找并隐藏元素，让 overlay 先渲染在鼠标位置
+    // 这样用户看到的是 overlay 直接出现，而不是从末尾瞬移
+    requestAnimationFrame(() => {
+      const el = getEl(itemId)
+      if (el) {
+        activeHiddenElRef.current = el
+        activeHiddenInnerRef.current = el.querySelector<HTMLElement>('.bm-inner')
+        
+        // 隐藏原始元素
+        cancelElementAnimations(el)
+        el.style.setProperty('opacity', '0', 'important')
+        el.style.setProperty('visibility', 'hidden', 'important')
+        el.style.setProperty('pointer-events', 'none', 'important')
+        
+        if (activeHiddenInnerRef.current) {
+          const inner = activeHiddenInnerRef.current
+          cancelElementAnimations(inner)
+          inner.style.setProperty('opacity', '0', 'important')
+        }
+        
+        // 元素隐藏后立即触发预挤压计算
+        scheduleUpdate()
+      }
+    })
+    
+    // 清理之前的监听器
+    if (cleanupListenersRef.current) {
+      try { cleanupListenersRef.current() } catch { /* ignore */ }
+      cleanupListenersRef.current = null
+    }
+    
+    // 挂载事件监听器
+    const onMove = (e: PointerEvent) => {
+      const pp = getPointerXYFromEvent(e)
+      if (!pp) return
+      e.preventDefault()
+      pointerRef.current = pp
+      setOverlayPos(pp)
+      scheduleUpdate()
+    }
+    const onUp = (e: PointerEvent) => {
+      e.preventDefault()
+      // 保存当前 hoveredId，用于判断是否需要建夹
+      const savedHoveredId = hoveredIdRef.current
+      // 先清理 hoveredId，避免 onDragEnd 中的判断出错
+      hoveredIdRef.current = null
+      // 如果有 combine 目标，恢复 hoveredId 以便 onDragEnd 处理
+      if (combineTargetIdRef.current) {
+        hoveredIdRef.current = savedHoveredId
+      }
+      void onDragEnd()
+    }
+    const onCancel = (e: PointerEvent) => {
+      e.preventDefault()
+      onDragCancel()
+    }
+    const onBlur = () => {
+      onDragCancel()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') onDragCancel()
+    }
+    
+    window.addEventListener('pointermove', onMove, { passive: false })
+    window.addEventListener('pointerup', onUp, { passive: false })
+    window.addEventListener('pointercancel', onCancel, { passive: false })
+    window.addEventListener('blur', onBlur)
+    document.addEventListener('visibilitychange', onVisibility)
+    cleanupListenersRef.current = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      window.removeEventListener('blur', onBlur)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+    
+    // 延迟调用 scheduleUpdate()，等待 DOM 更新后再计算位置
+    // 这样可以确保元素已经渲染，预挤压能正确计算
+    setTimeout(() => {
+      scheduleUpdate()
+    }, 100)
   }
 
   // 保存当前位置快照（在动画开始前调用）
@@ -1254,6 +1436,9 @@ export function useBookmarkDrag(args: {
     onDragCancel,
     savePositions,
     triggerFillAnimation,
+    takeoverDrag,
+    // 暴露 grabOffset，用于拖拽交接时传递抓取位置
+    get grabOffset() { return grabOffsetRef.current },
   }
 }
 

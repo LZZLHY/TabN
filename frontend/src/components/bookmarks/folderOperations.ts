@@ -157,3 +157,30 @@ export function updateOrderAfterMoveToFolder(
   
   return newOrder
 }
+
+/**
+ * 获取下一个可用的文件夹名称
+ * @param prefix 前缀，如 "收藏夹" 或 "新建文件夹"
+ * @param existingNames 现有的文件夹名称列表
+ * @returns 下一个可用的名称，如 "收藏夹1" 或 "新建文件夹2"
+ */
+export function getNextFolderName(prefix: string, existingNames: string[]): string {
+  // 提取所有匹配前缀的数字
+  const usedNumbers = new Set<number>()
+  const regex = new RegExp(`^${prefix}(\\d+)$`)
+  
+  for (const name of existingNames) {
+    const match = name.match(regex)
+    if (match) {
+      usedNumbers.add(parseInt(match[1], 10))
+    }
+  }
+  
+  // 找到最小可用数字（从1开始）
+  let num = 1
+  while (usedNumbers.has(num)) {
+    num++
+  }
+  
+  return `${prefix}${num}`
+}

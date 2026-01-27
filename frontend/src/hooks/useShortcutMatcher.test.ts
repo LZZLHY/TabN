@@ -2,19 +2,55 @@ import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { shortcutMatcherUtils, type Bookmark } from './useShortcutMatcher'
 
-const { matchBookmarks, getFaviconUrl } = shortcutMatcherUtils
+const { matchBookmarks, getBookmarkFavicon } = shortcutMatcherUtils
 
 describe('useShortcutMatcher', () => {
-  describe('getFaviconUrl', () => {
-    it('should generate correct favicon URL', () => {
-      const url = 'https://www.example.com/page'
-      const favicon = getFaviconUrl(url)
+  describe('getBookmarkFavicon', () => {
+    it('should generate correct favicon URL for bookmark without custom icon', () => {
+      const bookmark: Bookmark = {
+        id: '1',
+        name: 'Test',
+        url: 'https://www.example.com/page',
+        type: 'LINK',
+      }
+      const favicon = getBookmarkFavicon(bookmark)
       expect(favicon).toBe('https://www.google.com/s2/favicons?domain=www.example.com&sz=32')
     })
 
-    it('should return empty string for invalid URL', () => {
-      const favicon = getFaviconUrl('not-a-valid-url')
+    it('should return empty string for bookmark without URL', () => {
+      const bookmark: Bookmark = {
+        id: '1',
+        name: 'Test',
+        url: null,
+        type: 'LINK',
+      }
+      const favicon = getBookmarkFavicon(bookmark)
       expect(favicon).toBe('')
+    })
+
+    it('should use custom iconUrl when provided', () => {
+      const bookmark: Bookmark = {
+        id: '1',
+        name: 'Test',
+        url: 'https://www.example.com',
+        type: 'LINK',
+        iconUrl: 'source:google',
+      }
+      const favicon = getBookmarkFavicon(bookmark)
+      expect(favicon).toContain('google.com')
+    })
+
+    it('should use Base64 icon when iconType is BASE64', () => {
+      const bookmark: Bookmark = {
+        id: '1',
+        name: 'Test',
+        url: 'https://www.example.com',
+        type: 'LINK',
+        iconType: 'BASE64',
+        iconData: 'data:image/png;base64,abc123',
+      }
+      const favicon = getBookmarkFavicon(bookmark)
+      expect(favicon).toBe('data:image/png;base64,abc123')
     })
   })
 

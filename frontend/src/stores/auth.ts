@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { apiFetch } from '../services/api'
+import { AUTH_ERROR_CODES } from '../utils/errors'
 import { useAppearanceStore } from './appearance'
 import { useBookmarkDndStore } from './bookmarkDnd'
 
@@ -78,15 +79,21 @@ export const useAuthStore = create<AuthState>()(
       refreshMe: async () => {
         const token = get().token
         if (!token) return
-        const resp = await apiFetch<{ user: User }>('/api/auth/me', { method: 'GET', token })
-        if (!resp.ok) {
-          // token 过期或无效，重置所有用户相关设置
-          useAppearanceStore.getState().resetAppearance()
-          useBookmarkDndStore.getState().resetBookmarkDnd()
-          set({ token: '', user: null })
-          return
+        try {
+          const resp = await apiFetch<{ user: User }>('/api/auth/me', { method: 'GET', token })
+          if (!resp.ok) {
+            // 只有认证错误才清除登录状态，网络错误等不清除
+            if (resp.code && AUTH_ERROR_CODES.includes(resp.code)) {
+              useAppearanceStore.getState().resetAppearance()
+              useBookmarkDndStore.getState().resetBookmarkDnd()
+              set({ token: '', user: null })
+            }
+            return
+          }
+          set({ user: resp.data.user })
+        } catch {
+          // 网络错误不清除登录状态
         }
-        set({ user: resp.data.user })
       },
 
       updateNickname: async (nickname) => {

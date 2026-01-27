@@ -132,7 +132,7 @@ export function GridDeleteDialog({
     : 'bg-red-600 border-red-600 hover:bg-red-700 text-white'
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
       <div 
         className={`absolute inset-0 bg-black/40 ${isClosing ? 'backdrop-exit' : 'backdrop-enter'}`} 
         onClick={onClose} 
