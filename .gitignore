@@ -66,8 +66,10 @@ backend/storage/
 .start/
 
 # Developer notes (not for GitHub)
-DEVLOG.md
-DEVELOPER_NOTES.md
+# 注意：这两个文件在推送时需要手动从 Git 中排除
+# 详见 DEVELOPER_NOTES.md 中的说明
+# DEVLOG.md
+# DEVELOPER_NOTES.md
 
 # Word temp files
 ~$*.docx

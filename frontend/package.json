@@ -2,7 +2,7 @@
   "name": "tabn-frontend",
   "private": true,
   "version": "1.5.0",
-  "patchVersion": 10401,
+  "patchVersion": 10402,
   "type": "module",
   "scripts": {
     "dev": "vite",

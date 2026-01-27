@@ -49,6 +49,11 @@ export const useAuthStore = create<AuthState>()(
 
       setAuth: (token, user) => set({ token, user }),
       logout: () => {
+        // 清除云端同步标记，确保重新登录时能从云端拉取设置
+        const userId = get().user?.id
+        if (userId) {
+          sessionStorage.removeItem(`start:cloudSynced:${userId}`)
+        }
         // 先清除 token，防止 resetAppearance 触发云端同步上传默认设置
         set({ token: '', user: null })
         // 再重置所有用户相关设置为默认值
@@ -84,6 +89,11 @@ export const useAuthStore = create<AuthState>()(
           if (!resp.ok) {
             // 只有认证错误才清除登录状态，网络错误等不清除
             if (resp.code && AUTH_ERROR_CODES.includes(resp.code)) {
+              // 清除云端同步标记
+              const userId = get().user?.id
+              if (userId) {
+                sessionStorage.removeItem(`start:cloudSynced:${userId}`)
+              }
               useAppearanceStore.getState().resetAppearance()
               useBookmarkDndStore.getState().resetBookmarkDnd()
               set({ token: '', user: null })
@@ -132,6 +142,11 @@ export const useAuthStore = create<AuthState>()(
         })
         if (!resp.ok) return { ok: false, message: resp.message }
         // 密码修改成功后强制登出，因为旧 token 已失效
+        // 清除云端同步标记
+        const userId = get().user?.id
+        if (userId) {
+          sessionStorage.removeItem(`start:cloudSynced:${userId}`)
+        }
         useAppearanceStore.getState().resetAppearance()
         useBookmarkDndStore.getState().resetBookmarkDnd()
         set({ token: '', user: null })
