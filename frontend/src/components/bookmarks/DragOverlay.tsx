@@ -1,246 +1,64 @@
 import { createPortal } from 'react-dom'
-import { useState } from 'react'
-import { Folder } from 'lucide-react'
 import { cn } from '../../utils/cn'
-import { Favicon } from '../Favicon'
 import { getSortedFolderChildren } from './folderOperations'
-import { getIconUrl } from '../../utils/iconSource'
+import { FolderPreviewIcon } from './FolderPreviewIcon'
+import { UnifiedIcon, type IconData } from '../ui/UnifiedIcon'
+import { computeIconBgStyle } from '../../utils/iconUtils'
 import type { Bookmark } from './types'
 import type { BookmarkContext } from '../../types/bookmark'
 
 /**
- * 拖拽图标组件
- * 支持自定义图标加载失败后回退到 Favicon
+ * DragOverlay 组件属性
  */
-function DragIcon({ bookmark }: { bookmark: Bookmark }) {
-  const [iconFailed, setIconFailed] = useState(false)
-  
-  // 检查自定义图标
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon) && !iconFailed
-  
-  if (hasCustomIcon) {
-    return (
-      <img
-        src={customIcon}
-        alt=""
-        className="h-full w-full object-cover"
-        loading="lazy"
-        decoding="async"
-        onError={() => setIconFailed(true)}
-      />
-    )
-  }
-  
-  return (
-    <Favicon
-      url={bookmark.url || ''}
-      name={bookmark.name}
-      className="h-full w-full object-cover"
-      letterClassName="h-full w-full"
-    />
-  )
-}
-
-/**
- * 极小图标组件（用于嵌套文件夹预览中的 2x2 网格内的图标）
- * 不再递归，只显示简单图标
- */
-function DragTinyIcon({ bookmark }: { bookmark: Bookmark }) {
-  const [iconFailed, setIconFailed] = useState(false)
-  const isFolder = bookmark.type === 'FOLDER'
-  
-  if (isFolder) {
-    return (
-      <div className="bg-amber-100/50 rounded-[0.5px] flex items-center justify-center">
-        <Folder className="w-full h-full p-px text-amber-500" />
-      </div>
-    )
-  }
-  
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon) && !iconFailed
-  
-  if (hasCustomIcon) {
-    return (
-      <img
-        src={customIcon}
-        className="w-full h-full object-cover rounded-[0.5px]"
-        alt=""
-        loading="lazy"
-        decoding="async"
-        onError={() => setIconFailed(true)}
-      />
-    )
-  }
-  
-  return (
-    <Favicon
-      url={bookmark.url || ''}
-      size={6}
-      className="w-full h-full object-cover rounded-[0.5px]"
-    />
-  )
-}
-
-/**
- * 超小图标组件（用于子文件夹预览中的 2x2 网格）
- * 支持显示嵌套文件夹内的图标预览
- */
-function DragMiniIcon({ bookmark, nestedItems }: { bookmark: Bookmark; nestedItems?: Bookmark[] }) {
-  const [iconFailed, setIconFailed] = useState(false)
-  const isFolder = bookmark.type === 'FOLDER'
-  
-  if (isFolder) {
-    const children = nestedItems || []
-    if (children.length === 0) {
-      // 空文件夹显示文件夹图标
-      return (
-        <div className="w-full h-full bg-amber-100/50 rounded-[1px] flex items-center justify-center aspect-square">
-          <Folder className="w-full h-full p-[1px] text-amber-500" />
-        </div>
-      )
-    }
-    // 显示嵌套文件夹内的前 4 个图标（2x2 网格）
-    return (
-      <div className="w-full h-full bg-amber-100/30 rounded-[1px] grid grid-cols-2 gap-[0.5px] p-[0.5px] aspect-square">
-        {[0, 1, 2, 3].map((idx) => {
-          const child = children[idx]
-          if (!child) {
-            return <div key={`empty-${idx}`} className="bg-black/5 rounded-[0.5px] aspect-square" />
-          }
-          // 嵌套文件夹内的图标只显示简单图标，不再递归
-          return <DragTinyIcon key={child.id} bookmark={child} />
-        })}
-      </div>
-    )
-  }
-  
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon) && !iconFailed
-  
-  if (hasCustomIcon) {
-    return (
-      <img
-        src={customIcon}
-        className="w-full h-full object-cover rounded-[1px]"
-        alt=""
-        loading="lazy"
-        decoding="async"
-        onError={() => setIconFailed(true)}
-      />
-    )
-  }
-  
-  return (
-    <Favicon
-      url={bookmark.url || ''}
-      size={8}
-      className="w-full h-full object-cover rounded-[1px]"
-    />
-  )
-}
-
-/**
- * 拖拽文件夹预览中的小图标组件
- * 支持显示书签图标或子文件夹预览
- */
-function DragFolderPreviewIcon({ bookmark, subFolderItems, allItems }: { bookmark: Bookmark; subFolderItems?: Bookmark[]; allItems?: Bookmark[] }) {
-  const [iconFailed, setIconFailed] = useState(false)
-  const isSubFolder = bookmark.type === 'FOLDER'
-  
-  // 如果是子文件夹，显示其内容预览
-  if (isSubFolder) {
-    const children = subFolderItems || []
-    if (children.length === 0) {
-      return (
-        <div className="w-full pt-[100%] relative bg-amber-100/50 rounded-[2px] overflow-hidden">
-          <Folder className="absolute inset-0 w-full h-full p-0.5 text-amber-500" />
-        </div>
-      )
-    }
-    // 显示子文件夹内的前 4 个项目的缩略图（始终保持 2x2 布局）
-    return (
-      <div className="w-full pt-[100%] relative bg-amber-100/30 rounded-[2px] overflow-hidden">
-        <div className="absolute inset-0 grid grid-cols-2 gap-px p-px">
-          {[0, 1, 2, 3].map((idx) => {
-            const child = children[idx]
-            if (!child) {
-              return <div key={`empty-${idx}`} className="bg-black/5 rounded-[1px] aspect-square" />
-            }
-            // 如果子项是文件夹，获取其嵌套子项
-            const nestedItems = child.type === 'FOLDER' && allItems
-              ? allItems.filter(x => x.parentId === child.id).slice(0, 4)
-              : undefined
-            return <DragMiniIcon key={child.id} bookmark={child} nestedItems={nestedItems} />
-          })}
-        </div>
-      </div>
-    )
-  }
-  
-  // 普通书签图标逻辑
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon) && !iconFailed
-  
-  return (
-    <div className="w-full pt-[100%] relative bg-black/10 rounded-[2px] overflow-hidden">
-      {hasCustomIcon ? (
-        <img
-          src={customIcon}
-          className="absolute inset-0 w-full h-full object-cover"
-          alt=""
-          loading="lazy"
-          decoding="async"
-          onError={() => setIconFailed(true)}
-        />
-      ) : bookmark.url ? (
-        <Favicon
-          url={bookmark.url}
-          name={bookmark.name}
-          size={16}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      ) : (
-        <Folder className="absolute inset-0 w-full h-full p-0.5 text-amber-500" />
-      )}
-    </div>
-  )
-}
-
 type DragOverlayProps = {
+  /** 当前拖拽的书签 ID */
   activeId: string | null
+  /** 所有书签项 */
   allItems: Bookmark[]
+  /** 用户 ID */
   userId?: string
+  /** 书签上下文 */
   context?: BookmarkContext
+  /** 覆盖层引用 */
   overlayRef: React.RefObject<HTMLDivElement>
+  /** 覆盖层盒子引用 */
   overlayBoxRef: React.RefObject<HTMLDivElement>
+  /** 覆盖层样式 */
   overlayStyle: React.CSSProperties
+  /** 自定义尺寸 */
+  size?: number
+  /** 自定义圆角 */
+  borderRadius?: number | string
 }
 
 /**
  * 拖拽覆盖层组件
+ * 
  * 显示正在拖拽的书签项
+ * 使用 UnifiedIcon 组件进行图标渲染，支持所有图标类型（包括 TEXT）
+ * 支持自定义 size 和 borderRadius 属性
+ * 
+ * @example
+ * // 基本用法
+ * <DragOverlay
+ *   activeId={activeId}
+ *   allItems={bookmarks}
+ *   overlayRef={overlayRef}
+ *   overlayBoxRef={overlayBoxRef}
+ *   overlayStyle={overlayStyle}
+ * />
+ * 
+ * @example
+ * // 自定义尺寸和圆角
+ * <DragOverlay
+ *   activeId={activeId}
+ *   allItems={bookmarks}
+ *   overlayRef={overlayRef}
+ *   overlayBoxRef={overlayBoxRef}
+ *   overlayStyle={overlayStyle}
+ *   size={64}
+ *   borderRadius={8}
+ * />
  */
 export function DragOverlay({
   activeId,
@@ -250,6 +68,8 @@ export function DragOverlay({
   overlayRef,
   overlayBoxRef,
   overlayStyle,
+  size: customSize,
+  borderRadius: customBorderRadius,
 }: DragOverlayProps) {
   if (!activeId) return null
 
@@ -257,9 +77,66 @@ export function DragOverlay({
   if (!item) return null
 
   const isFolder = item.type === 'FOLDER'
+  
+  // 计算实际尺寸和圆角
+  const actualSize = customSize ?? 48
+  const actualBorderRadius = customBorderRadius !== undefined
+    ? (typeof customBorderRadius === 'number' ? `${customBorderRadius}px` : customBorderRadius)
+    : 'var(--start-radius)'
+
+  // 获取文件夹子项（用于文件夹预览）
   const folderItems = isFolder
-    ? getSortedFolderChildren(allItems.filter((x) => x.parentId === item.id), userId, item.id, context).slice(0, 9)
+    ? getSortedFolderChildren(
+        allItems.filter((x) => x.parentId === item.id),
+        userId,
+        item.id,
+        context
+      ).slice(0, 9)
     : []
+
+  // 将 Bookmark 转换为 IconData（用于 FolderPreviewIcon）
+  const folderIconData: (IconData & { id?: string; type?: string; parentId?: string | null })[] = folderItems.map(b => ({
+    id: b.id,
+    type: b.type,
+    parentId: b.parentId,
+    iconType: b.iconType,
+    iconData: b.iconData,
+    iconUrl: b.iconUrl,
+    iconBg: b.iconBg,
+    url: b.url,
+    name: b.name,
+  }))
+
+  // 将所有书签转换为 IconData（用于嵌套文件夹预览）
+  const allIconData: (IconData & { id?: string; type?: string; parentId?: string | null })[] = allItems.map(b => ({
+    id: b.id,
+    type: b.type,
+    parentId: b.parentId,
+    iconType: b.iconType,
+    iconData: b.iconData,
+    iconUrl: b.iconUrl,
+    iconBg: b.iconBg,
+    url: b.url,
+    name: b.name,
+  }))
+
+  // 计算图标背景样式
+  const getIconBgStyle = (): { className: string; style?: React.CSSProperties } => {
+    // 文件夹使用固定样式（由 FolderPreviewIcon 处理）
+    if (isFolder) {
+      return { className: '' }
+    }
+    
+    // 使用统一的背景样式计算函数
+    const hasCustomIcon = Boolean(
+      (item.iconType === 'BASE64' && item.iconData) || 
+      item.iconUrl ||
+      item.iconType === 'TEXT'
+    )
+    return computeIconBgStyle(item.iconBg, 'full', hasCustomIcon)
+  }
+  
+  const iconBgStyle = getIconBgStyle()
 
   return createPortal(
     <div ref={overlayRef} style={overlayStyle}>
@@ -268,26 +145,40 @@ export function DragOverlay({
           <div
             ref={overlayBoxRef}
             className={cn(
-              'bookmark-icon h-12 w-12 rounded-[var(--start-radius)] overflow-hidden grid place-items-center shadow-2xl select-none',
-              isFolder
-                ? 'bg-glass/20 border border-glass-border/20 p-1'
-                : 'bg-primary/15 text-primary font-semibold',
+              'bookmark-icon overflow-hidden grid place-items-center shadow-2xl select-none',
+              !isFolder && iconBgStyle.className,
             )}
+            style={{
+              width: actualSize,
+              height: actualSize,
+              borderRadius: actualBorderRadius,
+              ...(!isFolder ? iconBgStyle.style : {}),
+            }}
+            data-testid="drag-overlay"
+            data-is-folder={isFolder}
           >
             {isFolder ? (
-              <div className="grid grid-cols-3 gap-0.5 w-full h-full content-start p-[8%]">
-                {folderItems.map((sub) => {
-                  // 如果是子文件夹，获取其子项
-                  const subFolderItems = sub.type === 'FOLDER'
-                    ? allItems.filter(x => x.parentId === sub.id).slice(0, 4)
-                    : undefined
-                  return (
-                    <DragFolderPreviewIcon key={sub.id} bookmark={sub} subFolderItems={subFolderItems} allItems={allItems} />
-                  )
-                })}
-              </div>
+              <FolderPreviewIcon
+                children={folderIconData}
+                allItems={allIconData}
+                variant="full"
+                size={actualSize}
+                borderRadius={customBorderRadius}
+                maxItems={9}
+                gridCols={3}
+              />
             ) : (
-              <DragIcon bookmark={item} />
+              <UnifiedIcon
+                iconType={item.iconType}
+                iconData={item.iconData}
+                iconUrl={item.iconUrl}
+                iconBg={item.iconBg}
+                url={item.url}
+                name={item.name}
+                variant="full"
+                size={actualSize}
+                borderRadius={customBorderRadius}
+              />
             )}
           </div>
           <div className="mt-1.5 text-[11px] text-fg/80 truncate w-16 text-center">

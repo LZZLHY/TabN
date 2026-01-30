@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { cn } from '../../utils/cn'
 
 export interface TagFilterProps {
@@ -23,6 +24,7 @@ export function TagFilter({
   onSelectTag,
   className,
 }: TagFilterProps) {
+  const { t } = useTranslation()
   // Don't render if there are no tags
   if (tags.length === 0) {
     return null
@@ -47,7 +49,7 @@ export function TagFilter({
             : 'bg-glass/10 text-fg/70 border-glass-border/20 hover:bg-glass/20 hover:text-fg'
         )}
       >
-        全部
+        {t('common.all')}
       </button>
 
       {/* Tag chips */}

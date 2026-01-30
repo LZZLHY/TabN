@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Eye, EyeOff } from 'lucide-react'
@@ -7,6 +8,7 @@ import { Input } from '../../components/ui/Input'
 import { useAuthStore } from '../../stores/auth'
 
 export function RegisterPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const register = useAuthStore((s) => s.register)
 
@@ -42,7 +44,7 @@ export function RegisterPage() {
         toast.error(resp.message)
         return
       }
-      toast.success('注册成功，已自动登录')
+      toast.success(t('auth.registerSuccess'))
       navigate('/', { replace: true })
     } finally {
       setLoading(false)
@@ -52,26 +54,26 @@ export function RegisterPage() {
   return (
     <div className="w-full max-w-md">
       <div className="glass-modal rounded-2xl p-6 sm:p-8 text-left animate-in fade-in zoom-in-95 duration-200">
-        <div className="text-xl font-semibold text-fg">注册</div>
+        <div className="text-xl font-semibold text-fg">{t('auth.register')}</div>
 
         <div className="mt-6 space-y-3">
           <div className="space-y-2">
-            <div className="text-sm text-fg/80">账号（选填）</div>
+            <div className="text-sm text-fg/80">{t('auth.username')}</div>
             <Input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="请输入账号"
+              placeholder={t('auth.username')}
               autoComplete="username"
             />
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm text-fg/80">密码</div>
+            <div className="text-sm text-fg/80">{t('auth.password')}</div>
             <div className="relative">
               <Input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="请输入密码"
+                placeholder={t('auth.password')}
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 className="pr-10"
@@ -89,52 +91,52 @@ export function RegisterPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
-              <div className="text-sm text-fg/80">邮箱（选填）</div>
+              <div className="text-sm text-fg/80">{t('auth.email')}</div>
               <Input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="请输入邮箱"
+                placeholder={t('auth.email')}
                 type="email"
                 autoComplete="email"
               />
             </div>
             <div className="space-y-2">
-              <div className="text-sm text-fg/80">手机号（选填）</div>
+              <div className="text-sm text-fg/80">{t('auth.phone')}</div>
               <Input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="请输入手机号"
+                placeholder={t('auth.phone')}
                 autoComplete="tel"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm text-fg/80">昵称（选填）</div>
+            <div className="text-sm text-fg/80">{t('auth.nickname')}</div>
             <Input
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              placeholder="请输入昵称"
+              placeholder={t('auth.nickname')}
               autoComplete="nickname"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') onSubmit()
               }}
             />
             {!identifierOk && (
-              <div className="text-xs text-red-200">账号/邮箱/手机号至少填一个</div>
+              <div className="text-xs text-red-200">{t('auth.identifierRequired')}</div>
             )}
           </div>
         </div>
 
         <div className="mt-6 flex items-center justify-between gap-3">
           <div className="text-sm text-fg/70">
-            已有账号？{' '}
+            {t('auth.hasAccount')}{' '}
             <NavLink to="/login" className="text-primary hover:underline">
-              去登录
+              {t('auth.login')}
             </NavLink>
           </div>
           <Button variant="primary" onClick={onSubmit} disabled={disabled}>
-            {loading ? '注册中…' : '注册'}
+            {loading ? t('common.loading') : t('auth.register')}
           </Button>
         </div>
       </div>

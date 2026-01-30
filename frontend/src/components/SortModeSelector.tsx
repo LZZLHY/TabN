@@ -1,16 +1,8 @@
-import { ArrowDownAZ, FolderUp, FolderDown, GripVertical, MousePointerClick, Lock, Tag } from 'lucide-react'
-import { Select, type SelectOption } from './ui/Select'
+import { Lock } from 'lucide-react'
+import { Select } from './ui/Select'
 import { cn } from '../utils/cn'
+import { useSortModeOptions } from '../hooks/useSortModeOptions'
 import type { SortMode } from '../types/bookmark'
-
-const SORT_MODE_OPTIONS: SelectOption<SortMode>[] = [
-  { value: 'custom', label: '自定义', icon: <GripVertical className="w-4 h-4" />, tooltip: '手动拖拽排序书签' },
-  { value: 'folders-first', label: '文件夹在前', icon: <FolderUp className="w-4 h-4" />, tooltip: '文件夹显示在链接前面' },
-  { value: 'links-first', label: '链接在前', icon: <FolderDown className="w-4 h-4" />, tooltip: '链接显示在文件夹前面' },
-  { value: 'alphabetical', label: '按名称 A-Z', icon: <ArrowDownAZ className="w-4 h-4" />, tooltip: '按字母顺序排列' },
-  { value: 'click-count', label: '按点击次数', icon: <MousePointerClick className="w-4 h-4" />, tooltip: '点击最多的排在前面' },
-  { value: 'by-tag', label: '按标签分类', icon: <Tag className="w-4 h-4" />, tooltip: '按标签分组，标签内按名称排序' },
-]
 
 type SortModeSelectorProps = {
   value: SortMode
@@ -21,8 +13,10 @@ type SortModeSelectorProps = {
 }
 
 export function SortModeSelector({ value, onChange, disabled, locked, className }: SortModeSelectorProps) {
+  const sortModeOptions = useSortModeOptions()
+  
   if (disabled) {
-    const currentOption = SORT_MODE_OPTIONS.find(opt => opt.value === value) ?? SORT_MODE_OPTIONS[0]
+    const currentOption = sortModeOptions.find(opt => opt.value === value) ?? sortModeOptions[0]
     return (
       <div className={cn(
         'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm',
@@ -42,7 +36,7 @@ export function SortModeSelector({ value, onChange, disabled, locked, className 
       <Select
         value={value}
         onChange={onChange}
-        options={SORT_MODE_OPTIONS}
+        options={sortModeOptions}
       />
       {locked && (
         <Lock className="absolute right-8 top-1/2 -translate-y-1/2 w-3 h-3 text-fg/50 pointer-events-none" />
@@ -51,4 +45,3 @@ export function SortModeSelector({ value, onChange, disabled, locked, className 
   )
 }
 
-export { SORT_MODE_OPTIONS }

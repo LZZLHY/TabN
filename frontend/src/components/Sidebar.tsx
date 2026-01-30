@@ -1,5 +1,6 @@
 import { Bookmark, Home, LogIn, LogOut, Menu, Settings, Shield, Store, User } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAppearanceStore } from '../stores/appearance'
@@ -34,6 +35,7 @@ const IconWrapper = ({ children }: { children: React.ReactNode }) => (
 )
 
 export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const expanded = useAppearanceStore((s) => s.sidebarExpanded)
   const toggle = useAppearanceStore((s) => s.toggleSidebar)
@@ -176,8 +178,8 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
             e.stopPropagation()
             toggle()
           }}
-          aria-label={expanded ? '收起侧边栏' : '展开侧边栏'}
-          title={expanded ? '收起' : '展开'}
+          aria-label={expanded ? t('nav.collapseSidebar') : t('nav.expandSidebar')}
+          title={expanded ? t('common.collapse') : t('common.expand')}
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -188,7 +190,7 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
         )}>
             <div className="text-sm font-semibold leading-none">TabN</div>
             <div className="text-xs text-fg/60 mt-1 leading-none">
-              首页
+              {t('nav.home')}
             </div>
           </div>
       </div>
@@ -210,12 +212,12 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
           className={({ isActive }) =>
             cn(itemBase, isActive && !settingsOpen && !bookmarkDrawerOpen && !marketOpen ? itemActive : itemIdle)
           }
-          title="首页"
+          title={t('nav.home')}
         >
           <IconWrapper>
             <Home className="h-5 w-5" />
           </IconWrapper>
-          <SidebarLabel expanded={expanded}>首页</SidebarLabel>
+          <SidebarLabel expanded={expanded}>{t('nav.home')}</SidebarLabel>
         </NavLink>
 
         <button
@@ -227,12 +229,12 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
             if (!clickKeepCollapsed && !expanded) setSidebarExpanded(true)
             onOpenSettings()
           }}
-          title="设置"
+          title={t('nav.settings')}
         >
           <IconWrapper>
             <Settings className="h-5 w-5" />
           </IconWrapper>
-          <SidebarLabel expanded={expanded}>设置</SidebarLabel>
+          <SidebarLabel expanded={expanded}>{t('nav.settings')}</SidebarLabel>
         </button>
 
         <button
@@ -246,12 +248,12 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
             // 延迟一点打开抽屉，确保已经在首页
             setTimeout(() => openBookmarkDrawer(true), 50)
           }}
-          title="我的书签"
+          title={t('nav.bookmarks')}
         >
           <IconWrapper>
             <Bookmark className="h-5 w-5" />
           </IconWrapper>
-          <SidebarLabel expanded={expanded}>我的书签</SidebarLabel>
+          <SidebarLabel expanded={expanded}>{t('nav.bookmarks')}</SidebarLabel>
         </button>
 
         {/* 拓展商城入口 - 仅 ROOT 用户可见（功能开发中） */}
@@ -265,12 +267,12 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
               if (!clickKeepCollapsed && !expanded) setSidebarExpanded(true)
               onOpenMarket()
             }}
-            title="拓展商城"
+            title={t('nav.market')}
           >
             <IconWrapper>
               <Store className="h-5 w-5" />
             </IconWrapper>
-            <SidebarLabel expanded={expanded}>拓展商城</SidebarLabel>
+            <SidebarLabel expanded={expanded}>{t('nav.market')}</SidebarLabel>
           </button>
         )}
 
@@ -281,12 +283,12 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
             className={({ isActive }) =>
               cn(itemBase, isActive ? itemActive : itemIdle)
             }
-            title="管理后台"
+            title={t('nav.admin')}
           >
             <IconWrapper>
               <Shield className="h-5 w-5" />
             </IconWrapper>
-            <SidebarLabel expanded={expanded}>管理后台</SidebarLabel>
+            <SidebarLabel expanded={expanded}>{t('nav.admin')}</SidebarLabel>
           </NavLink>
         )}
 
@@ -297,14 +299,14 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
               className={cn(itemBase, itemIdle, 'text-left')}
               onClick={() => {
                 logout()
-                toast.info('已退出登录')
+                toast.info(t('auth.logoutSuccess'))
               }}
-              title="退出登录"
+              title={t('nav.logout')}
             >
               <IconWrapper>
                 <LogOut className="h-5 w-5" />
               </IconWrapper>
-              <SidebarLabel expanded={expanded}>退出登录</SidebarLabel>
+              <SidebarLabel expanded={expanded}>{t('nav.logout')}</SidebarLabel>
             </button>
           </>
         ) : (
@@ -314,12 +316,12 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
             className={({ isActive }) =>
               cn(itemBase, isActive ? itemActive : itemIdle)
             }
-            title="登录"
+            title={t('nav.login')}
           >
             <IconWrapper>
               <LogIn className="h-5 w-5" />
             </IconWrapper>
-            <SidebarLabel expanded={expanded}>登录</SidebarLabel>
+            <SidebarLabel expanded={expanded}>{t('nav.login')}</SidebarLabel>
           </NavLink>
         )}
       </nav>
@@ -332,10 +334,10 @@ export function Sidebar({ onOpenSettings, onOpenMarket, settingsOpen, marketOpen
             {user ? (
               <div className="flex items-center gap-2">
               <User className="h-4 w-4 shrink-0" />
-                <span className="truncate">已登录：{user.nickname}</span>
+                <span className="truncate">{t('sidebar.loggedInAs', { name: user.nickname })}</span>
               </div>
             ) : (
-            <div>登录后可同步数据</div>
+            <div>{t('sidebar.loginToSync')}</div>
             )}
           </div>
       </div>

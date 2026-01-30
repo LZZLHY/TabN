@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../ui/Button'
 import { Input } from '../../ui/Input'
 import { TagInput } from '../../ui/TagInput'
@@ -27,7 +28,7 @@ type DrawerEditDialogProps = {
   // Callbacks
   onClose: () => void
   onSaved: (itemId: string) => void
-  load: () => Promise<void>
+  load: (forceRefresh?: boolean) => Promise<void>
   loadTags: () => Promise<void>
 }
 
@@ -53,6 +54,8 @@ export function DrawerEditDialog({
   load,
   loadTags,
 }: DrawerEditDialogProps) {
+  const { t } = useTranslation()
+  
   if (!open || !item) return null
 
   const handleSave = async () => {
@@ -75,12 +78,12 @@ export function DrawerEditDialog({
     })
     
     if (resp.ok) {
-      toast.success('已更新')
+      toast.success(t('toast.updateSuccess'))
       onClose()
       onSaved(item.id)
       // 触发全局刷新，通知其他组件（如 Dock）更新数据
       useBookmarkRefreshStore.getState().triggerRefresh()
-      await Promise.all([load(), loadTags()])
+      await Promise.all([load(true), loadTags()])
     } else {
       toast.error(resp.message)
     }
@@ -93,39 +96,39 @@ export function DrawerEditDialog({
         onClick={onClose} 
       />
       <div className={`relative w-full max-w-sm max-h-[90vh] overflow-y-auto glass-modal rounded-[var(--start-radius)] p-6 shadow-2xl space-y-4 ${isClosing ? 'modal-exit' : 'modal-enter'}`}>
-        <h3 className="font-semibold text-lg">编辑{item.type === 'FOLDER' ? '文件夹' : '书签'}</h3>
+        <h3 className="font-semibold text-lg">{item.type === 'FOLDER' ? t('bookmarks.editFolder') : t('bookmarks.editBookmark')}</h3>
         
         <div className="space-y-1">
-          <label className="text-xs text-fg/60">名称</label>
+          <label className="text-xs text-fg/60">{t('bookmarks.name')}</label>
           <Input value={editName} onChange={e => setEditName(e.target.value)} />
         </div>
         
         {item.type === 'LINK' && (
           <>
             <div className="space-y-1">
-              <label className="text-xs text-fg/60">网址</label>
+              <label className="text-xs text-fg/60">{t('bookmarks.url')}</label>
               <Input value={editUrl} onChange={e => setEditUrl(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-fg/60">备注</label>
+              <label className="text-xs text-fg/60">{t('bookmarks.note')}</label>
               <Input value={editNote} onChange={e => setEditNote(e.target.value)} />
             </div>
           </>
         )}
         
         <div className="space-y-1">
-          <label className="text-xs text-fg/60">标签</label>
+          <label className="text-xs text-fg/60">{t('bookmarks.tags')}</label>
           <TagInput
             value={editTags}
             onChange={setEditTags}
             suggestions={allTags}
-            placeholder="输入标签后按回车添加"
+            placeholder={t('bookmarks.tagsPlaceholder')}
           />
         </div>
         
         <div className="flex justify-end gap-2 mt-2">
-          <Button variant="ghost" onClick={onClose}>取消</Button>
-          <Button variant="primary" onClick={handleSave}>保存</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" onClick={handleSave}>{t('common.save')}</Button>
         </div>
       </div>
     </div>,

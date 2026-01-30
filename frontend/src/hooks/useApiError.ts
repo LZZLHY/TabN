@@ -94,6 +94,11 @@ export function useApiError(options: UseApiErrorOptions = {}): void {
 
   // 错误处理回调
   const handleError = useCallback((error: ApiFail) => {
+    // 网络错误不显示 toast（ServerStatus 组件会显示常驻横幅）
+    if (error.code === ErrorCode.NETWORK_ERROR) {
+      return
+    }
+    
     // 跳过重复错误
     if (isDuplicateError(error.message)) {
       return

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { SortMode } from '../types/bookmark'
+import type { SearchEngineConfig } from '../utils/searchEngine'
 
 export type ThemeMode = 'system' | 'light' | 'dark'
 export type BackgroundType = 'bing' | 'picsum' | 'custom' | 'api'
@@ -94,6 +95,18 @@ export type AppearanceState = {
   /** Dock 栏新书签添加位置: 'left' 最左边, 'right' 最右边 */
   dockAddPosition: 'left' | 'right'
 
+  /** 当前选中的搜索引擎 ID（新版） */
+  selectedEngineId: string
+  /** 自定义搜索引擎列表 */
+  customEngines: SearchEngineConfig[]
+  /** 隐藏的预设引擎 ID 列表 */
+  hiddenPresetEngines: string[]
+  /** 显示在选择面板中的引擎 ID 列表（最多4个） */
+  enabledEngineIds: string[]
+
+  /** 图标圆角比例（0-0.5），默认 0.25 (25%) */
+  iconRadiusRatio: number
+
   setMode: (mode: ThemeMode) => void
   setAccent: (hex: string) => void
   setBackgroundType: (t: BackgroundType) => void
@@ -133,6 +146,16 @@ export type AppearanceState = {
   setDockShowBookmarks: (show: boolean) => void
   setDockShowSettings: (show: boolean) => void
   setDockAddPosition: (position: 'left' | 'right') => void
+  setSelectedEngineId: (engineId: string) => void
+  addCustomEngine: (engine: Omit<SearchEngineConfig, 'id' | 'isPreset'>) => void
+  updateCustomEngine: (engineId: string, updates: Partial<SearchEngineConfig>) => void
+  deleteCustomEngine: (engineId: string) => void
+  hidePresetEngine: (engineId: string) => void
+  showPresetEngine: (engineId: string) => void
+  setEnabledEngineIds: (ids: string[]) => void
+  toggleEngineEnabled: (engineId: string) => void
+  /** 设置图标圆角比例 */
+  setIconRadiusRatio: (ratio: number) => void
   resetAppearance: () => void
 }
 
@@ -176,6 +199,11 @@ const DEFAULTS: Pick<
   | 'dockShowBookmarks'
   | 'dockShowSettings'
   | 'dockAddPosition'
+  | 'selectedEngineId'
+  | 'customEngines'
+  | 'hiddenPresetEngines'
+  | 'enabledEngineIds'
+  | 'iconRadiusRatio'
 > = {
   mode: 'system',
   accent: '#3b82f6',
@@ -215,6 +243,11 @@ const DEFAULTS: Pick<
   dockShowBookmarks: true,
   dockShowSettings: true,
   dockAddPosition: 'left',
+  selectedEngineId: 'bing',
+  customEngines: [],
+  hiddenPresetEngines: [],
+  enabledEngineIds: ['baidu', 'bing', 'google', 'so'],
+  iconRadiusRatio: 0.25,
 }
 
 export const useAppearanceStore = create<AppearanceState>()(
@@ -273,11 +306,91 @@ export const useAppearanceStore = create<AppearanceState>()(
       setDockShowBookmarks: (dockShowBookmarks) => set({ dockShowBookmarks }),
       setDockShowSettings: (dockShowSettings) => set({ dockShowSettings }),
       setDockAddPosition: (dockAddPosition) => set({ dockAddPosition }),
+      setSelectedEngineId: (selectedEngineId) => set({ selectedEngineId }),
+      addCustomEngine: (engine) => set((s) => ({
+        customEngines: [
+          ...s.customEngines,
+          {
+            ...engine,
+            id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            isPreset: false,
+          },
+        ],
+      })),
+      updateCustomEngine: (engineId, updates) => set((s) => ({
+        customEngines: s.customEngines.map((e) =>
+          e.id === engineId ? { ...e, ...updates } : e
+        ),
+      })),
+      deleteCustomEngine: (engineId) => set((s) => {
+        const newCustomEngines = s.customEngines.filter((e) => e.id !== engineId)
+        // 如果删除的是当前选中的引擎，切换到默认引擎
+        const newSelectedEngineId = s.selectedEngineId === engineId ? 'bing' : s.selectedEngineId
+        return {
+          customEngines: newCustomEngines,
+          selectedEngineId: newSelectedEngineId,
+        }
+      }),
+      hidePresetEngine: (engineId) => set((s) => {
+        if (s.hiddenPresetEngines.includes(engineId)) return s
+        const newHiddenPresetEngines = [...s.hiddenPresetEngines, engineId]
+        // 如果隐藏的是当前选中的引擎，切换到第一个可用引擎
+        const newSelectedEngineId = s.selectedEngineId === engineId ? 'bing' : s.selectedEngineId
+        return {
+          hiddenPresetEngines: newHiddenPresetEngines,
+          selectedEngineId: newSelectedEngineId,
+        }
+      }),
+      showPresetEngine: (engineId) => set((s) => ({
+        hiddenPresetEngines: s.hiddenPresetEngines.filter((id) => id !== engineId),
+      })),
+      setEnabledEngineIds: (enabledEngineIds) => set({ enabledEngineIds }),
+      toggleEngineEnabled: (engineId) => set((s) => {
+        const isEnabled = s.enabledEngineIds.includes(engineId)
+        if (isEnabled) {
+          // 移除引擎
+          const newEnabledIds = s.enabledEngineIds.filter((id) => id !== engineId)
+          // 如果移除的是当前选中的引擎，切换到第一个可用引擎
+          const newSelectedEngineId = s.selectedEngineId === engineId 
+            ? (newEnabledIds[0] || 'bing') 
+            : s.selectedEngineId
+          return {
+            enabledEngineIds: newEnabledIds,
+            selectedEngineId: newSelectedEngineId,
+          }
+        } else {
+          // 添加引擎（无数量限制，由面板宽度动态决定显示数量）
+          return {
+            enabledEngineIds: [...s.enabledEngineIds, engineId],
+          }
+        }
+      }),
+      setIconRadiusRatio: (v) =>
+        set({ iconRadiusRatio: Math.max(0, Math.min(0.5, v)) }),
       resetAppearance: () => set({ ...DEFAULTS }),
     }),
     {
       name: 'start:appearance',
-      version: 11,
+      version: 14,
+      migrate: (persistedState, version) => {
+        const state = persistedState as Partial<AppearanceState>
+        // 版本 13 及以下：确保 enabledEngineIds 和 selectedEngineId 有默认值
+        if (version < 14) {
+          if (!state.enabledEngineIds || !Array.isArray(state.enabledEngineIds)) {
+            state.enabledEngineIds = DEFAULTS.enabledEngineIds
+          }
+          if (!state.selectedEngineId) {
+            state.selectedEngineId = DEFAULTS.selectedEngineId
+          }
+          if (!state.customEngines || !Array.isArray(state.customEngines)) {
+            state.customEngines = DEFAULTS.customEngines
+          }
+          if (!state.hiddenPresetEngines || !Array.isArray(state.hiddenPresetEngines)) {
+            state.hiddenPresetEngines = DEFAULTS.hiddenPresetEngines
+          }
+        }
+        return state as AppearanceState
+      },
       partialize: (s) => ({
         mode: s.mode,
         accent: s.accent,
@@ -316,6 +429,11 @@ export const useAppearanceStore = create<AppearanceState>()(
         dockShowBookmarks: s.dockShowBookmarks,
         dockShowSettings: s.dockShowSettings,
         dockAddPosition: s.dockAddPosition,
+        selectedEngineId: s.selectedEngineId,
+        customEngines: s.customEngines,
+        hiddenPresetEngines: s.hiddenPresetEngines,
+        enabledEngineIds: s.enabledEngineIds,
+        iconRadiusRatio: s.iconRadiusRatio,
       }),
     },
   ),

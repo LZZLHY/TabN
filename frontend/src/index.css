@@ -442,6 +442,35 @@ body {
 }
 
 /* =========================
+   批量删除书签动画
+   说明：iOS 风格的晃动动画和删除淡出效果
+   ========================= */
+
+@keyframes shake {
+  0%, 100% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(1.5deg); }
+}
+
+.bookmark-shake {
+  animation: shake 0.15s ease-in-out infinite;
+}
+
+@keyframes fadeOutScale {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+.bookmark-fade-out {
+  animation: fadeOutScale 0.2s ease-out forwards;
+}
+
+/* =========================
    自定义滚动条样式
    说明：与毛玻璃背景一致的滚动条，全局适用
    ========================= */

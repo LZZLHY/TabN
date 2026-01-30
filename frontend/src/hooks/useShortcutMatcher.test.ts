@@ -1,54 +1,67 @@
 import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
-import { shortcutMatcherUtils, type Bookmark } from './useShortcutMatcher'
+import { shortcutMatcherUtils } from './useShortcutMatcher'
+import type { Bookmark } from '../components/bookmarks/types'
 
 const { matchBookmarks, getBookmarkFavicon } = shortcutMatcherUtils
+
+// 创建测试用的 Bookmark 对象的辅助函数
+function createBookmark(partial: Partial<Bookmark> & { id: string; name: string; type: 'LINK' | 'FOLDER' }): Bookmark {
+  return {
+    url: null,
+    note: null,
+    parentId: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...partial,
+  }
+}
 
 describe('useShortcutMatcher', () => {
   describe('getBookmarkFavicon', () => {
     it('should generate correct favicon URL for bookmark without custom icon', () => {
-      const bookmark: Bookmark = {
+      const bookmark = createBookmark({
         id: '1',
         name: 'Test',
         url: 'https://www.example.com/page',
         type: 'LINK',
-      }
+      })
       const favicon = getBookmarkFavicon(bookmark)
       expect(favicon).toBe('https://www.google.com/s2/favicons?domain=www.example.com&sz=32')
     })
 
     it('should return empty string for bookmark without URL', () => {
-      const bookmark: Bookmark = {
+      const bookmark = createBookmark({
         id: '1',
         name: 'Test',
         url: null,
         type: 'LINK',
-      }
+      })
       const favicon = getBookmarkFavicon(bookmark)
       expect(favicon).toBe('')
     })
 
     it('should use custom iconUrl when provided', () => {
-      const bookmark: Bookmark = {
+      const bookmark = createBookmark({
         id: '1',
         name: 'Test',
         url: 'https://www.example.com',
         type: 'LINK',
         iconUrl: 'source:google',
-      }
+      })
       const favicon = getBookmarkFavicon(bookmark)
       expect(favicon).toContain('google.com')
     })
 
     it('should use Base64 icon when iconType is BASE64', () => {
-      const bookmark: Bookmark = {
+      const bookmark = createBookmark({
         id: '1',
         name: 'Test',
         url: 'https://www.example.com',
         type: 'LINK',
         iconType: 'BASE64',
         iconData: 'data:image/png;base64,abc123',
-      }
+      })
       const favicon = getBookmarkFavicon(bookmark)
       expect(favicon).toBe('data:image/png;base64,abc123')
     })
@@ -80,12 +93,12 @@ describe('useShortcutMatcher', () => {
             ]
             
             for (const variation of variations) {
-              const bookmark: Bookmark = {
+              const bookmark = createBookmark({
                 id,
                 name: `Prefix ${variation} Suffix`,
                 url: 'https://example.com',
                 type: 'LINK',
-              }
+              })
               
               const matches = matchBookmarks(trimmedQuery, [bookmark])
               
@@ -111,12 +124,12 @@ describe('useShortcutMatcher', () => {
             // 取名称的一部分作为查询
             const partialQuery = trimmed.substring(0, Math.ceil(trimmed.length / 2))
             
-            const bookmark: Bookmark = {
+            const bookmark = createBookmark({
               id,
               name: trimmed,
               url: 'https://example.com',
               type: 'LINK',
-            }
+            })
             
             const matches = matchBookmarks(partialQuery, [bookmark])
             
@@ -131,12 +144,12 @@ describe('useShortcutMatcher', () => {
 
     it('should not match when query is not in name', () => {
       // 使用一个确定不会匹配的书签名称
-      const bookmark: Bookmark = {
+      const bookmark = createBookmark({
         id: '1',
         name: 'ABC',
         url: 'https://example.com',
         type: 'LINK',
-      }
+      })
       
       // 查询 "xyz" 不应该匹配 "ABC"
       const matches = matchBookmarks('xyz', [bookmark])
@@ -164,12 +177,14 @@ describe('useShortcutMatcher', () => {
           fc.integer({ min: 1, max: 50 }),
           (maxResults, bookmarkCount) => {
             // 创建多个匹配的书签
-            const bookmarks: Bookmark[] = Array.from({ length: bookmarkCount }, (_, i) => ({
-              id: `id-${i}`,
-              name: `Test Bookmark ${i}`,
-              url: `https://example${i}.com`,
-              type: 'LINK' as const,
-            }))
+            const bookmarks: Bookmark[] = Array.from({ length: bookmarkCount }, (_, i) => 
+              createBookmark({
+                id: `id-${i}`,
+                name: `Test Bookmark ${i}`,
+                url: `https://example${i}.com`,
+                type: 'LINK',
+              })
+            )
             
             const matches = matchBookmarks('Test', bookmarks, maxResults)
             
@@ -188,12 +203,14 @@ describe('useShortcutMatcher', () => {
 
     it('should default to 5 results', () => {
       // 创建 10 个匹配的书签
-      const bookmarks: Bookmark[] = Array.from({ length: 10 }, (_, i) => ({
-        id: `id-${i}`,
-        name: `Test Bookmark ${i}`,
-        url: `https://example${i}.com`,
-        type: 'LINK' as const,
-      }))
+      const bookmarks: Bookmark[] = Array.from({ length: 10 }, (_, i) => 
+        createBookmark({
+          id: `id-${i}`,
+          name: `Test Bookmark ${i}`,
+          url: `https://example${i}.com`,
+          type: 'LINK',
+        })
+      )
       
       const matches = matchBookmarks('Test', bookmarks)
       
@@ -205,9 +222,9 @@ describe('useShortcutMatcher', () => {
   describe('Pinyin search', () => {
     it('should match Chinese bookmarks by pinyin', () => {
       const bookmarks: Bookmark[] = [
-        { id: '1', name: '百度', url: 'https://baidu.com', type: 'LINK' },
-        { id: '2', name: '淘宝', url: 'https://taobao.com', type: 'LINK' },
-        { id: '3', name: '京东', url: 'https://jd.com', type: 'LINK' },
+        createBookmark({ id: '1', name: '百度', url: 'https://baidu.com', type: 'LINK' }),
+        createBookmark({ id: '2', name: '淘宝', url: 'https://taobao.com', type: 'LINK' }),
+        createBookmark({ id: '3', name: '京东', url: 'https://jd.com', type: 'LINK' }),
       ]
       
       // 全拼匹配
@@ -228,7 +245,7 @@ describe('useShortcutMatcher', () => {
 
     it('should match mixed Chinese and English names', () => {
       const bookmarks: Bookmark[] = [
-        { id: '1', name: '我的GitHub', url: 'https://github.com', type: 'LINK' },
+        createBookmark({ id: '1', name: '我的GitHub', url: 'https://github.com', type: 'LINK' }),
       ]
       
       // 中文拼音匹配
@@ -242,7 +259,7 @@ describe('useShortcutMatcher', () => {
 
     it('should still support direct Chinese character matching', () => {
       const bookmarks: Bookmark[] = [
-        { id: '1', name: '百度搜索', url: 'https://baidu.com', type: 'LINK' },
+        createBookmark({ id: '1', name: '百度搜索', url: 'https://baidu.com', type: 'LINK' }),
       ]
       
       const matches = matchBookmarks('百度', bookmarks)
@@ -254,7 +271,7 @@ describe('useShortcutMatcher', () => {
   describe('Edge cases', () => {
     it('should return empty array for empty query', () => {
       const bookmarks: Bookmark[] = [
-        { id: '1', name: 'Test', url: 'https://example.com', type: 'LINK' },
+        createBookmark({ id: '1', name: 'Test', url: 'https://example.com', type: 'LINK' }),
       ]
       
       expect(matchBookmarks('', bookmarks)).toEqual([])
@@ -267,8 +284,8 @@ describe('useShortcutMatcher', () => {
 
     it('should not match FOLDER type bookmarks', () => {
       const bookmarks: Bookmark[] = [
-        { id: '1', name: 'Test Folder', url: null, type: 'FOLDER' },
-        { id: '2', name: 'Test Link', url: 'https://example.com', type: 'LINK' },
+        createBookmark({ id: '1', name: 'Test Folder', url: null, type: 'FOLDER' }),
+        createBookmark({ id: '2', name: 'Test Link', url: 'https://example.com', type: 'LINK' }),
       ]
       
       const matches = matchBookmarks('Test', bookmarks)
@@ -279,7 +296,7 @@ describe('useShortcutMatcher', () => {
 
     it('should not match bookmarks without URL', () => {
       const bookmarks: Bookmark[] = [
-        { id: '1', name: 'Test', url: null, type: 'LINK' },
+        createBookmark({ id: '1', name: 'Test', url: null, type: 'LINK' }),
       ]
       
       const matches = matchBookmarks('Test', bookmarks)
@@ -287,14 +304,20 @@ describe('useShortcutMatcher', () => {
       expect(matches.length).toBe(0)
     })
 
-    it('should include favicon in results', () => {
+    it('should include icon info in results for custom rendering', () => {
       const bookmarks: Bookmark[] = [
-        { id: '1', name: 'Test', url: 'https://www.example.com', type: 'LINK' },
+        createBookmark({ id: '1', name: 'Test', url: 'https://www.example.com', type: 'LINK' }),
       ]
       
       const matches = matchBookmarks('Test', bookmarks)
       
-      expect(matches[0].favicon).toBe('https://www.google.com/s2/favicons?domain=www.example.com&sz=32')
+      // favicon 字段为空，图标信息通过 iconType/iconData/iconUrl 传递
+      // 由调用方根据这些信息渲染图标
+      expect(matches[0].favicon).toBe('')
+      expect(matches[0]).toHaveProperty('iconType')
+      expect(matches[0]).toHaveProperty('iconData')
+      expect(matches[0]).toHaveProperty('iconUrl')
+      expect(matches[0]).toHaveProperty('iconBg')
     })
   })
 })

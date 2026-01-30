@@ -3,6 +3,14 @@ import { useBookmarkDndStore } from '../../stores/bookmarkDnd'
 
 type XY = { x: number; y: number }
 
+// 自动滚动配置
+const AUTO_SCROLL_THRESHOLD = 60 // 距离边缘多少像素开始滚动（容器内部）
+const AUTO_SCROLL_OUTER_THRESHOLD = 200 // 容器外部最大检测距离
+const AUTO_SCROLL_MIN_SPEED = 1 // 最小滚动速度（刚进入边缘区域）
+const AUTO_SCROLL_EDGE_SPEED = 6 // 到达边缘时的速度（内外部交界处）
+const AUTO_SCROLL_OUTER_MAX_SPEED = 20 // 容器外部最大滚动速度
+const AUTO_SCROLL_ACCELERATION = 0.12 // 加速度系数（稍大一点让响应更快）
+
 function getPointerXYFromEvent(ev: Event | null | undefined): XY | null {
   if (!ev) return null
   const maybeMouse = ev as unknown as { clientX?: unknown; clientY?: unknown }
@@ -44,13 +52,15 @@ function cancelElementAnimations(el: Element | null | undefined) {
   }
 }
 
-// 清理图标元素上的拖拽样式（transform, transition）
+// 清理图标元素上的拖拽样式（transform），并恢复原始 transition
 function cleanupIconStyles(parentEl: Element | null | undefined) {
   if (!parentEl) return
   const iconEl = parentEl.querySelector('.bookmark-icon') as HTMLElement | null
   if (iconEl) {
     iconEl.style.removeProperty('transform')
-    iconEl.style.removeProperty('transition')
+    // 恢复原始的 transition 效果（悬浮放大动画需要）
+    // 不能直接 removeProperty，因为原始 transition 是通过内联 style 设置的
+    iconEl.style.transition = 'transform 150ms ease-out, box-shadow 150ms ease-out, width 200ms, height 200ms'
   }
 }
 
@@ -284,6 +294,9 @@ export function useBookmarkDrag(args: {
     disabled = false,
   } = args
 
+  // 滚动容器 ref（从 args 中获取，用于自动滚动）
+  const scrollContainerRef = args.scrollContainerRef as React.RefObject<HTMLElement | null> | undefined
+
   const options = {
     prePush: rawOptions?.prePush ?? true,
     pushAnimation: rawOptions?.pushAnimation ?? true,
@@ -304,6 +317,12 @@ export function useBookmarkDrag(args: {
   const isDragConfirmedRef = useRef(false) // 标记是否真的进入了拖拽状态（移动距离超过阈值）
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const overlayBoxRef = useRef<HTMLDivElement | null>(null)
+  
+  // 自动滚动相关
+  const autoScrollRafRef = useRef<number | null>(null)
+  const autoScrollSpeedRef = useRef<number>(0) // 当前滚动速度（带方向：正=向下，负=向上）
+  const lastScrollTimeRef = useRef<number>(0) // 上次滚动的时间戳，用于滚动后的冷却期
+  const scrollListenerRef = useRef<(() => void) | null>(null) // 滚动事件监听器清理函数
 
   const [combineCandidateId, setCombineCandidateId] = useState<string | null>(null)
   const [combineTargetId, setCombineTargetId] = useState<string | null>(null)
@@ -335,6 +354,16 @@ export function useBookmarkDrag(args: {
       // 如果组件卸载时正在拖拽，清理全局拖拽状态
       if (activeIdRef.current) {
         useBookmarkDndStore.getState().setIsDragging(false)
+      }
+      // 清理自动滚动
+      if (autoScrollRafRef.current) {
+        cancelAnimationFrame(autoScrollRafRef.current)
+        autoScrollRafRef.current = null
+      }
+      // 清理滚动事件监听器
+      if (scrollListenerRef.current) {
+        scrollListenerRef.current()
+        scrollListenerRef.current = null
       }
       // 清理事件监听器
       if (cleanupListenersRef.current) {
@@ -394,6 +423,16 @@ export function useBookmarkDrag(args: {
     if (!aId || !p) {
       // 关键：如果已经没有 activeId 或指针，立即清除所有 combine 状态，避免高亮残留
       if (combineCandidateIdRef.current || combineTargetIdRef.current) clearCombine()
+      return
+    }
+    
+    // 只有在滚动时才需要冷却期，避免滚动导致的位置变化触发错误的重排序
+    // 注意：lastScrollTimeRef 由 scroll 事件监听器更新，只有真正滚动时才会更新
+    const now = performance.now()
+    const timeSinceLastScroll = now - lastScrollTimeRef.current
+    // 滚动后 100ms 内跳过预挤压（短冷却期，避免回弹）
+    // 不滚动时不需要冷却期，让预挤压保持灵敏
+    if (timeSinceLastScroll < 100) {
       return
     }
 
@@ -568,7 +607,26 @@ export function useBookmarkDrag(args: {
 
     // 预挤压：拖拽过程中就更新顺序，让其它图标实时挤开
     finalOrderRef.current = next
-    if (options.prePush) setVisibleIds(next)
+    if (options.prePush) {
+      // 关键修复：在预挤压前刷新 FLIP 的 prev 快照
+      // 这样即使刚从滚动冷却期出来，FLIP 动画也能基于最新位置计算
+      // 而不是基于滚动前的旧位置（那会导致第一次挤压没有动画或动画错误）
+      const freshRects = new Map<string, DOMRect>()
+      for (const id of idsNow) {
+        const el = getEl(id)
+        if (el) freshRects.set(id, el.getBoundingClientRect())
+      }
+      flipPrevRef.current = freshRects
+      
+      // 滚动补偿：记录预挤压前的 scrollTop
+      // 在 useLayoutEffect 中会恢复它，这样 FLIP 动画就不会包含"向上弹"的效果
+      const container = scrollContainerRef?.current
+      if (container) {
+        scrollTopBeforePrePushRef.current = container.scrollTop
+      }
+      
+      setVisibleIds(next)
+    }
   }, [
     clearCombine,
     computeRects,
@@ -585,6 +643,129 @@ export function useBookmarkDrag(args: {
     })
   }, [updateByPointerNow])
 
+  // 自动滚动：拖拽到容器边缘或容器外部时自动滚动
+  // 速度曲线：从内部边缘开始平滑加速，到达边界时达到 EDGE_SPEED，继续往外越来越快
+  const performAutoScroll = useCallback(() => {
+    const container = scrollContainerRef?.current
+    const p = pointerRef.current
+    const aId = activeIdRef.current
+    
+    // 如果没有滚动容器、没有指针位置、或没有正在拖拽，停止自动滚动
+    if (!container || !p || !aId) {
+      autoScrollSpeedRef.current = 0
+      if (autoScrollRafRef.current) {
+        cancelAnimationFrame(autoScrollRafRef.current)
+        autoScrollRafRef.current = null
+      }
+      return
+    }
+    
+    const containerRect = container.getBoundingClientRect()
+    const { scrollTop, scrollHeight, clientHeight } = container
+    const maxScrollTop = scrollHeight - clientHeight
+    
+    // 计算指针相对于容器的位置
+    const relativeY = p.y - containerRect.top
+    
+    // 计算目标滚动速度 - 使用统一的距离计算，确保平滑过渡
+    let targetSpeed = 0
+    
+    // 计算到"安全区域"的距离（正值表示需要滚动）
+    // 安全区域 = 容器内部去掉边缘阈值的区域
+    const safeTop = AUTO_SCROLL_THRESHOLD
+    const safeBottom = containerRect.height - AUTO_SCROLL_THRESHOLD
+    
+    if (relativeY < safeTop && scrollTop > 0) {
+      // 需要向上滚动：计算距离安全区域顶部的距离
+      const distanceFromSafe = safeTop - relativeY
+      // 内部边缘区域：0 ~ AUTO_SCROLL_THRESHOLD
+      // 外部区域：AUTO_SCROLL_THRESHOLD ~ AUTO_SCROLL_THRESHOLD + AUTO_SCROLL_OUTER_THRESHOLD
+      
+      if (distanceFromSafe <= AUTO_SCROLL_THRESHOLD) {
+        // 内部边缘：MIN_SPEED -> EDGE_SPEED（线性）
+        const ratio = distanceFromSafe / AUTO_SCROLL_THRESHOLD
+        targetSpeed = -(AUTO_SCROLL_MIN_SPEED + (AUTO_SCROLL_EDGE_SPEED - AUTO_SCROLL_MIN_SPEED) * ratio)
+      } else {
+        // 外部：EDGE_SPEED -> OUTER_MAX_SPEED（线性）
+        const outerDistance = distanceFromSafe - AUTO_SCROLL_THRESHOLD
+        const outerRatio = Math.min(1, outerDistance / AUTO_SCROLL_OUTER_THRESHOLD)
+        targetSpeed = -(AUTO_SCROLL_EDGE_SPEED + (AUTO_SCROLL_OUTER_MAX_SPEED - AUTO_SCROLL_EDGE_SPEED) * outerRatio)
+      }
+    } else if (relativeY > safeBottom && scrollTop < maxScrollTop) {
+      // 需要向下滚动：计算距离安全区域底部的距离
+      const distanceFromSafe = relativeY - safeBottom
+      
+      if (distanceFromSafe <= AUTO_SCROLL_THRESHOLD) {
+        // 内部边缘：MIN_SPEED -> EDGE_SPEED（线性）
+        const ratio = distanceFromSafe / AUTO_SCROLL_THRESHOLD
+        targetSpeed = AUTO_SCROLL_MIN_SPEED + (AUTO_SCROLL_EDGE_SPEED - AUTO_SCROLL_MIN_SPEED) * ratio
+      } else {
+        // 外部：EDGE_SPEED -> OUTER_MAX_SPEED（线性）
+        const outerDistance = distanceFromSafe - AUTO_SCROLL_THRESHOLD
+        const outerRatio = Math.min(1, outerDistance / AUTO_SCROLL_OUTER_THRESHOLD)
+        targetSpeed = AUTO_SCROLL_EDGE_SPEED + (AUTO_SCROLL_OUTER_MAX_SPEED - AUTO_SCROLL_EDGE_SPEED) * outerRatio
+      }
+    }
+    
+    // 平滑过渡到目标速度
+    const currentSpeed = autoScrollSpeedRef.current
+    autoScrollSpeedRef.current = currentSpeed + (targetSpeed - currentSpeed) * AUTO_SCROLL_ACCELERATION
+    
+    // 如果速度足够小，直接归零
+    if (Math.abs(autoScrollSpeedRef.current) < 0.1) {
+      autoScrollSpeedRef.current = 0
+    }
+    
+    // 执行滚动（只有速度足够大时才滚动，避免微小抖动）
+    if (Math.abs(autoScrollSpeedRef.current) >= 0.5) {
+      const newScrollTop = Math.max(0, Math.min(maxScrollTop, scrollTop + autoScrollSpeedRef.current))
+      if (Math.abs(newScrollTop - scrollTop) >= 0.5) {
+        container.scrollTop = newScrollTop
+        // 记录滚动时间，用于冷却期判断
+        lastScrollTimeRef.current = performance.now()
+      }
+    }
+    
+    // 继续下一帧
+    autoScrollRafRef.current = requestAnimationFrame(performAutoScroll)
+  }, [scrollContainerRef])
+
+  // 开始自动滚动
+  const startAutoScroll = useCallback(() => {
+    if (autoScrollRafRef.current) return
+    autoScrollSpeedRef.current = 0
+    autoScrollRafRef.current = requestAnimationFrame(performAutoScroll)
+    
+    // 关键修复：监听滚动容器的 scroll 事件，检测手动滚动（鼠标滚轮）
+    // 这样可以在手动滚动时也应用冷却期，避免回弹
+    const container = scrollContainerRef?.current
+    if (container && !scrollListenerRef.current) {
+      const onScroll = () => {
+        // 记录滚动时间，用于冷却期判断
+        // 无论是自动滚动还是手动滚动，都会触发这个事件
+        lastScrollTimeRef.current = performance.now()
+      }
+      container.addEventListener('scroll', onScroll, { passive: true })
+      scrollListenerRef.current = () => {
+        container.removeEventListener('scroll', onScroll)
+      }
+    }
+  }, [performAutoScroll, scrollContainerRef])
+
+  // 停止自动滚动
+  const stopAutoScroll = useCallback(() => {
+    autoScrollSpeedRef.current = 0
+    if (autoScrollRafRef.current) {
+      cancelAnimationFrame(autoScrollRafRef.current)
+      autoScrollRafRef.current = null
+    }
+    // 清理滚动事件监听器
+    if (scrollListenerRef.current) {
+      scrollListenerRef.current()
+      scrollListenerRef.current = null
+    }
+  }, [])
+
 
   // 简单 FLIP：每次 visibleIds 变更，给非 active 项做平滑挤压
   const flipPrevRef = useRef<Map<string, DOMRect>>(new Map())
@@ -596,8 +777,28 @@ export function useBookmarkDrag(args: {
   const fillAnimationTriggerTimeRef = useRef<number>(0)
   // 保存的位置快照（用于补位动画）
   const savedPositionsRef = useRef<Map<string, DOMRect> | null>(null)
+  // 保存预挤压前的 scrollTop，用于在 FLIP 动画前恢复
+  const scrollTopBeforePrePushRef = useRef<number | null>(null)
   
   useLayoutEffect(() => {
+    // 关键修复：在计算 FLIP 动画位置之前，先恢复 scrollTop
+    // 这样 FLIP 动画就不会包含"向上弹"的效果
+    // 
+    // 注意：不要在这里调整 prev 中的 Y 坐标！
+    // 虽然直觉上觉得需要补偿滚动差值，但实际上：
+    // 1. prev 是在 updateByPointerNow 中预挤压前捕获的，此时 scrollTop 还没变
+    // 2. 恢复 scrollTop 后，元素的视觉位置回到了预挤压前的状态
+    // 3. 所以 prev 和恢复后的 next 是基于相同的 scrollTop，不需要额外调整
+    // 如果调整 prev 的 Y 坐标，反而会导致 FLIP 动画计算错误
+    const container = scrollContainerRef?.current
+    if (container && scrollTopBeforePrePushRef.current !== null) {
+      const scrollTopBefore = scrollTopBeforePrePushRef.current
+      scrollTopBeforePrePushRef.current = null // 清除，只恢复一次
+      if (container.scrollTop !== scrollTopBefore) {
+        container.scrollTop = scrollTopBefore
+      }
+    }
+    
     const prev = flipPrevRef.current
     const next = new Map<string, DOMRect>()
     for (const id of visibleIds) {
@@ -614,19 +815,29 @@ export function useBookmarkDrag(args: {
     const visibleIdsChanged = visibleIds.join(',') !== lastVisibleIdsRef.current.join(',')
     lastVisibleIdsRef.current = visibleIds
     
+    // 关键修复：检测是否正在滚动
+    // 如果正在滚动，不执行 FLIP 动画，因为位置变化是由滚动引起的，不是由排序变化引起的
+    const now = performance.now()
+    const timeSinceLastScroll = now - lastScrollTimeRef.current
+    const isScrolling = timeSinceLastScroll < 100 // 滚动后 100ms 内认为还在滚动（与预挤压冷却期一致）
+    
     // 检查是否在补位动画触发时间窗口内（1000ms 内）
     // 注意：补位动画现在由 triggerFillAnimation 直接执行，这里的逻辑主要用于拖拽时的 FLIP 动画
-    const now = performance.now()
     const timeSinceTrigger = now - fillAnimationTriggerTimeRef.current
     const inFillAnimationWindow = timeSinceTrigger < 1000 && timeSinceTrigger > 0
     const shouldFillAnimate = inFillAnimationWindow && visibleIdsChanged && prev.size > 0
     
     // 关键修复：
-    // 1. 正在拖拽时的 FLIP 动画：activeId 存在且不是刚开始拖拽
+    // 1. 正在拖拽时的 FLIP 动画：activeId 存在且不是刚开始拖拽，且 visibleIds 有变化，且不在滚动中
     // 2. 创建文件夹后的补位动画：在触发时间窗口内且 visibleIds 有变化
-    const shouldAnimate = (activeId && !justStartedDragging && options.pushAnimation && prev.size > 0) || shouldFillAnimate
+    // 注意：只有当 visibleIds 真正变化时才执行 FLIP 动画，滚动导致的位置变化不应该触发动画
+    const shouldAnimate = (activeId && !justStartedDragging && options.pushAnimation && prev.size > 0 && visibleIdsChanged && !isScrolling) || shouldFillAnimate
     
     if (shouldAnimate) {
+      // 获取滚动容器的边界，用于判断元素是否在视口内
+      const scrollContainer = document.querySelector('[data-bookmark-scroll-container]') as HTMLElement | null
+      const containerRect = scrollContainer?.getBoundingClientRect()
+      
       for (const id of visibleIds) {
         if (id === activeId) continue
         const el = getEl(id)
@@ -635,6 +846,14 @@ export function useBookmarkDrag(args: {
         // 关键：如果 prev 中没有这个 ID 的记录，说明是新出现的元素（如新创建的文件夹）
         // 新出现的元素不应该有 FLIP 动画，直接跳过
         if (!el || !a || !b) continue
+        
+        // 关键修复：只对视口内的元素执行 FLIP 动画
+        // 视口外的元素不需要动画，直接跳过
+        if (containerRect) {
+          const isInViewport = b.bottom > containerRect.top && b.top < containerRect.bottom
+          if (!isInViewport) continue
+        }
+        
         const dx = a.left - b.left
         const dy = a.top - b.top
         if (!dx && !dy) continue
@@ -771,6 +990,9 @@ export function useBookmarkDrag(args: {
         // 设置全局拖拽状态，禁用其他手势（如下拉刷新、上划打开书签页）
         useBookmarkDndStore.getState().setIsDragging(true)
         
+        // 启动自动滚动
+        startAutoScroll()
+        
         // Dock 栏优化：先让悬浮放大的图标平滑缩小，再隐藏并显示 overlay
         // 找到图标元素并添加缩小过渡
         const iconEl = activeHiddenElRef.current?.querySelector('.bookmark-icon') as HTMLElement | null
@@ -786,7 +1008,8 @@ export function useBookmarkDrag(args: {
           if (!isDragConfirmedRef.current) return
           // 关键：只有在确认拖拽时才设置 activeId 和显示 overlay
           setActiveId(id)
-          // 隐藏原始元素
+          // 隐藏原始元素，但保持它占据布局空间
+          // 不使用 position: absolute，因为那会导致内容高度变化，触发浏览器自动滚动
           if (activeHiddenElRef.current) {
             const hiddenEl = activeHiddenElRef.current
             cancelElementAnimations(hiddenEl)
@@ -918,6 +1141,9 @@ export function useBookmarkDrag(args: {
     // 清除全局拖拽状态，恢复其他手势
     // BookmarkDrawer 中通过 lastDragEndTimeGlobal 来防止拖拽结束后立即触发关闭
     useBookmarkDndStore.getState().setIsDragging(false)
+    
+    // 停止自动滚动
+    stopAutoScroll()
     
     // 关键：先清除所有 combine 状态（包括 ref），避免高亮残留
     clearCombine()
@@ -1249,6 +1475,9 @@ export function useBookmarkDrag(args: {
     // 设置全局拖拽状态
     useBookmarkDndStore.getState().setIsDragging(true)
     
+    // 启动自动滚动
+    startAutoScroll()
+    
     // 延迟查找并隐藏元素，让 overlay 先渲染在鼠标位置
     // 这样用户看到的是 overlay 直接出现，而不是从末尾瞬移
     requestAnimationFrame(() => {
@@ -1257,7 +1486,7 @@ export function useBookmarkDrag(args: {
         activeHiddenElRef.current = el
         activeHiddenInnerRef.current = el.querySelector<HTMLElement>('.bm-inner')
         
-        // 隐藏原始元素
+        // 隐藏原始元素，但保持它占据布局空间
         cancelElementAnimations(el)
         el.style.setProperty('opacity', '0', 'important')
         el.style.setProperty('visibility', 'hidden', 'important')

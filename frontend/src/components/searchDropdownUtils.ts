@@ -5,6 +5,11 @@ interface ShortcutMatch {
   name: string
   url: string
   favicon: string
+  // 添加完整的书签图标信息
+  iconBg?: string | null
+  iconType?: 'BASE64' | 'URL' | null
+  iconData?: string | null
+  iconUrl?: string | null
 }
 
 interface RecentBookmark {

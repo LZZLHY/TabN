@@ -29,6 +29,11 @@ export enum ErrorCode {
   PASSWORD_INCORRECT = 4004,
   ACCOUNT_OCCUPIED = 4005,
   DUPLICATE_BOOKMARK = 4006,
+  PRESET_NOT_FOUND = 4007,
+  PRESET_LIMIT_EXCEEDED = 4008,
+  INVALID_PRESET_NAME = 4009,
+  INVALID_ICON_TYPE = 4010,
+  INVALID_ICON_BG = 4011,
   
   // 服务器错误 (5xxx)
   INTERNAL_ERROR = 5001,
@@ -65,6 +70,11 @@ export const ErrorHttpStatus: Record<ErrorCode, number> = {
   [ErrorCode.PASSWORD_INCORRECT]: 401,
   [ErrorCode.ACCOUNT_OCCUPIED]: 409,
   [ErrorCode.DUPLICATE_BOOKMARK]: 409,
+  [ErrorCode.PRESET_NOT_FOUND]: 404,
+  [ErrorCode.PRESET_LIMIT_EXCEEDED]: 400,
+  [ErrorCode.INVALID_PRESET_NAME]: 400,
+  [ErrorCode.INVALID_ICON_TYPE]: 400,
+  [ErrorCode.INVALID_ICON_BG]: 400,
   
   [ErrorCode.INTERNAL_ERROR]: 500,
   [ErrorCode.SERVICE_UNAVAILABLE]: 503,
@@ -93,6 +103,11 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   [ErrorCode.PASSWORD_INCORRECT]: '密码错误',
   [ErrorCode.ACCOUNT_OCCUPIED]: '账号/邮箱/手机号已被占用',
   [ErrorCode.DUPLICATE_BOOKMARK]: '书签已存在',
+  [ErrorCode.PRESET_NOT_FOUND]: '预设不存在',
+  [ErrorCode.PRESET_LIMIT_EXCEEDED]: '已达到预设数量上限',
+  [ErrorCode.INVALID_PRESET_NAME]: '预设名称无效',
+  [ErrorCode.INVALID_ICON_TYPE]: '图标类型无效',
+  [ErrorCode.INVALID_ICON_BG]: '图标背景格式无效',
   
   [ErrorCode.INTERNAL_ERROR]: '服务器内部错误',
   [ErrorCode.SERVICE_UNAVAILABLE]: '服务暂不可用',
@@ -121,6 +136,11 @@ export const UserFriendlyMessages: Record<ErrorCode, string> = {
   [ErrorCode.PASSWORD_INCORRECT]: '密码错误',
   [ErrorCode.ACCOUNT_OCCUPIED]: '账号/邮箱/手机号已被占用',
   [ErrorCode.DUPLICATE_BOOKMARK]: '该网址已添加过书签',
+  [ErrorCode.PRESET_NOT_FOUND]: '预设不存在',
+  [ErrorCode.PRESET_LIMIT_EXCEEDED]: '已达到预设数量上限（8个）',
+  [ErrorCode.INVALID_PRESET_NAME]: '预设名称无效',
+  [ErrorCode.INVALID_ICON_TYPE]: '图标类型无效',
+  [ErrorCode.INVALID_ICON_BG]: '图标背景格式无效',
   
   [ErrorCode.INTERNAL_ERROR]: '服务器内部错误，请稍后重试',
   [ErrorCode.SERVICE_UNAVAILABLE]: '服务暂时不可用，请稍后重试',

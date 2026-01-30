@@ -74,7 +74,7 @@ export interface RegisterResponse {
 export type BookmarkType = 'LINK' | 'FOLDER'
 
 /** 图标类型 */
-export type IconType = 'URL' | 'BASE64'
+export type IconType = 'URL' | 'BASE64' | 'TEXT'
 
 /** 书签信息 */
 export interface Bookmark {

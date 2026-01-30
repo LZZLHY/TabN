@@ -6,7 +6,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from '../services/api'
 import { useAuthStore } from '../stores/auth'
-import { getIconUrl } from '../utils/iconSource'
+import { useBookmarkRefreshStore } from '../stores/bookmarkRefresh'
+import { useBookmarkCacheStore } from '../stores/bookmarkCache'
 
 export interface RecentBookmark {
   id: string
@@ -16,28 +17,10 @@ export interface RecentBookmark {
   iconUrl?: string | null
   iconType?: string | null
   iconData?: string | null
+  iconBg?: string | null
   lastClickAt: string
 }
 
-/** 从书签获取 favicon URL（支持自定义图标来源） */
-function getBookmarkFavicon(bookmark: { url: string; iconUrl?: string | null; iconType?: string | null; iconData?: string | null }): string {
-  // 优先使用 Base64 图标
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    return bookmark.iconData
-  }
-  // 使用 iconUrl（可能是来源标记或自定义 URL）
-  if (bookmark.iconUrl) {
-    const iconUrl = getIconUrl(bookmark.url, bookmark.iconUrl)
-    if (iconUrl) return iconUrl
-  }
-  // 回退到 Google favicon
-  try {
-    const host = new URL(bookmark.url).hostname
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`
-  } catch {
-    return ''
-  }
-}
 
 /** 全局事件：书签被点击时触发 */
 const BOOKMARK_CLICKED_EVENT = 'bookmark-clicked'
@@ -51,6 +34,12 @@ export function useRecentBookmarks(limit: number = 8) {
   const token = useAuthStore((s) => s.token)
   const [recentBookmarks, setRecentBookmarks] = useState<RecentBookmark[]>([])
   const [loading, setLoading] = useState(false)
+  
+  // 监听书签刷新事件，当书签数据更新时自动刷新最近打开列表
+  const refreshCount = useBookmarkRefreshStore((s) => s.refreshCount)
+  
+  // 获取完整的书签缓存数据（包含iconBg等完整信息）
+  const cachedItems = useBookmarkCacheStore((s) => s.items)
 
   const refresh = useCallback(async () => {
     if (!token) {
@@ -65,24 +54,45 @@ export function useRecentBookmarks(limit: number = 8) {
         { method: 'GET', token }
       )
       if (resp.ok) {
-        // 为每个书签生成 favicon URL
-        const items = resp.data.items.map(item => ({
-          ...item,
-          favicon: item.favicon || getBookmarkFavicon(item),
-        }))
-        setRecentBookmarks(items)
+        // 将API返回的最近书签数据与缓存中的完整书签数据合并
+        const recentItems = resp.data.items.map(recentItem => {
+          // 在缓存中查找对应的完整书签数据
+          const fullBookmark = cachedItems.find(cached => cached.id === recentItem.id)
+          if (fullBookmark) {
+            // 使用缓存中的完整数据，保留API返回的lastClickAt，并确保类型匹配
+            return {
+              id: fullBookmark.id,
+              name: fullBookmark.name,
+              url: fullBookmark.url || '',
+              favicon: recentItem.favicon,
+              iconUrl: fullBookmark.iconUrl,
+              iconType: fullBookmark.iconType,
+              iconData: fullBookmark.iconData,
+              iconBg: fullBookmark.iconBg,
+              lastClickAt: recentItem.lastClickAt
+            } as RecentBookmark
+          }
+          // 如果缓存中没找到，使用API返回的数据（可能缺少iconBg等字段）
+          return recentItem
+        })
+        setRecentBookmarks(recentItems)
       }
     } catch {
       // 静默失败
     } finally {
       setLoading(false)
     }
-  }, [token, limit])
+  }, [token, limit, cachedItems])
 
   // 初始加载
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  // 监听书签数据变化，当书签更新时自动刷新最近打开列表
+  useEffect(() => {
+    void refresh()
+  }, [refresh, refreshCount])
 
   // 监听全局书签点击事件
   useEffect(() => {

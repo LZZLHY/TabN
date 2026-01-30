@@ -1,7 +1,7 @@
 {
   "name": "@start/shared",
-  "version": "1.5.0",
-  "patchVersion": 10402,
+  "version": "1.5.1",
+  "patchVersion": 10561,
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -28,9 +28,13 @@
   ],
   "scripts": {
     "build": "tsc",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "fast-check": "^3.23.2",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

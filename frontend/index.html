@@ -58,10 +58,15 @@
               }
             }
           } else if (bgType === 'picsum') {
+            // Picsum 模式：从 localStorage 读取缓存的缩略图（用于立即显示，避免黑屏）
             var picsumCache = localStorage.getItem('start:picsumCache');
             if (picsumCache) {
               var picsumParsed = JSON.parse(picsumCache);
-              if (picsumParsed && picsumParsed.url) {
+              // 优先使用缩略图（Base64 格式，可以立即显示）
+              if (picsumParsed && picsumParsed.thumbnail) {
+                bgUrl = picsumParsed.thumbnail;
+              } else if (picsumParsed && picsumParsed.url) {
+                // 兼容旧缓存：使用 URL（可能需要重新下载）
                 bgUrl = picsumParsed.url;
               }
             }

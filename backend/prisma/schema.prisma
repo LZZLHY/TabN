@@ -33,6 +33,7 @@ model User {
   extensions Extension[]
   clickStats ClickStat[]
   apiKey     APIKey?
+  iconPresets IconPreset[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -49,6 +50,7 @@ enum BookmarkType {
 enum IconType {
   URL
   BASE64
+  TEXT
 }
 
 model Bookmark {
@@ -71,6 +73,8 @@ model Bookmark {
   iconData String? // Base64 图标数据
   iconType IconType? // 图标类型
   iconBg   String? // 图标背景：null/default=原始, transparent=透明, #RRGGBB=自定义颜色
+
+  iconPresets IconPreset[] // 该书签的图标预设
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -128,4 +132,24 @@ model APIKey {
   updatedAt DateTime @updatedAt
 
   @@index([key])
+}
+
+model IconPreset {
+  id         String @id @default(cuid())
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookmarkId String
+  bookmark   Bookmark @relation(fields: [bookmarkId], references: [id], onDelete: Cascade)
+
+  name     String    // 预设名称，最长 50 字符
+  iconType IconType? // URL, BASE64, TEXT, null
+  iconData String?   // Base64 数据或 TEXT 配置 JSON
+  iconUrl  String?   // 图标 URL
+  iconBg   String?   // 背景设置
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([bookmarkId])
 }

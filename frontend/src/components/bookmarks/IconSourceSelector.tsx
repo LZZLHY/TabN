@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Input } from '../ui/Input'
 import { parseIconSource, serializeIconSource, getIconPreviews, type IconSourceType, ICON_SOURCES } from '../../utils/iconSource'
 import { cn } from '../../utils/cn'
@@ -23,6 +24,7 @@ export function IconSourceSelector({
   iconPreviewError,
   onIconPreviewError,
 }: IconSourceSelectorProps) {
+  const { t } = useTranslation()
   const parsed = parseIconSource(iconUrl)
   const [selectedSource, setSelectedSource] = useState<IconSourceType>(parsed.source)
   const [customIconUrl, setCustomIconUrl] = useState(parsed.customUrl)
@@ -112,11 +114,11 @@ export function IconSourceSelector({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-xs text-fg/60">图标来源</label>
+        <label className="text-xs text-fg/60">{t('bookmarks.iconSource')}</label>
         {/* 显示当前实际使用的图标来源 */}
         {currentSource && currentSource !== 'custom' && (
           <span className="text-[10px] text-fg/40">
-            当前使用: {ICON_SOURCES[currentSource].label}
+            {t('bookmarks.currentlyUsing')}: {ICON_SOURCES[currentSource].label}
           </span>
         )}
       </div>
@@ -184,7 +186,7 @@ export function IconSourceSelector({
               ) : (
                 <img
                   src={customIconUrl.trim()}
-                  alt="自定义"
+                  alt={t('bookmarks.iconCustom')}
                   className="w-full h-full object-contain"
                   onError={() => onIconPreviewError(true)}
                   onLoad={() => onIconPreviewError(false)}
@@ -194,7 +196,7 @@ export function IconSourceSelector({
               <span className="text-lg text-fg/40">+</span>
             )}
           </div>
-          <span className="text-[10px] text-fg/60">自定义</span>
+          <span className="text-[10px] text-fg/60">{t('bookmarks.iconCustom')}</span>
         </button>
       </div>
 
@@ -207,19 +209,19 @@ export function IconSourceSelector({
             placeholder="https://example.com/icon.png"
             className="text-sm"
           />
-          <p className="text-[10px] text-fg/40">输入自定义图标的 URL 地址</p>
+          <p className="text-[10px] text-fg/40">{t('bookmarks.customIconHint')}</p>
         </div>
       )}
 
       {/* 提示信息 */}
       <p className="text-[10px] text-fg/40">
         {selectedSource === 'auto' && (detectedSource 
-          ? `自动竞速获取，当前使用 ${ICON_SOURCES[detectedSource].label}` 
-          : '自动竞速获取（DuckDuckGo → Google → Icon Horse）')}
-        {selectedSource === 'google' && '固定使用 Google Favicon 服务'}
-        {selectedSource === 'duckduckgo' && '固定使用 DuckDuckGo 图标服务'}
-        {selectedSource === 'iconhorse' && '固定使用 Icon Horse 高清图标'}
-        {selectedSource === 'custom' && '使用自定义图标 URL'}
+          ? t('bookmarks.autoDetectedUsing', { source: ICON_SOURCES[detectedSource].label })
+          : t('bookmarks.autoDetecting'))}
+        {selectedSource === 'google' && t('bookmarks.usingGoogle')}
+        {selectedSource === 'duckduckgo' && t('bookmarks.usingDuckDuckGo')}
+        {selectedSource === 'iconhorse' && t('bookmarks.usingIconHorse')}
+        {selectedSource === 'custom' && t('bookmarks.usingCustom')}
       </p>
     </div>
   )

@@ -4,8 +4,13 @@ export * from './types'
 // 共享组件
 export { DraggableBookmarkItem } from './DraggableItem'
 export { BookmarkIcon } from './BookmarkIcon'
+export { TextIcon, FONT_FAMILIES, calculateFontSize } from './TextIcon'
+export type { TextIconProps } from './TextIcon'
+export { TextIconPanel } from './TextIconPanel'
+export type { TextIconPanelProps } from './TextIconPanel'
 export { ContextMenu } from './ContextMenu'
 export { DragOverlay } from './DragOverlay'
+export { DeleteButton } from './DeleteButton'
 
 // 快捷栏专用组件
 export { GridContextMenu } from './GridContextMenu'

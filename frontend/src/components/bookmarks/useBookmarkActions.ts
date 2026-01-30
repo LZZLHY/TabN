@@ -12,7 +12,7 @@ type UseBookmarkActionsOptions = {
   getOrder: (userId: string, folderId: string | null) => string[]
   saveOrder: (userId: string, folderId: string | null, order: string[]) => void
   setOrder: (order: string[]) => void
-  load: () => Promise<void>
+  load: (forceRefresh?: boolean) => Promise<void>
   loadTags: () => Promise<void>
   addShortcut: (id: string) => void
   removeShortcut: (id: string) => void
@@ -111,7 +111,7 @@ export function useBookmarkActions({
     }
 
     // Refresh
-    await Promise.all([load(), loadTags()])
+    await Promise.all([load(true), loadTags()])
     
     return resp.data.item
   }, [token, userId, activeFolderId, visibleIds, getOrder, saveOrder, setOrder, load, loadTags, addShortcut])
@@ -135,7 +135,7 @@ export function useBookmarkActions({
 
     if (resp.ok) {
       toast.success('已更新')
-      await Promise.all([load(), loadTags()])
+      await Promise.all([load(true), loadTags()])
       return true
     } else {
       toast.error(resp.message)
@@ -189,7 +189,7 @@ export function useBookmarkActions({
       toast.success('已删除')
       removeShortcut(item.id)
       onDeleted?.(item, nextParentOrder)
-      await load()
+      await load(true)
       return true
     } else {
       toast.error(resp.message)
@@ -231,7 +231,7 @@ export function useBookmarkActions({
         saveOrder(userId, targetFolderId, newTargetOrder)
       }
       
-      await load()
+      await load(true)
       return true
     } else {
       toast.error(resp.message)

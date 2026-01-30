@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { apiFetch } from '../../services/api'
 import { useAuthStore } from '../../stores/auth'
+import { useBookmarkCacheStore } from '../../stores/bookmarkCache'
 import { normalizeUrl } from '../../utils/url'
 
 type Bookmark = {
@@ -20,9 +21,33 @@ export function BookmarksPage() {
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
+  
+  // 使用缓存的书签数据作为初始值（离线时可用）
+  const cachedItems = useBookmarkCacheStore((s) => s.items)
 
-  const [items, setItems] = useState<Bookmark[]>([])
+  // 将缓存数据转换为本页面需要的格式
+  const initialItems = useMemo(() => {
+    return cachedItems
+      .filter(item => item.type !== 'FOLDER')
+      .map(item => ({
+        id: item.id,
+        name: item.name,
+        url: item.url || '',
+        note: item.note,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      }))
+  }, [cachedItems])
+
+  const [items, setItems] = useState<Bookmark[]>(initialItems)
   const [loading, setLoading] = useState(false)
+  
+  // 当缓存数据变化时，更新本地状态（仅当本地没有数据时）
+  useEffect(() => {
+    if (items.length === 0 && initialItems.length > 0) {
+      setItems(initialItems)
+    }
+  }, [initialItems, items.length])
 
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
@@ -87,7 +112,9 @@ export function BookmarksPage() {
     setItems((prev) => prev.filter((x) => x.id !== id))
   }
 
-  if (!user) {
+  // 如果没有 token 且没有缓存数据，显示登录提示
+  // 注意：有 token 但 user 暂时为 null 可能是 hydration 延迟，不应该显示登录提示
+  if (!token && items.length === 0) {
     return (
       <div className="w-full max-w-3xl">
         <div className="glass-modal rounded-2xl p-6 sm:p-8 text-left animate-in fade-in zoom-in-95 duration-200">
@@ -110,7 +137,7 @@ export function BookmarksPage() {
           <div>
             <div className="text-xl font-semibold text-fg">我的书签</div>
             <div className="mt-1 text-sm text-fg/70">
-              {user.nickname} · {loading ? '加载中…' : `${items.length} 条`}
+              {user?.nickname || '我'} · {loading ? '加载中…' : `${items.length} 条`}
             </div>
           </div>
           <Button variant="glass" onClick={load} disabled={loading}>

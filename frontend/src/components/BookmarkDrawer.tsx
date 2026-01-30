@@ -1,8 +1,9 @@
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Folder, X, Settings } from 'lucide-react'
+import { X, Settings } from 'lucide-react'
 import { apiFetch } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { useBookmarkDndStore } from '../stores/bookmarkDnd'
@@ -13,14 +14,14 @@ import { useBookmarkCacheStore } from '../stores/bookmarkCache'
 import { useSettingsDialogStore } from '../stores/settingsDialog'
 import { cn } from '../utils/cn'
 import { normalizeUrl } from '../utils/url'
-import { getIconUrl } from '../utils/iconSource'
-import { Favicon } from './Favicon'
 import { SearchBox } from './SearchBox'
 import { SortModeSelector } from './SortModeSelector'
 import { SortModeIconButton } from './SortModeIconButton'
 import { useTitleFetch } from '../hooks/useTitleFetch'
 import { useClickTracker, getSiteIdFromUrl } from '../hooks/useClickTracker'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { UnifiedIcon } from './ui/UnifiedIcon'
+import { FolderPreviewIcon } from './bookmarks/FolderPreviewIcon'
 
 // 从 bookmarks 模块导入共享组件和工具
 import {
@@ -43,7 +44,9 @@ import {
   useSwipeDown,
   getOrder,
   saveOrder,
+  storageKey,
   updateOrderAfterCreateFolder,
+  updateOrderAfterDeleteFolder,
   getSortedFolderChildren,
   getNextFolderName,
 } from './bookmarks'
@@ -60,6 +63,7 @@ type BookmarkDrawerProps = {
 }
 
 export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnimating = false }: BookmarkDrawerProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
@@ -165,6 +169,8 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
   const closedViaSwipe = useRef(false) // 标记是否通过下划关闭
   const lastDragEndTimeGlobal = useRef(0) // 记录拖拽结束时间，用于防止拖拽结束后立即触发关闭
   const lastVisibleTime = useRef(0) // 记录页面从后台恢复的时间，用于防止恢复时意外触发关闭
+  const closingViaPopState = useRef(false) // 标记是否正在通过 popstate 关闭，避免清理函数重复调用 history.back()
+  const animationSessionRef = useRef(0) // 动画 session，用于取消旧的定时器回调
 
   // 下滑关闭手势
   const swipeDown = useSwipeDown({
@@ -209,10 +215,15 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
   
   // 处理进入/退出动画
   useEffect(() => {
+    // 每次 open 状态变化时，增加 session 计数，使旧的定时器回调失效
+    const currentSession = ++animationSessionRef.current
+    
     if (open) {
       setShouldRender(true)
       closedViaSwipe.current = false
       justClosed.current = false // 打开时重置
+      setSwipeDownProgress(0) // 重置下滑进度，确保不影响新的打开动画
+      setIsSwipeDownAnimating(false) // 重置下滑动画状态
       // 如果是通过上划打开的，立即显示，跳过动画（因为上划预览已经显示了）
       if (wasSwipedOpen.current) {
         setIsVisible(true)
@@ -220,6 +231,8 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
       } else {
         // 点击时钟或其他方式打开，延迟设置 isVisible 确保 DOM 已渲染
         const timer = setTimeout(() => {
+          // 检查 session 是否仍然有效
+          if (animationSessionRef.current !== currentSession) return
           setIsVisible(true)
         }, 50)
         return () => clearTimeout(timer)
@@ -237,17 +250,30 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
       }
       // 等待退出动画完成后再卸载组件
       const timer = setTimeout(() => {
+        // 检查 session 是否仍然有效（如果用户在动画期间重新打开，不要卸载）
+        if (animationSessionRef.current !== currentSession) return
         setShouldRender(false)
         justClosed.current = false
       }, 300)
       return () => clearTimeout(timer)
     }
-  }, [open, setSwipeDownProgress])
+  }, [open, setSwipeDownProgress, setIsSwipeDownAnimating])
 
   // 安卓返回键/手势拦截：打开时 push history state，返回时关闭抽屉而不是退出页面
   // 预览模式下不操作 history，避免影响设置页面
+  const popStateCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (!open || isPreviewMode) return
+    if (!open || isPreviewMode) {
+      // 清理可能残留的定时器
+      if (popStateCloseTimerRef.current) {
+        clearTimeout(popStateCloseTimerRef.current)
+        popStateCloseTimerRef.current = null
+      }
+      return
+    }
+
+    // 重置 popstate 关闭标记
+    closingViaPopState.current = false
 
     // 打开时推入一个 history 状态
     const state = { bookmarkDrawerOpen: true }
@@ -267,10 +293,17 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
         window.history.pushState({ bookmarkDrawerOpen: true }, '')
         return
       }
+      // 标记正在通过 popstate 关闭，避免清理函数重复调用 history.back()
+      closingViaPopState.current = true
       // 用户按了返回键，使用下滑动画关闭（不设置 closedViaSwipe，保留退出动画）
       setIsSwipeDownAnimating(true)
       setSwipeDownProgress(1)
-      setTimeout(() => {
+      // 清理之前的定时器
+      if (popStateCloseTimerRef.current) {
+        clearTimeout(popStateCloseTimerRef.current)
+      }
+      popStateCloseTimerRef.current = setTimeout(() => {
+        popStateCloseTimerRef.current = null
         setIsSwipeDownAnimating(false)
         onClose()
       }, 300)
@@ -279,8 +312,14 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
     window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)
+      // 清理定时器
+      if (popStateCloseTimerRef.current) {
+        clearTimeout(popStateCloseTimerRef.current)
+        popStateCloseTimerRef.current = null
+      }
       // 清理：如果抽屉仍然打开状态被卸载，需要回退 history
-      if (window.history.state?.bookmarkDrawerOpen) {
+      // 但如果是通过 popstate 关闭的，不需要再次回退（已经被浏览器回退了）
+      if (!closingViaPopState.current && window.history.state?.bookmarkDrawerOpen) {
         window.history.back()
       }
     }
@@ -334,6 +373,15 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
   // UI States
   const [menu, setMenu] = useState<MenuState>({ open: false })
   const [menuClosing, setMenuClosing] = useState(false) // 控制关闭动画
+  
+  // 批量删除模式状态
+  const [batchDeleteMode, setBatchDeleteMode] = useState(false)
+  
+  // 退出批量删除模式的处理函数
+  const exitBatchDeleteMode = useCallback(() => {
+    setBatchDeleteMode(false)
+  }, [])
+  
   const menuOpenTime = useRef(0) // 记录菜单打开时间，用于防止触摸模拟的 click 立即关闭菜单
 
   // 关闭菜单时先播放动画再移除
@@ -406,6 +454,9 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
           // FolderModal 会自己处理 ESC 关闭（带动画）
           // 这里不需要处理，让事件继续传播到 FolderModal
           return
+        } else if (batchDeleteMode) {
+          // 退出批量删除模式
+          exitBatchDeleteMode()
         } else {
           // 没有内部弹窗时才关闭抽屉
           onClose()
@@ -414,7 +465,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose, editOpen, deleteOpen, createOpen, loginPromptOpen, folderModalOpen])
+  }, [open, onClose, editOpen, deleteOpen, createOpen, loginPromptOpen, folderModalOpen, batchDeleteMode, exitBatchDeleteMode])
 
   const [customIconOk, setCustomIconOk] = useState<Record<string, boolean>>({})
   
@@ -546,8 +597,11 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
   // Load all tags for autocomplete
   const loadTags = useCallback(async () => {
     if (!token) return
-    // 如果缓存有 tags，跳过加载
-    if (cachedTags.length > 0) return
+    // 如果缓存有 tags，直接使用缓存数据
+    if (cachedTags.length > 0) {
+      setAllTags(cachedTags)
+      return
+    }
     
     try {
       const resp = await apiFetch<{ tags: string[] }>('/api/bookmarks/tags', {
@@ -561,7 +615,94 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
     } catch {
       // Ignore errors - tags are optional for autocomplete
     }
-  }, [token, cachedTags.length, setCacheTags])
+  }, [token, cachedTags, setCacheTags])
+
+  // 用于在回调中访问 drag 的 ref（因为 drag 在 handleBatchDeleteItem 之后定义）
+  // 注意：这个 ref 会在 drag 定义后通过 useEffect 更新
+  const batchDeleteDragRef = useRef<{ savePositions: () => void; triggerFillAnimation: () => void } | null>(null)
+
+  // 批量删除模式下删除单个书签的处理函数
+  const handleBatchDeleteItem = useCallback(async (item: Bookmark) => {
+    if (!token || !user) return
+    
+    // 0. 保存当前位置快照（用于补位动画）
+    batchDeleteDragRef.current?.savePositions()
+    // 1. 获取书签元素并添加淡出动画类
+    const el = itemElsRef.current.get(item.id)
+    if (el) {
+      el.classList.add('bookmark-fade-out')
+    }
+    
+    // 2. 等待动画完成（200ms，与 CSS 动画时长一致）
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
+    // 3. 如果是文件夹，使用释放模式（将子项移动到父级）
+    const isFolder = item.type === 'FOLDER'
+    const parentId = item.parentId ?? null
+    
+    // 4. 如果是文件夹，先计算释放后的排序
+    let nextParentOrder: string[] | null = null
+    if (isFolder) {
+      const childIds = allItems.filter((x) => x.parentId === item.id).map((x) => x.id)
+      if (childIds.length > 0) {
+        nextParentOrder = updateOrderAfterDeleteFolder({
+          userId: user.id,
+          context: 'drawer',
+          parentId,
+          folderId: item.id,
+          childIds,
+          currentVisibleIds: visibleIds,
+        })
+      }
+    }
+    
+    // 5. 调用删除 API（不带 cascade 参数，后端会自动释放子项到父级）
+    const url = `/api/bookmarks/${item.id}`
+    const resp = await apiFetch(url, { method: 'DELETE', token })
+    
+    if (resp.ok) {
+      // 从快捷方式中移除
+      removeShortcut(item.id)
+      
+      // 更新排序
+      if (nextParentOrder) {
+        // 文件夹释放模式：使用计算好的新顺序（子项插入到文件夹位置）
+        if (parentId === null) {
+          order.setOrder(nextParentOrder)
+        }
+        // 清理文件夹内部的排序数据
+        try {
+          localStorage.removeItem(storageKey(user.id, item.id, 'drawer'))
+        } catch {
+          // ignore
+        }
+      } else {
+        // 普通书签或空文件夹：从当前列表中移除被删除的书签
+        const currentOrder = getOrder(user.id, parentId, 'drawer')
+        const newOrder = currentOrder.filter(id => id !== item.id)
+        saveOrder(user.id, parentId, newOrder, 'drawer')
+        
+        // 如果是在根目录，更新 visibleIds
+        if (parentId === null) {
+          order.setOrder(newOrder)
+        }
+      }
+      
+      // 刷新数据
+      await load(true)
+      
+      // 触发补位动画
+      batchDeleteDragRef.current?.triggerFillAnimation()
+      
+      // 注意：不改变 batchDeleteMode 状态，保持为 true
+    } else {
+      // 删除失败，移除动画类恢复显示
+      if (el) {
+        el.classList.remove('bookmark-fade-out')
+      }
+      toast.error(resp.message)
+    }
+  }, [token, user, allItems, visibleIds, removeShortcut, load, order])
 
   // 预加载：当上划进度超过30%时开始加载数据
   const shouldPreload = swipeUpProgress > 0.3
@@ -594,7 +735,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
   const refreshCount = useBookmarkRefreshStore((s) => s.refreshCount)
   useEffect(() => {
     if (refreshCount > 0 && token) {
-      void load()
+      void load(true)
     }
   }, [refreshCount, token, load])
 
@@ -634,7 +775,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
       const folderOrder = getOrder(user.id, targetFolderId, 'drawer')
       const newOrder = [...folderOrder.filter(id => id !== item.id), item.id]
       saveOrder(user.id, targetFolderId, newOrder, 'drawer')
-      toast.success('已移入收藏夹')
+      toast.success(t('toast.movedToFolder'))
       await load(true) // 强制刷新，绕过缓存
       // 触发补位动画（拖拽放入文件夹时需要）
       if (triggerAnimation) {
@@ -648,7 +789,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
     
     // 获取所有文件夹名称，计算下一个可用的名称
     const folderNames = allItems.filter(x => x.type === 'FOLDER').map(x => x.name)
-    const folderName = getNextFolderName('收藏夹', folderNames)
+    const folderName = getNextFolderName(t('bookmarks.favorites'), folderNames)
     
     // 1. 创建文件夹
     const folderResp = await apiFetch<{ item: Bookmark }>('/api/bookmarks', {
@@ -688,7 +829,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
       currentVisibleIds: originalOrder,
     })
     
-    toast.success('已创建收藏夹')
+    toast.success(t('toast.folderCreated'))
     
     // 4. load() 会触发 useBookmarkOrder 从 localStorage 读取正确的顺序
     // 注意：savePositions() 已在 onDragEnd 中动画开始前调用
@@ -732,7 +873,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
     order.setOrder(newOrder)
     
     // Refresh tags for autocomplete
-    await Promise.all([load(), loadTags()])
+    await Promise.all([load(true), loadTags()])
   }
   
   const resetCreateForm = () => {
@@ -799,12 +940,16 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
     },
     // 锁定时禁用拖拽
     disabled: sortLocked,
+    // 滚动容器 ref，用于拖拽时自动滚动
+    scrollContainerRef,
   })
   
   // 保存 drag 对象的 ref，用于 FolderModal 的 onDragOutside 回调
   const dragRef = useRef<typeof drag | null>(null)
   useEffect(() => {
     dragRef.current = drag
+    // 同时更新 batchDeleteDragRef，用于批量删除时的补位动画
+    batchDeleteDragRef.current = drag
   })
   
   // 需要在渲染时隐藏的元素 ID（用于拖拽交接时避免瞬移）- 暂时保留，未来可能需要
@@ -847,6 +992,8 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
           menuOpenTime.current = Date.now()
         }}
         onTagClick={setSelectedTag}
+        batchDeleteMode={batchDeleteMode}
+        onBatchDeleteItem={handleBatchDeleteItem}
       />
     )
     // 用包装 div 隐藏元素，避免瞬移
@@ -1024,7 +1171,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
             <div className="space-y-3">
               {/* 第一行：标题 + 右侧控件 */}
               <div className="flex items-center justify-between">
-                <h1 className="text-xl font-semibold text-fg/90">书签</h1>
+                <h1 className="text-xl font-semibold text-fg/90">{t('nav.bookmarks')}</h1>
                 <div className="flex items-center gap-1">
                   <SortModeIconButton
                     value={sortMode}
@@ -1040,14 +1187,14 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
                       }, 350)
                     }}
                     className="p-2 rounded-lg bg-glass/20 hover:bg-glass/40 transition-colors"
-                    title="设置"
+                    title={t('nav.settings')}
                   >
                     <Settings className="w-5 h-5 text-fg/70" />
                   </button>
                   <button
                     onClick={onClose}
                     className="p-2 rounded-lg bg-glass/20 hover:bg-glass/40 transition-colors"
-                    title="关闭"
+                    title={t('common.close')}
                   >
                     <X className="w-5 h-5 text-fg/70" />
                   </button>
@@ -1093,6 +1240,21 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
             lazyLoad.setScrollContainer(el)
             scrollContainerRef.current = el
           }}
+          data-bookmark-scroll-container
+          onClick={(e) => {
+            // 批量删除模式下，点击空白区域退出
+            if (!batchDeleteMode) return
+            
+            // 检查点击目标是否为书签项或其子元素
+            const target = e.target as HTMLElement
+            const isBookmarkItem = target.closest('[data-bookmark-item]')
+            const isAddButton = target.closest('[data-add-button]')
+            
+            // 如果点击的不是书签项或添加按钮，则退出批量删除模式
+            if (!isBookmarkItem && !isAddButton) {
+              exitBatchDeleteMode()
+            }
+          }}
         >
           <div className="p-4 min-h-full max-w-4xl mx-auto">
             <div 
@@ -1114,6 +1276,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
                       key={id}
                       ref={(el) => lazyLoad.registerRef(id, el)}
                       data-lazy-id={id}
+                      data-bookmark-item
                       className="w-16"
                     >
                       <div className="grid place-items-center">
@@ -1134,6 +1297,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
                     key={id}
                     ref={lazyLoad.enabled ? (el) => lazyLoad.registerRef(id, el) : undefined}
                     data-lazy-id={id}
+                    data-bookmark-item
                   >
                     {renderItem(it)}
                   </div>
@@ -1144,6 +1308,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
               <button
                 type="button"
                 className={cn('select-none cursor-pointer outline-none focus:outline-none focus:ring-0 w-16')}
+                data-add-button
                 onClick={() => {
                   if (!user) {
                     setLoginPromptOpen(true)
@@ -1186,6 +1351,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
             const folderItems = isFolder
               ? getSortedFolderChildren(allItems.filter((x) => x.parentId === it.id), user?.id, it.id, 'drawer').slice(0, 9)
               : []
+            
             return (
               <div className="bm-inner">
                 <div className="grid place-items-center select-none">
@@ -1193,187 +1359,29 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
                     ref={drag.overlayBoxRef}
                     className={cn(
                       'bookmark-icon rounded-[var(--start-radius)] overflow-hidden grid place-items-center shadow-2xl select-none',
-                      isFolder
-                        ? 'bg-glass/20 border border-glass-border/20 p-1'
-                        : 'bg-primary/15 text-primary font-semibold',
+                      isFolder && 'bg-glass/20 border border-glass-border/20 p-1',
                     )}
-                    style={{ width: bookmarkIconSize, height: bookmarkIconSize }}
+                    style={{ 
+                      width: bookmarkIconSize, 
+                      height: bookmarkIconSize,
+                    }}
                   >
                   {isFolder ? (
-                    <div className="grid grid-cols-3 gap-0.5 w-full h-full content-start">
-                      {folderItems.map((sub) => {
-                        const isSubFolder = sub.type === 'FOLDER'
-                        
-                        // 如果是子文件夹，显示其内容预览
-                        if (isSubFolder) {
-                          const subFolderItems = allItems.filter(x => x.parentId === sub.id).slice(0, 4)
-                          if (subFolderItems.length === 0) {
-                            // 空文件夹显示文件夹图标
-                            return (
-                              <div
-                                key={sub.id}
-                                className="w-full pt-[100%] relative bg-amber-100/50 rounded-[2px] overflow-hidden"
-                              >
-                                <Folder className="absolute inset-0 w-full h-full p-0.5 text-amber-500" />
-                              </div>
-                            )
-                          }
-                          // 显示子文件夹内的前 4 个项目的缩略图（2x2 布局）
-                          return (
-                            <div
-                              key={sub.id}
-                              className="w-full pt-[100%] relative bg-amber-100/30 rounded-[2px] overflow-hidden"
-                            >
-                              <div className="absolute inset-0 grid grid-cols-2 gap-px p-px">
-                                {[0, 1, 2, 3].map((idx) => {
-                                  const child = subFolderItems[idx]
-                                  if (!child) {
-                                    return <div key={`empty-${idx}`} className="bg-black/5 rounded-[1px] aspect-square" />
-                                  }
-                                  const isChildFolder = child.type === 'FOLDER'
-                                  if (isChildFolder) {
-                                    // 获取嵌套文件夹内的子项
-                                    const nestedItems = allItems.filter(x => x.parentId === child.id).slice(0, 4)
-                                    if (nestedItems.length === 0) {
-                                      return (
-                                        <div key={child.id} className="w-full h-full bg-amber-100/50 rounded-[1px] flex items-center justify-center aspect-square">
-                                          <Folder className="w-full h-full p-[1px] text-amber-500" />
-                                        </div>
-                                      )
-                                    }
-                                    // 显示嵌套文件夹内的前 4 个图标（2x2 网格）
-                                    return (
-                                      <div key={child.id} className="w-full h-full bg-amber-100/30 rounded-[1px] grid grid-cols-2 gap-[0.5px] p-[0.5px] aspect-square">
-                                        {[0, 1, 2, 3].map((nestedIdx) => {
-                                          const nestedChild = nestedItems[nestedIdx]
-                                          if (!nestedChild) {
-                                            return <div key={`nested-empty-${nestedIdx}`} className="bg-black/5 rounded-[0.5px] aspect-square" />
-                                          }
-                                          if (nestedChild.type === 'FOLDER') {
-                                            return (
-                                              <div key={nestedChild.id} className="bg-amber-100/50 rounded-[0.5px] flex items-center justify-center aspect-square">
-                                                <Folder className="w-full h-full p-px text-amber-500" />
-                                              </div>
-                                            )
-                                          }
-                                          let nestedIcon = ''
-                                          if (nestedChild.iconType === 'BASE64' && nestedChild.iconData) {
-                                            nestedIcon = nestedChild.iconData
-                                          } else if (nestedChild.iconUrl) {
-                                            nestedIcon = getIconUrl(nestedChild.url, nestedChild.iconUrl)
-                                          }
-                                          if (nestedIcon) {
-                                            return (
-                                              <img
-                                                key={nestedChild.id}
-                                                src={nestedIcon}
-                                                className="w-full h-full object-cover rounded-[0.5px] aspect-square"
-                                                alt=""
-                                                loading="lazy"
-                                                decoding="async"
-                                              />
-                                            )
-                                          }
-                                          return (
-                                            <Favicon
-                                              key={nestedChild.id}
-                                              url={nestedChild.url || ''}
-                                              size={6}
-                                              className="w-full h-full object-cover rounded-[0.5px] aspect-square"
-                                            />
-                                          )
-                                        })}
-                                      </div>
-                                    )
-                                  }
-                                  let childIcon = ''
-                                  if (child.iconType === 'BASE64' && child.iconData) {
-                                    childIcon = child.iconData
-                                  } else if (child.iconUrl) {
-                                    childIcon = getIconUrl(child.url, child.iconUrl)
-                                  }
-                                  if (childIcon) {
-                                    return (
-                                      <img
-                                        key={child.id}
-                                        src={childIcon}
-                                        className="w-full h-full object-cover rounded-[1px]"
-                                        alt=""
-                                        loading="lazy"
-                                        decoding="async"
-                                      />
-                                    )
-                                  }
-                                  return (
-                                    <Favicon
-                                      key={child.id}
-                                      url={child.url || ''}
-                                      size={8}
-                                      className="w-full h-full object-cover rounded-[1px]"
-                                    />
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          )
-                        }
-                        
-                        // 普通书签图标
-                        let subIcon = ''
-                        if (sub.iconType === 'BASE64' && sub.iconData) {
-                          subIcon = sub.iconData
-                        } else if (sub.iconUrl) {
-                          subIcon = getIconUrl(sub.url, sub.iconUrl)
-                        }
-                        return (
-                          <div
-                            key={sub.id}
-                            className="w-full pt-[100%] relative bg-black/10 rounded-[2px] overflow-hidden"
-                          >
-                            {subIcon ? (
-                              <img
-                                src={subIcon}
-                                alt=""
-                                className="absolute inset-0 w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                            ) : sub.url ? (
-                              <Favicon
-                                url={sub.url}
-                                name={sub.name}
-                                size={16}
-                                className="absolute inset-0 w-full h-full object-cover"
-                              />
-                            ) : null}
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <FolderPreviewIcon
+                      folderChildren={folderItems}
+                      allItems={allItems}
+                      size={bookmarkIconSize}
+                    />
                   ) : (
-                    (() => {
-                      // 检查自定义图标
-                      let customIcon = ''
-                      if (it.iconType === 'BASE64' && it.iconData) {
-                        customIcon = it.iconData
-                      } else if (it.iconUrl) {
-                        customIcon = getIconUrl(it.url, it.iconUrl)
-                      }
-                      return customIcon ? (
-                        <img
-                          src={customIcon}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <Favicon
-                          url={it.url || ''}
-                          name={it.name}
-                          className="h-full w-full object-cover"
-                          letterClassName="h-full w-full"
-                        />
-                      )
-                    })()
+                    <UnifiedIcon
+                      iconType={it.iconType}
+                      iconData={it.iconData}
+                      iconUrl={it.iconUrl}
+                      iconBg={it.iconBg}
+                      url={it.url}
+                      name={it.name}
+                      size={bookmarkIconSize}
+                    />
                   )}
                   </div>
                   <div className="mt-1.5 text-[11px] text-fg/80 truncate w-16 text-center">
@@ -1420,6 +1428,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
         onAddShortcut={addShortcut}
         onRemoveShortcut={removeShortcut}
         onMoveToFolder={moveToFolder}
+        onBatchDelete={() => setBatchDeleteMode(true)}
         onRemoveFromFolder={async (item) => {
           if (!token || !user || !activeFolderId) return
           // 获取当前文件夹的父级 ID
@@ -1433,7 +1442,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
             body: JSON.stringify({ parentId: targetParentId })
           })
           if (!resp.ok) {
-            toast.error('移动失败')
+            toast.error(t('toast.moveFailed'))
             return
           }
           
@@ -1471,15 +1480,15 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
               saveOrder(user.id, targetParentId, updatedParentOrder, 'drawer')
               // 关闭文件夹模态框
               setActiveFolderId(null)
-              toast.success('文件夹已清空并删除')
+              toast.success(t('toast.deleteSuccess'))
             } else {
-              toast.success(targetParentId ? '已移至上级文件夹' : '已移至书签页')
+              toast.success(t(targetParentId ? 'toast.movedToParent' : 'toast.movedToBookmarks'))
             }
           } else {
-            toast.success(targetParentId ? '已移至上级文件夹' : '已移至书签页')
+            toast.success(t(targetParentId ? 'toast.movedToParent' : 'toast.movedToBookmarks'))
           }
           
-          await load()
+          await load(true)
         }}
       />
 
@@ -1511,7 +1520,10 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
         setActiveFolderId={setActiveFolderId}
         setOrder={order.setOrder}
         removeShortcut={removeShortcut}
-        load={load}
+        load={(forceRefresh = false) => load(forceRefresh || true)}
+        getEl={getEl}
+        savePositions={drag.savePositions}
+        triggerFillAnimation={drag.triggerFillAnimation}
       />
 
       {/* 创建对话框 */}
@@ -1525,7 +1537,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
           // 切换到文件夹类型时，如果名称为空或是自动生成的，预填充下一个可用的文件夹名称
           if (type === 'FOLDER' && (createName === '' || createNameSource !== 'user')) {
             const folderNames = allItems.filter(x => x.type === 'FOLDER').map(x => x.name)
-            const suggestedName = getNextFolderName('新建文件夹', folderNames)
+            const suggestedName = getNextFolderName(t('bookmarks.newFolder'), folderNames)
             setCreateName(suggestedName)
             setCreateNameSource('auto')
           }
@@ -1592,7 +1604,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
             return next;
           });
         }}
-        load={load}
+        load={(forceRefresh = false) => load(forceRefresh || true)}
         loadTags={loadTags}
       />
 
@@ -1646,6 +1658,8 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
         hasParent={folderStack.length > 1}
         autoClose={false}
         forceExpanded={skipOpenAnimation}
+        batchDeleteMode={batchDeleteMode}
+        onBatchDeleteItem={handleBatchDeleteItem}
         onClose={() => {
           // 逐级关闭文件夹
           closeCurrentFolder()
@@ -1672,7 +1686,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
           try {
             // 获取所有文件夹名称，计算下一个可用的名称
             const folderNames = allItems.filter(x => x.type === 'FOLDER').map(x => x.name)
-            const folderName = getNextFolderName('收藏夹', folderNames)
+            const folderName = getNextFolderName(t('bookmarks.favorites'), folderNames)
             
             // 1. 创建文件夹
             const resp = await apiFetch<{ item: Bookmark }>('/api/bookmarks', {
@@ -1685,7 +1699,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
               }),
             })
             if (!resp.ok) {
-              toast.error(resp.message || '创建文件夹失败')
+              toast.error(resp.message || t('toast.createFolderFailed'))
               return
             }
             const newFolder = resp.data.item
@@ -1715,12 +1729,12 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
               currentVisibleIds: originalOrder,
             })
             
-            toast.success('已创建收藏夹')
+            toast.success(t('toast.folderCreated'))
             
             // 4. 重新加载数据（强制刷新，绕过缓存）
             await load(true)
           } catch {
-            toast.error('创建文件夹失败')
+            toast.error(t('toast.createFolderFailed'))
           }
         }}
         onMoveToFolder={async (item, targetFolderId) => {
@@ -1737,12 +1751,12 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
               const folderOrder = getOrder(user.id, targetFolderId, 'drawer')
               const newOrder = [...folderOrder.filter(id => id !== item.id), item.id]
               saveOrder(user.id, targetFolderId, newOrder, 'drawer')
-              toast.success('已移入收藏夹')
+              toast.success(t('toast.movedToFolder'))
               // 等待 load() 完成，以便触发补位动画（强制刷新，绕过缓存）
               await load(true)
             }
           } catch {
-            toast.error('移动失败')
+            toast.error(t('toast.moveFailed'))
           }
         }}
         onContextMenu={(item, x, y) => {
@@ -1759,7 +1773,7 @@ export function BookmarkDrawer({ open, onClose, swipeUpProgress = 0, isSwipeAnim
             body: JSON.stringify({ parentId: null }),
           })
           if (!resp.ok) {
-            toast.error('移动失败')
+            toast.error(t('toast.moveFailed'))
             return
           }
           

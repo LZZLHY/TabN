@@ -5,6 +5,7 @@
  */
 
 import { WifiOff, RefreshCw, ServerOff, AlertCircle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export type ErrorType = 'network' | 'server' | 'empty' | 'unknown'
 
@@ -26,18 +27,24 @@ const ErrorIcons: Record<ErrorType, typeof WifiOff> = {
   unknown: AlertCircle,
 }
 
-const DefaultTitles: Record<ErrorType, string> = {
-  network: '网络连接失败',
-  server: '服务器暂时不可用',
-  empty: '暂无数据',
-  unknown: '加载失败',
+function useDefaultTitles(): Record<ErrorType, string> {
+  const { t } = useTranslation()
+  return {
+    network: t('error.networkError'),
+    server: t('error.serverError'),
+    empty: t('error.noData'),
+    unknown: t('error.loadFailed'),
+  }
 }
 
-const DefaultMessages: Record<ErrorType, string> = {
-  network: '请检查您的网络连接，或稍后重试',
-  server: '服务器正在维护中，请稍后重试',
-  empty: '当前没有可显示的内容',
-  unknown: '发生了一些错误，请稍后重试',
+function useDefaultMessages(): Record<ErrorType, string> {
+  const { t } = useTranslation()
+  return {
+    network: t('error.networkErrorHint'),
+    server: t('error.serverErrorHint'),
+    empty: t('error.noDataHint'),
+    unknown: t('error.loadFailedHint'),
+  }
 }
 
 export function NetworkError({
@@ -50,9 +57,12 @@ export function NetworkError({
   cachedDataMessage,
   className = '',
 }: NetworkErrorProps) {
+  const { t } = useTranslation()
+  const defaultTitles = useDefaultTitles()
+  const defaultMessages = useDefaultMessages()
   const Icon = ErrorIcons[type]
-  const displayTitle = title || DefaultTitles[type]
-  const displayMessage = message || DefaultMessages[type]
+  const displayTitle = title || defaultTitles[type]
+  const displayMessage = message || defaultMessages[type]
 
   return (
     <div className={`flex flex-col items-center justify-center p-8 text-center ${className}`}>
@@ -81,7 +91,7 @@ export function NetworkError({
           className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 ${retrying ? 'animate-spin' : ''}`} />
-          {retrying ? '重试中...' : '重试'}
+          {retrying ? t('common.retrying') : t('common.retry')}
         </button>
       )}
     </div>
@@ -94,18 +104,19 @@ interface OfflineBannerProps {
 }
 
 export function OfflineBanner({ onRetry, retrying }: OfflineBannerProps) {
+  const { t } = useTranslation()
   return (
     <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 transform">
       <div className="flex items-center gap-3 rounded-full bg-gray-900 px-4 py-2 text-sm text-white shadow-lg dark:bg-gray-700">
         <WifiOff className="h-4 w-4 text-yellow-400" />
-        <span>网络连接已断开</span>
+        <span>{t('error.networkDisconnected')}</span>
         {onRetry && (
           <button
             onClick={onRetry}
             disabled={retrying}
             className="ml-2 rounded-full bg-white/20 px-3 py-1 text-xs font-medium transition-colors hover:bg-white/30 disabled:opacity-50"
           >
-            {retrying ? '重试中...' : '重试'}
+            {retrying ? t('common.retrying') : t('common.retry')}
           </button>
         )}
       </div>

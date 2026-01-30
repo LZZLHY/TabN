@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Check } from 'lucide-react'
 import { cn } from '../../utils/cn'
 
@@ -32,8 +33,10 @@ export function Select<T extends string>({
   const [open, setOpen] = useState(false)
   const [hoveredOption, setHoveredOption] = useState<T | null>(null)
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number } | null>(null)
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
   const optionRefs = useRef<Map<T, HTMLButtonElement>>(new Map())
   const currentOption = options.find(opt => opt.value === value) ?? options[0]
 
@@ -53,12 +56,40 @@ export function Select<T extends string>({
   useEffect(() => {
     if (!open) return
     const handleClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      const isInContainer = containerRef.current?.contains(target)
+      const isInDropdown = dropdownRef.current?.contains(target)
+      if (!isInContainer && !isInDropdown) {
         setOpen(false)
       }
     }
     window.addEventListener('click', handleClick)
     return () => window.removeEventListener('click', handleClick)
+  }, [open])
+
+  // 更新下拉菜单位置
+  useEffect(() => {
+    if (!open || !buttonRef.current) return
+    
+    const updatePosition = () => {
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (rect) {
+        setDropdownPosition({
+          top: rect.bottom + 8,
+          left: rect.left,
+          width: rect.width,
+        })
+      }
+    }
+    
+    updatePosition()
+    window.addEventListener('scroll', updatePosition, true)
+    window.addEventListener('resize', updatePosition)
+    
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true)
+      window.removeEventListener('resize', updatePosition)
+    }
   }, [open])
 
   // 更新 tooltip 位置
@@ -69,12 +100,12 @@ export function Select<T extends string>({
       return
     }
     const optionEl = optionRefs.current.get(hoveredOption)
-    const containerEl = containerRef.current
-    if (optionEl && containerEl) {
+    const dropdownEl = dropdownRef.current
+    if (optionEl && dropdownEl) {
       const optionRect = optionEl.getBoundingClientRect()
-      const containerRect = containerEl.getBoundingClientRect()
+      const dropdownRect = dropdownEl.getBoundingClientRect()
       setTooltipPosition({
-        top: optionRect.top - containerRect.top + optionRect.height / 2,
+        top: optionRect.top - dropdownRect.top + optionRect.height / 2,
       })
     }
   }, [hoveredOption, open])
@@ -121,21 +152,30 @@ export function Select<T extends string>({
         />
       </button>
 
-      {/* 下拉菜单 */}
-      <div 
-        className={cn(
-          'absolute top-full left-0 mt-2 z-[100] py-2 rounded-2xl',
-          'bg-bg backdrop-blur-xl',
-          'border border-primary/20',
-          'shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)]',
-          'dark:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_2px_8px_rgba(0,0,0,0.3)]',
-          'transition-all duration-300 ease-out origin-top',
-          open 
-            ? 'opacity-100 scale-100 translate-y-0' 
-            : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
-        )}
-        style={{ width: calculatedWidth }}
-      >
+      {/* 下拉菜单 - 使用 Portal 渲染到 body */}
+      {/* 在位置计算完成前不渲染，避免从左上角飞出 */}
+      {dropdownPosition && createPortal(
+        <div 
+          ref={dropdownRef}
+          className={cn(
+            'fixed py-2 rounded-2xl',
+            'bg-bg backdrop-blur-xl',
+            'border border-primary/20',
+            'shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)]',
+            'dark:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_2px_8px_rgba(0,0,0,0.3)]',
+            // 只对 opacity 和 transform 应用过渡，避免位置属性动画导致从左上角飞出
+            'transition-[opacity,transform] duration-300 ease-out origin-top',
+            open 
+              ? 'opacity-100 scale-100' 
+              : 'opacity-0 scale-95 pointer-events-none'
+          )}
+          style={{
+            zIndex: 99999,
+            width: dropdownPosition.width || parseInt(calculatedWidth),
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+          }}
+        >
         {/* 顶部装饰线 */}
         <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         
@@ -217,38 +257,41 @@ export function Select<T extends string>({
         })}
         
         {/* 底部装饰线 */}
-        <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-glass-border/30 to-transparent" />
-      </div>
+          <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-glass-border/30 to-transparent" />
 
-      {/* Tooltip */}
-      {hoveredTooltip && open && tooltipPosition && (
-        <div
-          className={cn(
-            'absolute z-[110] px-3 py-2 rounded-xl text-xs',
-            'bg-bg text-fg border border-glass-border/30',
-            'shadow-[0_4px_16px_rgba(0,0,0,0.1)]',
-            'dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)]',
-            'transition-all duration-200 ease-out',
-            'animate-in fade-in-0 zoom-in-95 slide-in-from-left-2',
-            'max-w-[220px] leading-relaxed'
+          {/* Tooltip */}
+          {hoveredTooltip && tooltipPosition && (
+            <div
+              className={cn(
+                'absolute px-3 py-2 rounded-xl text-xs',
+                'bg-bg text-fg border border-glass-border/30',
+                'shadow-[0_4px_16px_rgba(0,0,0,0.1)]',
+                'dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)]',
+                'transition-all duration-200 ease-out',
+                'animate-in fade-in-0 zoom-in-95 slide-in-from-left-2',
+                'max-w-[220px] leading-relaxed'
+              )}
+              style={{
+                left: `calc(100% + 12px)`,
+                top: tooltipPosition.top,
+                transform: 'translateY(-50%)',
+                zIndex: 100000,
+              }}
+            >
+              {/* 小三角 */}
+              <div 
+                className="absolute w-2.5 h-2.5 bg-bg border-l border-b border-glass-border/30 rotate-45 rounded-sm"
+                style={{
+                  left: '-6px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
+              />
+              <span className="relative z-10 font-medium">{hoveredTooltip}</span>
+            </div>
           )}
-          style={{
-            left: `calc(100% + 12px)`,
-            top: tooltipPosition.top,
-            transform: 'translateY(-50%)',
-          }}
-        >
-          {/* 小三角 */}
-          <div 
-            className="absolute w-2.5 h-2.5 bg-bg border-l border-b border-glass-border/30 rotate-45 rounded-sm"
-            style={{
-              left: '-6px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
-          />
-          <span className="relative z-10 font-medium">{hoveredTooltip}</span>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

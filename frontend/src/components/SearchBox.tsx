@@ -1,20 +1,22 @@
-import { ArrowRight, Search } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useAppearanceStore } from '../stores/appearance'
 import { useAuthStore } from '../stores/auth'
 import { useSearchFocusStore } from '../stores/searchFocus'
-import { apiFetch } from '../services/api'
 import { cn } from '../utils/cn'
-import { buildSearchUrl } from '../utils/searchEngine'
+import { buildSearchUrlFromConfig, getSearchEngineById } from '../utils/searchEngine'
 import { useSearchHistory } from '../hooks/useSearchHistory'
 import { useSearchSuggestions } from '../hooks/useSearchSuggestions'
-import { useShortcutMatcher, type Bookmark } from '../hooks/useShortcutMatcher'
+import { useShortcutMatcher } from '../hooks/useShortcutMatcher'
 import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation'
 import { useRecentBookmarks } from '../hooks/useRecentBookmarks'
 import { useClickTracker } from '../hooks/useClickTracker'
+import { useBookmarkCacheStore } from '../stores/bookmarkCache'
 import { SearchDropdown, type DropdownItem } from './SearchDropdown'
 import { getAllDropdownItems } from './searchDropdownUtils'
+import { SearchEngineSwitcher } from './search'
 
 type Props = {
   className?: string
@@ -25,10 +27,10 @@ type Props = {
 }
 
 export function SearchBox({ className, disableGlobalFocus = false, fullWidth = false }: Props) {
+  const { t } = useTranslation()
   const [q, setQ] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)  // 搜索框是否完全展开
-  const [bookmarks, setBookmarks] = useState<Bookmark[]>([])
   
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -58,7 +60,8 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
 
   // 从 store 获取设置
   const searchEngine = useAppearanceStore((s) => s.searchEngine)
-  const customSearchUrl = useAppearanceStore((s) => s.customSearchUrl)
+  const selectedEngineId = useAppearanceStore((s) => s.selectedEngineId)
+  const customEngines = useAppearanceStore((s) => s.customEngines)
   const searchHistoryCount = useAppearanceStore((s) => s.searchHistoryCount)
   const searchRowHeight = useAppearanceStore((s) => s.searchRowHeight)
   const recentBookmarksCount = useAppearanceStore((s) => s.recentBookmarksCount)
@@ -69,8 +72,15 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
   const searchGlowLightMove = useAppearanceStore((s) => s.searchGlowLightMove)
   
   // 用户信息
-  const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
+  
+  // 使用书签缓存存储（与书签页保持一致）
+  const cachedItems = useBookmarkCacheStore((s) => s.items)
+  
+  // 从缓存中获取 LINK 类型的书签
+  const bookmarks = useMemo(() => {
+    return cachedItems.filter(b => b.type === 'LINK')
+  }, [cachedItems])
 
   // 搜索历史
   const { history, addToHistory, removeFromHistory } = useSearchHistory(user?.id)
@@ -93,6 +103,12 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
   // 快捷方式匹配
   const { matches: shortcuts } = useShortcutMatcher(trimmedQuery, bookmarks)
 
+  // 获取当前选中的搜索引擎配置
+  const currentEngineConfig = useMemo(() => 
+    getSearchEngineById(selectedEngineId, customEngines),
+    [selectedEngineId, customEngines]
+  )
+
   // 执行搜索
   const executeSearch = useCallback((query: string) => {
     const trimmed = query.trim()
@@ -104,8 +120,8 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
     // 保存到历史记录
     addToHistory(trimmed)
 
-    // 构建搜索 URL 并打开
-    const url = buildSearchUrl(searchEngine, trimmed, customSearchUrl)
+    // 使用新的搜索引擎配置构建 URL
+    const url = buildSearchUrlFromConfig(currentEngineConfig, trimmed)
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer')
     }
@@ -113,7 +129,7 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
     // 清空输入并关闭下拉框
     setQ('')
     setIsFocused(false)
-  }, [searchEngine, customSearchUrl, addToHistory])
+  }, [currentEngineConfig, addToHistory])
 
   // 处理下拉框项目选择
   const handleItemSelect = useCallback((item: DropdownItem) => {
@@ -168,40 +184,23 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
     onSubmit: handleSubmit,
   })
 
-  // 加载书签数据
-  useEffect(() => {
-    if (!token) return
-    
-    const loadBookmarks = async () => {
-      try {
-        const resp = await apiFetch<{ items: Bookmark[] }>('/api/bookmarks', {
-          method: 'GET',
-          token,
-        })
-        if (resp.ok) {
-          // 只保留 LINK 类型的书签
-          setBookmarks(resp.data.items.filter(b => b.type === 'LINK'))
-        }
-      } catch {
-        // 静默失败
-      }
-    }
-    
-    void loadBookmarks()
-  }, [token])
+  // 现在使用缓存存储，不需要单独加载书签数据
+  // 书签数据由书签页组件负责加载到缓存中
 
   // 点击外部关闭下拉框
   useEffect(() => {
     if (!isFocused) return
 
     const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node
+      const target = e.target as Element
       // 检查点击是否在搜索框容器内
       const isInContainer = containerRef.current?.contains(target)
       // 检查点击是否在下拉框内（portal 渲染到 body）
       const isInDropdown = dropdownRef.current?.contains(target)
+      // 检查点击是否在搜索引擎选择面板内（portal 渲染到 body）
+      const isInEnginePanel = target.closest?.('[data-engine-panel], [data-engine-dialog], [data-engine-menu]')
       
-      if (!isInContainer && !isInDropdown) {
+      if (!isInContainer && !isInDropdown && !isInEnginePanel) {
         setIsFocused(false)
       }
     }
@@ -251,25 +250,30 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
         // z-index 确保下拉框在其他元素之上
         'z-40',
         // 全宽模式：始终占满容器宽度
-        fullWidth ? 'w-full bg-glass/40' : [
-          // Initial State: 移动端窄，桌面端也窄
-          'w-48 md:w-64 bg-glass/15',
-          // Hover State: 桌面端悬浮展开（不显示内容）
-          'md:hover:w-[min(620px,90vw)] md:hover:bg-glass/40',
-          // Focus State: 聚焦展开（移动端和桌面端都应用）
-          'focus-within:w-[min(620px,calc(100vw-2rem))] focus-within:!bg-glass/75',
-        ],
+        fullWidth ? 'w-full bg-glass/40' : (
+          isFocused 
+            // Focus State: 聚焦时保持展开状态（使用 !important 确保优先级）
+            ? '!w-[min(620px,calc(100vw-2rem))] !bg-glass/75'
+            // 未聚焦状态
+            : [
+                // Initial State: 移动端窄，桌面端也窄
+                'w-48 md:w-64 bg-glass/15',
+                // Hover State: 桌面端悬浮展开（不显示内容）
+                'md:hover:w-[min(620px,90vw)] md:hover:bg-glass/40',
+              ]
+        ),
         // 开启流光边框时不显示 ring，用流光效果代替
-        !searchGlowBorder && 'focus-within:ring-2 focus-within:ring-primary/30',
+        !searchGlowBorder && isFocused && 'ring-2 ring-primary/30',
         className,
       )}
     >
-      {/* 搜索图标 - 绝对定位不影响输入框布局 */}
-      <Search className={cn(
-        'absolute left-4 h-5 w-5 text-fg/50 transition-all duration-300',
-        'opacity-0 scale-75',
-        'group-focus-within:opacity-100 group-focus-within:scale-100'
-      )} />
+      {/* 搜索引擎切换器 - 聚焦时显示在左侧 */}
+      <div className={cn(
+        'absolute left-2 transition-all duration-300',
+        isFocused ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none',
+      )}>
+        <SearchEngineSwitcher isVisible={isFocused} searchBoxRef={containerRef} />
+      </div>
 
       {/* 非聚焦状态：显示"搜索"文字（即使有输入内容也显示） */}
       {!isFocused && (
@@ -277,7 +281,7 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
           className="absolute inset-0 flex items-center justify-center cursor-text"
           onClick={() => inputRef.current?.focus()}
         >
-          <span className="text-fg/60 font-medium">搜索</span>
+          <span className="text-fg/60 font-medium">{t('home.search')}</span>
         </div>
       )}
 
@@ -296,10 +300,12 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
             executeSearch(q)
           }
         }}
-        placeholder={isFocused ? "搜索点什么？" : ""}
+        placeholder={isFocused ? t('home.searchPlaceholder') : ""}
         className={cn(
-          'w-full bg-transparent border-none outline-none px-12 text-fg h-full text-base font-medium text-center',
+          'w-full bg-transparent border-none outline-none text-fg h-full text-base font-medium text-center',
           'placeholder:text-fg/40',
+          // 聚焦时左侧有搜索引擎切换器，需要更多 padding
+          isFocused ? 'pl-14 pr-12' : 'px-12',
           // 非聚焦时隐藏输入内容和光标
           !isFocused && 'text-transparent caret-transparent'
         )}
@@ -311,10 +317,9 @@ export function SearchBox({ className, disableGlobalFocus = false, fullWidth = f
         onClick={() => executeSearch(q)}
         className={cn(
           'absolute right-2 p-2 rounded-xl text-primary hover:bg-primary/10 active:bg-primary/20 transition-all duration-300',
-          'opacity-0 scale-75 pointer-events-none',
-          'group-focus-within:opacity-100 group-focus-within:scale-100 group-focus-within:pointer-events-auto'
+          isFocused ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none',
         )}
-        aria-label="搜索"
+        aria-label={t('home.search')}
       >
         <ArrowRight className="h-5 w-5" />
       </button>

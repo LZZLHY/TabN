@@ -1,5 +1,6 @@
 ﻿import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { LayoutGrid, MoreHorizontal, Settings } from 'lucide-react'
@@ -12,9 +13,9 @@ import { useBookmarkRefreshStore } from '../stores/bookmarkRefresh'
 import { useBookmarkCacheStore } from '../stores/bookmarkCache'
 import { cn } from '../utils/cn'
 import { normalizeUrl } from '../utils/url'
-import { getIconUrl } from '../utils/iconSource'
-import { Favicon } from './Favicon'
 import { Button } from './ui/Button'
+import { UnifiedIcon } from './ui/UnifiedIcon'
+import { FolderPreviewIcon } from './bookmarks/FolderPreviewIcon'
 import { useTitleFetch } from '../hooks/useTitleFetch'
 import { useClickTracker } from '../hooks/useClickTracker'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -53,6 +54,7 @@ type BookmarkGridProps = {
 }
 
 export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const token = useAuthStore((s) => s.token)
   const user = useAuthStore((s) => s.user)
@@ -359,7 +361,7 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
   const refreshCount = useBookmarkRefreshStore((s) => s.refreshCount)
   useEffect(() => {
     if (refreshCount > 0 && token) {
-      void load()
+      void load(true)
     }
   }, [refreshCount, token, load])
 
@@ -414,7 +416,7 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
       if (!folderOrder.includes(item.id)) {
         saveOrder(user.id, targetFolderId, [...folderOrder, item.id], 'shortcut')
       }
-      toast.success('已移入收藏夹')
+      toast.success(t('toast.movedToFolder'))
       await load()
     }
   }
@@ -424,7 +426,7 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
     
     // 获取所有文件夹名称，计算下一个可用的名称
     const folderNames = allItems.filter(x => x.type === 'FOLDER').map(x => x.name)
-    const folderName = getNextFolderName('收藏夹', folderNames)
+    const folderName = getNextFolderName(t('bookmarks.favorites'), folderNames)
     
     // 1. 创建文件夹
     const folderResp = await apiFetch<{ item: Bookmark }>('/api/bookmarks', {
@@ -476,7 +478,7 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
       replaceShortcutsAt(idsToRemove, folder.id, targetId)
     }
     
-    toast.success('已创建收藏夹')
+    toast.success(t('toast.folderCreated'))
     
     // 5. load() 会触发 useBookmarkOrder 从 localStorage 读取正确的顺序
     // 注意：savePositions() 已在 onDragEnd 中动画开始前调用
@@ -896,70 +898,25 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
                         ref={drag.overlayBoxRef}
                         className={cn(
                           'bookmark-icon h-12 w-12 rounded-[var(--start-radius)] overflow-hidden grid place-items-center shadow-2xl select-none',
-                          isFolder
-                            ? 'bg-glass/20 border border-glass-border/20 p-1'
-                            : 'bg-primary/15 text-primary font-semibold',
+                          isFolder && 'bg-glass/20 border border-glass-border/20 p-1',
                         )}
                       >
                       {isFolder ? (
-                        <div className="grid grid-cols-3 gap-0.5 w-full h-full content-start">
-                          {folderItems.map((sub) => {
-                            // 检查自定义图标
-                            let subIcon = ''
-                            if (sub.iconType === 'BASE64' && sub.iconData) {
-                              subIcon = sub.iconData
-                            } else if (sub.iconUrl) {
-                              subIcon = getIconUrl(sub.url, sub.iconUrl)
-                            }
-                            return (
-                              <div
-                                key={sub.id}
-                                className="w-full pt-[100%] relative bg-black/10 rounded-[2px] overflow-hidden"
-                              >
-                                {subIcon ? (
-                                  <img
-                                    src={subIcon}
-                                    alt=""
-                                    className="absolute inset-0 w-full h-full object-cover"
-                                    loading="lazy"
-                                  />
-                                ) : sub.url ? (
-                                  <Favicon
-                                    url={sub.url}
-                                    name={sub.name}
-                                    size={16}
-                                    className="absolute inset-0 w-full h-full object-cover"
-                                  />
-                                ) : null}
-                              </div>
-                            )
-                          })}
-                        </div>
+                        <FolderPreviewIcon
+                          folderChildren={folderItems}
+                          allItems={allItems}
+                          size={48}
+                        />
                       ) : (
-                        (() => {
-                          // 检查自定义图标
-                          let customIcon = ''
-                          if (it.iconType === 'BASE64' && it.iconData) {
-                            customIcon = it.iconData
-                          } else if (it.iconUrl) {
-                            customIcon = getIconUrl(it.url, it.iconUrl)
-                          }
-                          return customIcon ? (
-                            <img
-                              src={customIcon}
-                              alt=""
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <Favicon
-                              url={it.url || ''}
-                              name={it.name}
-                              className="h-full w-full object-cover"
-                              letterClassName="h-full w-full"
-                            />
-                          )
-                        })()
+                        <UnifiedIcon
+                          iconType={it.iconType}
+                          iconData={it.iconData}
+                          iconUrl={it.iconUrl}
+                          iconBg={it.iconBg}
+                          url={it.url}
+                          name={it.name}
+                          size={48}
+                        />
                       )}
                       </div>
                       <div className="mt-1.5 text-[11px] text-fg/80 truncate w-16 text-center">
@@ -1019,6 +976,9 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
         removeShortcut={removeShortcut}
         replaceShortcutWithChildren={replaceShortcutWithChildren}
         load={load}
+        getEl={getEl}
+        savePositions={drag.savePositions}
+        triggerFillAnimation={drag.triggerFillAnimation}
       />
 
       <GridCreateDialog
@@ -1031,7 +991,7 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
           // 切换到文件夹类型时，如果名称为空或是自动生成的，预填充下一个可用的文件夹名称
           if (type === 'FOLDER' && (createName === '' || createNameSource !== 'user')) {
             const folderNames = allItems.filter(x => x.type === 'FOLDER').map(x => x.name)
-            const suggestedName = getNextFolderName('新建文件夹', folderNames)
+            const suggestedName = getNextFolderName(t('bookmarks.newFolder'), folderNames)
             setCreateName(suggestedName)
             setCreateNameSource('auto')
           }
@@ -1138,7 +1098,7 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
           try {
             // 获取所有文件夹名称，计算下一个可用的名称
             const folderNames = allItems.filter(x => x.type === 'FOLDER').map(x => x.name)
-            const folderName = getNextFolderName('收藏夹', folderNames)
+            const folderName = getNextFolderName(t('bookmarks.favorites'), folderNames)
             
             // 1. 创建文件夹
             const resp = await apiFetch<{ item: Bookmark }>('/api/bookmarks', {
@@ -1151,7 +1111,7 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
               }),
             })
             if (!resp.ok) {
-              toast.error(resp.message || '创建文件夹失败')
+              toast.error(resp.message || t('toast.createFolderFailed'))
               return
             }
             const newFolder = resp.data.item
@@ -1181,12 +1141,12 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
               currentVisibleIds: originalOrder,
             })
             
-            toast.success('已创建收藏夹')
+            toast.success(t('toast.folderCreated'))
             
             // 4. 重新加载数据（强制刷新，绕过缓存）
             await load(true)
           } catch {
-            toast.error('创建文件夹失败')
+            toast.error(t('toast.createFolderFailed'))
           }
         }}
         onMoveToFolder={async (item, targetFolderId) => {
@@ -1203,11 +1163,11 @@ export function BookmarkGrid({ variant = 'grid', onOpenSettings }: BookmarkGridP
               const folderOrder = getOrder(user.id, targetFolderId, 'shortcut')
               const newOrder = [...folderOrder.filter(id => id !== item.id), item.id]
               saveOrder(user.id, targetFolderId, newOrder, 'shortcut')
-              toast.success('已移入收藏夹')
+              toast.success(t('toast.movedToFolder'))
               await load(true) // 强制刷新，绕过缓存
             }
           } catch {
-            toast.error('移动失败')
+            toast.error(t('toast.moveFailed'))
           }
         }}
         onContextMenu={(item, x, y) => {

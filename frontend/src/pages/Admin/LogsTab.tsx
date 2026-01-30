@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useEffect, useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   RefreshCw,
@@ -54,21 +55,27 @@ interface LogsTabProps {
   token: string
 }
 
-const LOG_TYPES = [
-  { value: 'app', label: '应用日志', icon: <FileText className="w-4 h-4" /> },
-  { value: 'request', label: '请求日志', icon: <Activity className="w-4 h-4" /> },
-  { value: 'error', label: '错误日志', icon: <AlertOctagon className="w-4 h-4" /> },
-  { value: 'audit', label: '审计日志', icon: <ClipboardList className="w-4 h-4" /> },
-]
+function useLogTypes() {
+  const { t } = useTranslation()
+  return [
+    { value: 'app', label: t('admin.logs.appLog'), icon: <FileText className="w-4 h-4" /> },
+    { value: 'request', label: t('admin.logs.requestLog'), icon: <Activity className="w-4 h-4" /> },
+    { value: 'error', label: t('admin.logs.errorLog'), icon: <AlertOctagon className="w-4 h-4" /> },
+    { value: 'audit', label: t('admin.logs.auditLog'), icon: <ClipboardList className="w-4 h-4" /> },
+  ]
+}
 
-const LOG_LEVELS = [
-  { value: '', label: '全部级别', icon: <Filter className="w-4 h-4" />, color: '', tooltip: '显示所有级别的日志' },
-  { value: 'debug', label: 'DEBUG', icon: <Bug className="w-4 h-4 text-gray-500" />, color: 'text-gray-500', tooltip: '调试信息' },
-  { value: 'info', label: 'INFO', icon: <Info className="w-4 h-4 text-blue-500" />, color: 'text-blue-500', tooltip: '一般信息' },
-  { value: 'warn', label: 'WARN', icon: <AlertTriangle className="w-4 h-4 text-amber-500" />, color: 'text-amber-500', tooltip: '警告信息' },
-  { value: 'error', label: 'ERROR', icon: <AlertCircle className="w-4 h-4 text-red-500" />, color: 'text-red-500', tooltip: '错误信息' },
-  { value: 'fatal', label: 'FATAL', icon: <Skull className="w-4 h-4 text-red-600" />, color: 'text-red-600 font-bold', tooltip: '致命错误' },
-]
+function useLogLevels() {
+  const { t } = useTranslation()
+  return [
+    { value: '', label: t('admin.logs.allLevels'), icon: <Filter className="w-4 h-4" />, color: '', tooltip: t('admin.logs.showAllLevels') },
+    { value: 'debug', label: 'DEBUG', icon: <Bug className="w-4 h-4 text-gray-500" />, color: 'text-gray-500', tooltip: t('admin.logs.debugInfo') },
+    { value: 'info', label: 'INFO', icon: <Info className="w-4 h-4 text-blue-500" />, color: 'text-blue-500', tooltip: t('admin.logs.generalInfo') },
+    { value: 'warn', label: 'WARN', icon: <AlertTriangle className="w-4 h-4 text-amber-500" />, color: 'text-amber-500', tooltip: t('admin.logs.warningInfo') },
+    { value: 'error', label: 'ERROR', icon: <AlertCircle className="w-4 h-4 text-red-500" />, color: 'text-red-500', tooltip: t('admin.logs.errorInfo') },
+    { value: 'fatal', label: 'FATAL', icon: <Skull className="w-4 h-4 text-red-600" />, color: 'text-red-600 font-bold', tooltip: t('admin.logs.fatalError') },
+  ]
+}
 
 function getLevelIcon(level?: number | string) {
   const l = typeof level === 'string' ? level.toLowerCase() : level
@@ -108,6 +115,9 @@ function getLevelStyle(levelName?: string) {
 }
 
 export function LogsTab({ token }: LogsTabProps) {
+  const { t } = useTranslation()
+  const LOG_TYPES = useLogTypes()
+  const LOG_LEVELS = useLogLevels()
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [type, setType] = useState('app')
@@ -120,6 +130,14 @@ export function LogsTab({ token }: LogsTabProps) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const limit = 50
+
+  const stopStreaming = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
+    }
+    setStreaming(false)
+  }, [])
 
   const loadLogs = useCallback(async (p = page) => {
     setLoading(true)
@@ -171,7 +189,7 @@ export function LogsTab({ token }: LogsTabProps) {
     a.download = `${type}-logs-${today}.json`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('日志已导出')
+    toast.success(t('admin.logs.exported'))
   }
 
   const startStreaming = () => {
@@ -197,31 +215,23 @@ export function LogsTab({ token }: LogsTabProps) {
     
     es.onerror = () => {
       stopStreaming()
-      toast.error('实时日志连接断开')
+      toast.error(t('admin.logs.streamDisconnected'))
     }
-  }
-
-  const stopStreaming = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close()
-      eventSourceRef.current = null
-    }
-    setStreaming(false)
   }
 
   useEffect(() => {
     loadLogs(1)
     return () => stopStreaming()
-  }, [type])
+  }, [type, loadLogs, stopStreaming])
 
   // 级别变化时自动搜索
   useEffect(() => {
     loadLogs(1)
-  }, [level])
+  }, [level, loadLogs])
 
   useEffect(() => {
     return () => stopStreaming()
-  }, [])
+  }, [stopStreaming])
 
   const totalPages = Math.ceil(total / limit)
 
@@ -230,8 +240,8 @@ export function LogsTab({ token }: LogsTabProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 flex-shrink-0">
         <div>
-          <h2 className="text-xl font-semibold text-fg tracking-tight">日志查看</h2>
-          <p className="mt-1 text-sm text-fg/60">查看系统日志、请求日志、错误日志和审计日志。</p>
+          <h2 className="text-xl font-semibold text-fg tracking-tight">{t('admin.logs.title')}</h2>
+          <p className="mt-1 text-sm text-fg/60">{t('admin.logs.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -241,15 +251,15 @@ export function LogsTab({ token }: LogsTabProps) {
             className={streaming ? 'text-red-500' : ''}
           >
             {streaming ? <Square className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-            {streaming ? '停止' : '实时'}
+            {streaming ? t('admin.logs.stop') : t('admin.logs.realtime')}
           </Button>
           <Button variant="glass" size="sm" onClick={exportLogs}>
             <Download className="w-4 h-4 mr-2" />
-            导出
+            {t('admin.logs.export')}
           </Button>
           <Button variant="glass" size="sm" onClick={() => loadLogs(1)} disabled={loading || streaming}>
             <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
-            刷新
+            {t('admin.logs.refresh')}
           </Button>
         </div>
       </div>
@@ -277,7 +287,7 @@ export function LogsTab({ token }: LogsTabProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg/40" />
           <input
             className="w-full h-9 pl-9 pr-3 rounded-xl bg-glass/10 border border-glass-border/20 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-            placeholder="搜索关键词..."
+            placeholder={t('admin.logs.searchPlaceholder')}
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             onKeyDown={(e) => {
@@ -287,7 +297,7 @@ export function LogsTab({ token }: LogsTabProps) {
         </div>
 
         <Button variant="primary" size="sm" onClick={() => loadLogs(1)}>
-          搜索
+          {t('admin.logs.search')}
         </Button>
       </div>
 
@@ -295,7 +305,7 @@ export function LogsTab({ token }: LogsTabProps) {
       <div className="glass-panel rounded-2xl overflow-hidden flex flex-col mt-6 flex-1 min-h-0">
         <div className="divide-y divide-glass-border/10 overflow-y-auto flex-1">
           {logs.length === 0 && !loading && (
-            <div className="p-8 text-center text-fg/50 text-sm">暂无日志数据</div>
+            <div className="p-8 text-center text-fg/50 text-sm">{t('admin.logs.noLogs')}</div>
           )}
           {logs.map((log, idx) => {
             const key = `${log.timestamp}-${idx}`
@@ -363,8 +373,8 @@ export function LogsTab({ token }: LogsTabProps) {
                         <span className={log.success ? 'text-green-500' : 'text-red-500'}>
                           {log.success ? '✓' : '✗'}
                         </span>
-                        {log.userId && <span>用户: {log.userId.slice(0, 8)}</span>}
-                        {log.ip && <span>IP: {log.ip}</span>}
+                        {log.userId && <span>{t('admin.logs.user')}: {log.userId.slice(0, 8)}</span>}
+                        {log.ip && <span>{t('admin.logs.ip')}: {log.ip}</span>}
                       </div>
                     )}
                     {/* Expanded details */}
@@ -384,7 +394,7 @@ export function LogsTab({ token }: LogsTabProps) {
         {!streaming && totalPages > 1 && (
           <div className="border-t border-glass-border/10 p-4 flex items-center justify-between flex-shrink-0">
             <div className="text-xs text-fg/50">
-              共 {total} 条，第 {page}/{totalPages} 页
+              {t('admin.logs.total', { total, page, totalPages })}
             </div>
             <div className="flex gap-2">
               <Button
@@ -393,7 +403,7 @@ export function LogsTab({ token }: LogsTabProps) {
                 disabled={page <= 1}
                 onClick={() => loadLogs(page - 1)}
               >
-                <ChevronLeft className="w-4 h-4" /> 上一页
+                <ChevronLeft className="w-4 h-4" /> {t('common.prevPage')}
               </Button>
               <Button
                 variant="ghost"
@@ -401,7 +411,7 @@ export function LogsTab({ token }: LogsTabProps) {
                 disabled={!hasMore}
                 onClick={() => loadLogs(page + 1)}
               >
-                下一页 <ChevronRight className="w-4 h-4" />
+                {t('common.nextPage')} <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </div>

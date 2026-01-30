@@ -1,6 +1,7 @@
 import { useState, useEffect, memo } from 'react'
 import { getFaviconSources, extractDomain, extractDomainName } from '../utils/url'
 import { cn } from '../utils/cn'
+import { getDefaultText } from '@start/shared'
 
 type FaviconProps = {
   url: string
@@ -31,8 +32,8 @@ export const Favicon = memo(function Favicon({
   const hostname = extractDomain(url)
   const sources = getFaviconSources(hostname, size)
   
-  // 获取首字母：优先用 name，否则用域名
-  const letter = (name?.trim()?.[0] || extractDomainName(url)?.[0] || '?').toUpperCase()
+  // 获取首字母：使用统一的 getDefaultText 函数
+  const letter = getDefaultText(name || '', url)
 
   useEffect(() => {
     if (!hostname || sources.length === 0) {

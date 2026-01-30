@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X, Calendar, Tag } from 'lucide-react'
 import { cn } from '../utils/cn'
 import { Button } from './ui/Button'
@@ -24,6 +25,7 @@ interface ChangelogData {
 }
 
 export function ChangelogDialog({ open, onClose }: Props) {
+  const { t } = useTranslation()
   const [changelog, setChangelog] = useState<ChangelogData | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -77,14 +79,14 @@ export function ChangelogDialog({ open, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 shrink-0">
           <div>
-            <h3 className="font-semibold text-lg">版本更新日志</h3>
-            <p className="text-xs text-fg/60 mt-0.5">查看历史版本更新内容</p>
+            <h3 className="font-semibold text-lg">{t('settings.changelog')}</h3>
+            <p className="text-xs text-fg/60 mt-0.5">{t('settings.changelogHint')}</p>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            aria-label="关闭"
+            aria-label={t('common.close')}
             className="h-8 w-8 p-0"
           >
             <X className="h-4 w-4" />
@@ -94,9 +96,9 @@ export function ChangelogDialog({ open, onClose }: Props) {
         {/* Content - Scrollable */}
         <div className="mt-4 flex-1 overflow-y-auto space-y-3 pr-1 min-h-0">
           {loading ? (
-            <div className="text-center text-fg/60 py-8">加载中...</div>
+            <div className="text-center text-fg/60 py-8">{t('common.loading')}</div>
           ) : !changelog || changelog.versions.length === 0 ? (
-            <div className="text-center text-fg/60 py-8">暂无更新日志</div>
+            <div className="text-center text-fg/60 py-8">{t('settings.noChangelog')}</div>
           ) : (
             changelog.versions.map((entry, idx) => (
               <div
@@ -119,7 +121,7 @@ export function ChangelogDialog({ open, onClose }: Props) {
                     </span>
                     {idx === 0 && (
                       <span className="px-1.5 py-0.5 text-[10px] bg-primary/20 text-primary rounded">
-                        最新
+                        {t('common.latest')}
                       </span>
                     )}
                   </div>
@@ -149,7 +151,7 @@ export function ChangelogDialog({ open, onClose }: Props) {
         {/* Footer */}
         <div className="mt-4 pt-3 border-t border-glass-border/20 shrink-0">
           <Button variant="glass" onClick={onClose} className="w-full">
-            关闭
+            {t('common.close')}
           </Button>
         </div>
       </div>

@@ -4,6 +4,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   Trash2,
@@ -138,14 +139,15 @@ function EditBookmarkDialog({
   onSave: (id: string, data: { name: string; url: string; tags: string[] }) => Promise<void>
   allTags: string[]
 }) {
+  const { t } = useTranslation()
   const [name, setName] = useState(bookmark.name)
   const [url, setUrl] = useState(bookmark.url || '')
   const [tags, setTags] = useState<string[]>(bookmark.tags || [])
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
-    if (!name.trim()) return toast.warning('名称不能为空')
-    if (!url.trim()) return toast.warning('网址不能为空')
+    if (!name.trim()) return toast.warning(t('admin.bookmarks.nameRequired'))
+    if (!url.trim()) return toast.warning(t('admin.bookmarks.urlRequired'))
     setSaving(true)
     try {
       await onSave(bookmark.id, { name: name.trim(), url: url.trim(), tags })
@@ -159,30 +161,30 @@ function EditBookmarkDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md glass-modal rounded-2xl p-6 shadow-2xl space-y-4">
-        <h3 className="font-semibold text-lg">编辑书签</h3>
+        <h3 className="font-semibold text-lg">{t('admin.bookmarks.editBookmark')}</h3>
         <div className="space-y-3">
           <div>
-            <label className="text-sm text-fg/70 mb-1 block">名称</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="书签名称" />
+            <label className="text-sm text-fg/70 mb-1 block">{t('admin.bookmarks.name')}</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('admin.bookmarks.namePlaceholder')} />
           </div>
           <div>
-            <label className="text-sm text-fg/70 mb-1 block">网址</label>
-            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+            <label className="text-sm text-fg/70 mb-1 block">{t('admin.bookmarks.url')}</label>
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t('admin.bookmarks.urlPlaceholder')} />
           </div>
           <div>
-            <label className="text-sm text-fg/70 mb-1 block">标签</label>
+            <label className="text-sm text-fg/70 mb-1 block">{t('admin.bookmarks.tags')}</label>
             <TagInput
               value={tags}
               onChange={setTags}
               suggestions={allTags}
-              placeholder="输入标签后按回车添加"
+              placeholder={t('admin.bookmarks.tagsPlaceholder')}
             />
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={onClose}>取消</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
           <Button variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? '保存中...' : '保存'}
+            {saving ? t('admin.bookmarks.saving') : t('common.save')}
           </Button>
         </div>
       </div>
@@ -193,12 +195,14 @@ function EditBookmarkDialog({
 
 // 角色徽章
 function RoleBadge({ role }: { role: string }) {
-  const map: Record<string, { label: string; variant: 'error' | 'warning' | 'default' }> = {
-    ROOT: { label: '超管', variant: 'error' },
-    ADMIN: { label: '管理', variant: 'warning' },
-    USER: { label: '用户', variant: 'default' },
+  const { t } = useTranslation()
+  const map: Record<string, { labelKey: string; variant: 'error' | 'warning' | 'default' }> = {
+    ROOT: { labelKey: 'admin.bookmarks.roleRoot', variant: 'error' },
+    ADMIN: { labelKey: 'admin.bookmarks.roleAdmin', variant: 'warning' },
+    USER: { labelKey: 'admin.bookmarks.roleUser', variant: 'default' },
   }
-  const { label, variant } = map[role] ?? { label: role, variant: 'default' as const }
+  const { labelKey, variant } = map[role] ?? { labelKey: '', variant: 'default' as const }
+  const label = labelKey ? t(labelKey) : role
   return <Badge variant={variant}>{label}</Badge>
 }
 
@@ -261,6 +265,7 @@ function UserBookmarkGroup({
   onEdit: (b: BookmarkWithStats) => void
   onDelete: (id: string) => void
 }) {
+  const { t } = useTranslation()
   const { user, bookmarkCount, totalClicks, bookmarks } = stats
   // 过滤出链接类型并按名称 A-Z 排序（支持中文拼音）
   const links = bookmarks
@@ -280,11 +285,11 @@ function UserBookmarkGroup({
         </div>
         {/* 统计数字对齐 */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-1.5" title="书签数量">
+          <div className="flex items-center gap-1.5" title={t('admin.bookmarks.bookmarkCount')}>
             <Bookmark className="w-4 h-4 text-fg/40" />
             <span className="w-6 text-center tabular-nums text-sm">{bookmarkCount}</span>
           </div>
-          <div className="flex items-center gap-1.5" title="总点击次数">
+          <div className="flex items-center gap-1.5" title={t('admin.bookmarks.totalClicks')}>
             <MousePointerClick className="w-4 h-4 text-fg/40" />
             <span className="w-6 text-center tabular-nums text-sm">{totalClicks}</span>
           </div>
@@ -296,10 +301,10 @@ function UserBookmarkGroup({
           {/* 表头 */}
           <div className="flex items-center gap-2 py-1 px-2 text-xs text-fg/40">
             <span className="w-5 shrink-0" />
-            <span className="flex-1">书签名称</span>
+            <span className="flex-1">{t('admin.bookmarks.bookmarkName')}</span>
             <div className="flex gap-2 shrink-0">
-              <span className="w-12 text-center">个人</span>
-              <span className="w-12 text-center">全局</span>
+              <span className="w-12 text-center">{t('admin.bookmarks.personal')}</span>
+              <span className="w-12 text-center">{t('admin.bookmarks.global')}</span>
             </div>
             <span className="w-[72px] shrink-0" />
           </div>
@@ -311,27 +316,27 @@ function UserBookmarkGroup({
               <div className="flex gap-2 shrink-0">
                 <span 
                   className="w-12 text-center tabular-nums text-xs py-0.5 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400" 
-                  title="该用户对此站点的点击次数"
+                  title={t('admin.bookmarks.userClicks')}
                 >
                   {b.userClicks}
                 </span>
                 <span 
                   className="w-12 text-center tabular-nums text-xs py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400" 
-                  title="所有用户对此站点的总点击次数"
+                  title={t('admin.bookmarks.globalClicks')}
                 >
                   {b.globalClicks}
                 </span>
               </div>
               <div className="flex gap-1 w-[72px] justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                 {b.url && (
-                  <a href={b.url} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-glass/10 rounded" title="打开链接">
+                  <a href={b.url} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-glass/10 rounded" title={t('admin.bookmarks.openLink')}>
                     <ExternalLink className="w-3.5 h-3.5 text-fg/40" />
                   </a>
                 )}
-                <button onClick={() => onEdit(b)} className="p-1 hover:bg-glass/10 rounded" title="编辑书签">
+                <button onClick={() => onEdit(b)} className="p-1 hover:bg-glass/10 rounded" title={t('admin.bookmarks.editBookmarkBtn')}>
                   <Edit2 className="w-3.5 h-3.5 text-fg/40" />
                 </button>
-                <button onClick={() => onDelete(b.id)} className="p-1 hover:bg-red-500/10 rounded" title="删除书签">
+                <button onClick={() => onDelete(b.id)} className="p-1 hover:bg-red-500/10 rounded" title={t('admin.bookmarks.deleteBookmark')}>
                   <Trash2 className="w-3.5 h-3.5 text-red-400" />
                 </button>
               </div>
@@ -341,7 +346,7 @@ function UserBookmarkGroup({
       )}
       {expanded && links.length === 0 && (
         <div className="mt-3 pt-3 border-t border-glass-border/20 text-sm text-fg/40 text-center py-2">
-          暂无链接书签
+          {t('admin.bookmarks.noLinks')}
         </div>
       )}
     </Card>
@@ -350,16 +355,17 @@ function UserBookmarkGroup({
 
 // 热力榜单卡片
 function HeatRankingCard({ ranking }: { ranking: HeatRankingItem[] }) {
+  const { t } = useTranslation()
   const maxClicks = Math.max(...ranking.map((r) => r.globalClicks), 1)
 
   return (
     <Card>
       <div className="flex items-center gap-2 mb-4">
         <Flame className="w-5 h-5 text-orange-500" />
-        <h3 className="font-semibold">热力榜单</h3>
+        <h3 className="font-semibold">{t('admin.bookmarks.heatRanking')}</h3>
       </div>
       {ranking.length === 0 ? (
-        <div className="text-sm text-fg/40 text-center py-4">暂无数据</div>
+        <div className="text-sm text-fg/40 text-center py-4">{t('admin.bookmarks.noData')}</div>
       ) : (
         <div className="space-y-3">
           {ranking.map((item, idx) => (
@@ -380,7 +386,7 @@ function HeatRankingCard({ ranking }: { ranking: HeatRankingItem[] }) {
               </div>
               <div className="text-right shrink-0">
                 <div className="text-sm font-semibold tabular-nums">{item.globalClicks}</div>
-                <div className="text-xs text-fg/40">{item.uniqueUsers} 人</div>
+                <div className="text-xs text-fg/40">{item.uniqueUsers} {t('admin.bookmarks.users')}</div>
               </div>
             </div>
           ))}
@@ -392,24 +398,25 @@ function HeatRankingCard({ ranking }: { ranking: HeatRankingItem[] }) {
 
 // 标签统计卡片
 function TagStatsCard({ tagStats }: { tagStats: TagStats[] }) {
-  const maxCount = Math.max(...tagStats.map((t) => t.count), 1)
+  const { t } = useTranslation()
+  const maxCount = Math.max(...tagStats.map((ts) => ts.count), 1)
 
   return (
     <Card>
       <div className="flex items-center gap-2 mb-4">
         <Tag className="w-5 h-5 text-primary" />
-        <h3 className="font-semibold">标签统计</h3>
-        <span className="text-xs text-fg/50">共 {tagStats.length} 个标签</span>
+        <h3 className="font-semibold">{t('admin.bookmarks.tagStats')}</h3>
+        <span className="text-xs text-fg/50">{tagStats.length} tags</span>
       </div>
       {tagStats.length === 0 ? (
-        <div className="text-sm text-fg/40 text-center py-4">暂无标签</div>
+        <div className="text-sm text-fg/40 text-center py-4">{t('admin.bookmarks.noTags')}</div>
       ) : (
         <div className="flex flex-wrap gap-2">
           {tagStats.map((item) => (
             <div
               key={item.tag}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-glass/10 border border-glass-border/20 hover:bg-glass/20 transition-colors"
-              title={`${item.count} 个书签使用此标签`}
+              title={`${item.count} ${t('admin.bookmarks.bookmarksCount')}`}
             >
               <span className="text-sm">{item.tag}</span>
               <span 
@@ -431,6 +438,7 @@ function TagStatsCard({ tagStats }: { tagStats: TagStats[] }) {
 const PAGE_SIZE = 10
 
 export function BookmarksTab() {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const [view, setView] = useState<'users' | 'heat' | 'tags'>('users')
   const [loading, setLoading] = useState(false)
@@ -452,20 +460,20 @@ export function BookmarksTab() {
         apiFetch<{ tags: TagStats[] }>('/api/admin/tags', { token }),
       ])
       if (statsRes.ok) setUserStats(statsRes.data.userStats ?? [])
-      else toast.error(statsRes.message || '加载书签统计失败')
+      else toast.error(statsRes.message || t('error.loadFailed'))
       if (heatRes.ok) setHeatRanking(heatRes.data.ranking ?? [])
-      else toast.error(heatRes.message || '加载热力榜失败')
+      else toast.error(heatRes.message || t('error.loadFailed'))
       if (tagsRes.ok) {
         const tags = tagsRes.data.tags ?? []
         setTagStats(tags)
         setAllTags(tags.map(t => t.tag))
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '加载失败')
+      toast.error(e instanceof Error ? e.message : t('error.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, t])
 
   useEffect(() => {
     fetchData()
@@ -501,19 +509,19 @@ export function BookmarksTab() {
     })
     if (!tagsRes.ok) throw new Error(tagsRes.message)
     
-    toast.success('已保存')
+    toast.success(t('toast.saved'))
     fetchData()
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定删除此书签？')) return
+    if (!confirm(t('bookmarks.deleteConfirm'))) return
     try {
       const res = await apiFetch(`/api/admin/bookmarks/${id}`, { method: 'DELETE', token: token || undefined })
       if (!res.ok) throw new Error(res.message)
-      toast.success('已删除')
+      toast.success(t('toast.deleted'))
       fetchData()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : '删除失败')
+      toast.error(e instanceof Error ? e.message : t('toast.deleteFailed'))
     }
   }
 
@@ -527,7 +535,7 @@ export function BookmarksTab() {
           onClick={() => setView('users')}
         >
           <Users className="w-4 h-4 mr-1" />
-          用户书签
+          {t('admin.bookmarks.userBookmarks')}
         </Button>
         <Button
           variant={view === 'heat' ? 'primary' : 'ghost'}
@@ -535,7 +543,7 @@ export function BookmarksTab() {
           onClick={() => setView('heat')}
         >
           <Flame className="w-4 h-4 mr-1" />
-          热力榜单
+          {t('admin.bookmarks.heatRanking')}
         </Button>
         <Button
           variant={view === 'tags' ? 'primary' : 'ghost'}
@@ -543,12 +551,12 @@ export function BookmarksTab() {
           onClick={() => setView('tags')}
         >
           <Tag className="w-4 h-4 mr-1" />
-          标签管理
+          {t('admin.bookmarks.tagStats')}
         </Button>
       </div>
 
       {loading ? (
-        <div className="text-center py-8 text-fg/50">加载中...</div>
+        <div className="text-center py-8 text-fg/50">{t('admin.update.loading')}</div>
       ) : view === 'users' ? (
         <>
           {pagedUsers.map((stats) => (
@@ -562,7 +570,7 @@ export function BookmarksTab() {
             />
           ))}
           {userStats.length === 0 && (
-            <div className="text-center py-8 text-fg/50">暂无用户数据</div>
+            <div className="text-center py-8 text-fg/50">{t('admin.bookmarks.noUsers')}</div>
           )}
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>

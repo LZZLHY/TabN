@@ -37,9 +37,10 @@ export type IconSource = 'AUTO' | 'GOOGLE' | 'DUCKDUCKGO' | 'ICONHORSE' | 'CUSTO
  * 图标类型（兼容旧版）
  * - URL: 图标为外部 URL
  * - BASE64: 图标为 Base64 编码的数据
+ * - TEXT: 文字图标
  * - null: 无自定义图标
  */
-export type IconType = 'URL' | 'BASE64' | null
+export type IconType = 'URL' | 'BASE64' | 'TEXT' | null
 
 /**
  * 用于排序的书签项
@@ -70,6 +71,8 @@ export interface Bookmark {
   iconData: string | null
   /** 图标类型 */
   iconType: IconType
+  /** 图标背景：null/default=原始毛玻璃, transparent=透明, #RRGGBB=自定义颜色 */
+  iconBg: string | null
   createdAt: string
   updatedAt: string
 }

@@ -1,4 +1,5 @@
 import { Bookmark, Home, LogIn, LogOut, Settings, Shield } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAppearanceStore } from '../stores/appearance'
@@ -12,6 +13,7 @@ type Props = {
 }
 
 export function MobileNav({ onOpenSettings, settingsOpen }: Props) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
@@ -38,7 +40,7 @@ export function MobileNav({ onOpenSettings, settingsOpen }: Props) {
       }
     >
       <Home className={hideText ? 'h-6 w-6' : 'h-5 w-5'} />
-      {!hideText && <span className="text-[10px] font-medium">首页</span>}
+      {!hideText && <span className="text-[10px] font-medium">{t('nav.home')}</span>}
     </NavLink>
   )
 
@@ -53,7 +55,7 @@ export function MobileNav({ onOpenSettings, settingsOpen }: Props) {
       }}
     >
       <Bookmark className={hideText ? 'h-6 w-6' : 'h-5 w-5'} />
-      {!hideText && <span className="text-[10px] font-medium">书签</span>}
+      {!hideText && <span className="text-[10px] font-medium">{t('nav.bookmarks')}</span>}
     </button>
   )
 
@@ -65,7 +67,7 @@ export function MobileNav({ onOpenSettings, settingsOpen }: Props) {
       onClick={onOpenSettings}
     >
       <Settings className={hideText ? 'h-6 w-6' : 'h-5 w-5'} />
-      {!hideText && <span className="text-[10px] font-medium">设置</span>}
+      {!hideText && <span className="text-[10px] font-medium">{t('nav.settings')}</span>}
     </button>
   )
 
@@ -76,7 +78,7 @@ export function MobileNav({ onOpenSettings, settingsOpen }: Props) {
       className={({ isActive }) => cn(itemBase, isActive && itemActive)}
     >
       <Shield className={hideText ? 'h-6 w-6' : 'h-5 w-5'} />
-      {!hideText && <span className="text-[10px] font-medium">管理</span>}
+      {!hideText && <span className="text-[10px] font-medium">{t('nav.admin')}</span>}
     </NavLink>
   )
 
@@ -87,11 +89,11 @@ export function MobileNav({ onOpenSettings, settingsOpen }: Props) {
       className={cn(itemBase)}
       onClick={() => {
         logout()
-        toast.info('已退出登录')
+        toast.info(t('auth.logoutSuccess'))
       }}
     >
       <LogOut className={hideText ? 'h-6 w-6' : 'h-5 w-5'} />
-      {!hideText && <span className="text-[10px] font-medium">退出</span>}
+      {!hideText && <span className="text-[10px] font-medium">{t('nav.logout')}</span>}
     </button>
   ) : (
     <NavLink
@@ -99,7 +101,7 @@ export function MobileNav({ onOpenSettings, settingsOpen }: Props) {
       className={({ isActive }) => cn(itemBase, isActive && itemActive)}
     >
       <LogIn className={hideText ? 'h-6 w-6' : 'h-5 w-5'} />
-      {!hideText && <span className="text-[10px] font-medium">登录</span>}
+      {!hideText && <span className="text-[10px] font-medium">{t('nav.login')}</span>}
     </NavLink>
   )
 

@@ -49,9 +49,10 @@ export function useSettingsWebSocket() {
     if (!token || !user?.id) return
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
-    // 开发环境中，如果没有配置 API URL，跳过 WebSocket 连接
-    if (import.meta.env.DEV && !import.meta.env.VITE_API_BASE_URL) {
-      // 开发环境中没有后端，静默跳过
+    // 如果没有配置 API URL 且不是生产环境部署，跳过 WebSocket 连接
+    // 这避免了 preview 模式或开发模式下的连接错误
+    if (!import.meta.env.VITE_API_BASE_URL) {
+      // 没有配置后端 API，静默跳过 WebSocket
       return
     }
 

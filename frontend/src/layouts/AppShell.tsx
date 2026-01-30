@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { GlobalToaster } from '../components/GlobalToaster'
 import { ServerStatus } from '../components/ServerStatus'
 import { Sidebar } from '../components/Sidebar'
 import { MobileNav } from '../components/MobileNav'
-import { SettingsDialog } from '../components/SettingsDialog'
 import { MarketDialog } from '../components/MarketDialog'
+
+// 懒加载大型组件（SettingsDialog 约 104KB）
+const SettingsDialog = lazy(() => import('../components/SettingsDialog').then(m => ({ default: m.SettingsDialog })))
 import { useApplyAppearance } from '../hooks/useApplyAppearance'
 import { useBackgroundImage } from '../hooks/useBackgroundImage'
 import { useCloudSettingsSync } from '../hooks/useCloudSettingsSync'
@@ -46,16 +48,52 @@ export function AppShell() {
   const setPageLoaded = usePageLoadStore((s) => s.setLoaded)
   const isPageLoaded = usePageLoadStore((s) => s.isLoaded)
 
-  // 直接使用 backgroundUrl，不做预加载切换（避免闪屏）
-  // Base64 数据可以直接渲染，不需要预加载
-  const displayedUrl = backgroundUrl
+  // 壁纸切换动画状态
+  const [transitionUrl, setTransitionUrl] = useState<string | null>(null)
+  const [transitionOpacity, setTransitionOpacity] = useState(0)
+  const prevUrlRef = useRef<string>('')
+  const isFirstRender = useRef(true)
 
-  // 将背景图同步到 HTML 元素（避免 React 背景图层导致的闪黑）
+  // 壁纸切换动画：新壁纸淡入覆盖旧壁纸
   useEffect(() => {
-    if (displayedUrl) {
-      document.documentElement.style.backgroundImage = `url("${displayedUrl}")`
+    if (!backgroundUrl) return
+    
+    // 首次渲染或 URL 相同时，无动画
+    if (isFirstRender.current || prevUrlRef.current === backgroundUrl) {
+      isFirstRender.current = false
+      prevUrlRef.current = backgroundUrl
+      return
     }
-  }, [displayedUrl])
+    
+    // URL 变化时，启动淡入动画
+    setTransitionUrl(backgroundUrl)
+    setTransitionOpacity(0)
+    
+    // 下一帧开始淡入
+    const startTimer = setTimeout(() => {
+      setTransitionOpacity(1)
+    }, 50)
+    
+    // 动画结束后，隐藏过渡层
+    const endTimer = setTimeout(() => {
+      prevUrlRef.current = backgroundUrl
+      setTransitionOpacity(0)
+      setTimeout(() => setTransitionUrl(null), 100)
+    }, 600)
+    
+    return () => {
+      clearTimeout(startTimer)
+      clearTimeout(endTimer)
+    }
+  }, [backgroundUrl])
+
+  // 清理 html 元素上的旧背景样式（之前的实现遗留）
+  useEffect(() => {
+    const html = document.documentElement
+    html.style.backgroundImage = 'none'
+    html.style.transform = ''
+    html.style.transition = ''
+  }, [])
 
   // 页面首次加载动画 - 立即触发
   useEffect(() => {
@@ -77,12 +115,37 @@ export function AppShell() {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-transparent">
-      {/* 背景图效果层 - 只处理搜索聚焦时的模糊效果，背景图在 HTML 元素上 */}
-      {searchFocused && (
+      {/* 背景层：用于壁纸显示和景深缩放效果 */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-500 ease-out"
+        style={{
+          backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : 'none',
+          backgroundColor: backgroundUrl ? '' : '#2a2a2a',
+          // 搜索聚焦时轻微放大（景深效果）
+          transform: searchFocused ? 'scale(1.03)' : 'scale(1)',
+        }}
+      />
+
+      {/* 壁纸切换过渡层：新壁纸淡入覆盖旧壁纸 */}
+      {transitionUrl && (
         <div
-          className="absolute inset-0 backdrop-blur-sm transition-all duration-300"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-500 ease-out"
+          style={{
+            backgroundImage: `url("${transitionUrl}")`,
+            opacity: transitionOpacity,
+            // 同步搜索聚焦时的缩放效果
+            transform: searchFocused ? 'scale(1.03)' : 'scale(1)',
+          }}
         />
       )}
+
+      {/* 搜索聚焦时的背景模糊效果层（始终渲染，通过 opacity 过渡） */}
+      <div
+        className={cn(
+          'absolute inset-0 transition-all duration-500 ease-out',
+          searchFocused ? 'backdrop-blur-sm opacity-100' : 'backdrop-blur-none opacity-0'
+        )}
+      />
 
       {/* 明暗度遮罩：只有在需要时才显示 */}
       {dimmingOpacity > 0 && (
@@ -146,7 +209,9 @@ export function AppShell() {
 {/* 背景图署名已移除 */}
 
       {settingsOpen ? (
-        <SettingsDialog open onClose={() => setSettingsOpen(false)} />
+        <Suspense fallback={null}>
+          <SettingsDialog open onClose={() => setSettingsOpen(false)} />
+        </Suspense>
       ) : null}
       {marketOpen ? <MarketDialog open onClose={() => setMarketOpen(false)} /> : null}
       <GlobalToaster />

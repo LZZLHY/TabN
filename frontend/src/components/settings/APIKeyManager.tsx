@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Copy, RefreshCw, Key, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { apiFetch } from '../../services/api'
@@ -17,6 +18,7 @@ interface APIKeyData {
 }
 
 export function APIKeyManager() {
+  const { t, i18n } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const [loading, setLoading] = useState(false)
   const [hasKey, setHasKey] = useState(false)
@@ -61,7 +63,7 @@ export function APIKeyManager() {
         setHasKey(true)
         setCreatedAt(resp.data.createdAt)
         setNewKey(resp.data.key)
-        toast.success('API 密钥已生成')
+        toast.success(t('settings.apiKey.generated'))
       } else {
         toast.error(resp.message)
       }
@@ -85,7 +87,7 @@ export function APIKeyManager() {
         setHasKey(true)
         setCreatedAt(resp.data.createdAt)
         setNewKey(resp.data.key)
-        toast.success('API 密钥已重新生成，旧密钥已失效')
+        toast.success(t('settings.apiKey.regenerated'))
       } else {
         toast.error(resp.message)
       }
@@ -100,9 +102,9 @@ export function APIKeyManager() {
     
     try {
       await navigator.clipboard.writeText(newKey)
-      toast.success('已复制到剪贴板')
+      toast.success(t('toast.copied'))
     } catch {
-      toast.error('复制失败，请手动复制')
+      toast.error(t('toast.copyFailed'))
     }
   }
 
@@ -110,7 +112,7 @@ export function APIKeyManager() {
   const formatDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr)
-      return date.toLocaleString('zh-CN', {
+      return date.toLocaleString(i18n.language === 'zh-CN' ? 'zh-CN' : 'en-US', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -125,7 +127,7 @@ export function APIKeyManager() {
   if (!token) {
     return (
       <div className="text-sm text-fg/60">
-        请先登录以管理 API 密钥
+        {t('settings.apiKey.loginRequired')}
       </div>
     )
   }
@@ -137,20 +139,20 @@ export function APIKeyManager() {
         <div className="flex items-center gap-2 text-sm">
           <Key className="w-4 h-4 text-fg/60" />
           <span className="text-fg/80">
-            密钥状态：
+            {t('settings.apiKey.status')}
             {loading ? (
-              <span className="text-fg/50">加载中...</span>
+              <span className="text-fg/50">{t('common.loading')}</span>
             ) : hasKey ? (
-              <span className="text-green-400">已生成</span>
+              <span className="text-green-400">{t('settings.apiKey.statusGenerated')}</span>
             ) : (
-              <span className="text-fg/50">未生成</span>
+              <span className="text-fg/50">{t('settings.apiKey.statusNotGenerated')}</span>
             )}
           </span>
         </div>
         
         {hasKey && createdAt && (
           <div className="text-xs text-fg/50">
-            创建时间：{formatDate(createdAt)}
+            {t('settings.apiKey.createdAt')}{formatDate(createdAt)}
           </div>
         )}
       </div>
@@ -165,7 +167,7 @@ export function APIKeyManager() {
             <div className="flex items-start gap-2 mb-2">
               <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
               <div className="text-xs text-yellow-200">
-                请立即保存此密钥！关闭后将无法再次查看完整密钥。
+                {t('settings.apiKey.saveWarning')}
               </div>
             </div>
             <div className={cn(
@@ -182,7 +184,7 @@ export function APIKeyManager() {
             className="w-full"
           >
             <Copy className="w-4 h-4" />
-            复制密钥
+            {t('settings.apiKey.copy')}
           </Button>
         </div>
       )}
@@ -193,7 +195,7 @@ export function APIKeyManager() {
           'p-2 rounded-lg font-mono text-sm text-fg/60',
           'bg-glass/10 border border-glass-border/20',
         )}>
-          bk_***...（密钥已隐藏）
+          {t('settings.apiKey.masked')}
         </div>
       )}
 
@@ -207,7 +209,7 @@ export function APIKeyManager() {
             disabled={loading}
           >
             <Key className="w-4 h-4" />
-            {loading ? '生成中...' : '生成密钥'}
+            {loading ? t('settings.apiKey.generating') : t('settings.apiKey.generate')}
           </Button>
         ) : (
           <>
@@ -220,7 +222,7 @@ export function APIKeyManager() {
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                     <div>
-                      重新生成将使旧密钥立即失效，所有使用旧密钥的扩展将无法继续工作。确定要继续吗？
+                      {t('settings.apiKey.regenerateWarning')}
                     </div>
                   </div>
                 </div>
@@ -231,7 +233,7 @@ export function APIKeyManager() {
                     onClick={() => setShowRegenerateConfirm(false)}
                     disabled={loading}
                   >
-                    取消
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     variant="primary"
@@ -240,7 +242,7 @@ export function APIKeyManager() {
                     disabled={loading}
                     className="bg-red-500 hover:bg-red-600"
                   >
-                    {loading ? '生成中...' : '确认重新生成'}
+                    {loading ? t('settings.apiKey.generating') : t('settings.apiKey.confirmRegenerate')}
                   </Button>
                 </div>
               </div>
@@ -252,7 +254,7 @@ export function APIKeyManager() {
                 disabled={loading}
               >
                 <RefreshCw className="w-4 h-4" />
-                重新生成密钥
+                {t('settings.apiKey.regenerate')}
               </Button>
             )}
           </>
@@ -261,7 +263,7 @@ export function APIKeyManager() {
 
       {/* Description */}
       <div className="text-xs text-fg/50 leading-relaxed">
-        API 密钥用于第三方扩展访问图标更新接口。生成后请妥善保管，不要泄露给他人。
+        {t('settings.apiKey.description')}
       </div>
     </div>
   )

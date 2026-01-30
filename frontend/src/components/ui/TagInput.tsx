@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, type KeyboardEvent, type ChangeEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '../../utils/cn'
 import { X, Plus } from 'lucide-react'
 
@@ -56,8 +57,10 @@ export function TagInput({
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1)
   const [error, setError] = useState<string | null>(null)
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Filter suggestions based on input
   const filteredSuggestions = suggestions.filter(
@@ -177,7 +180,13 @@ export function TagInput({
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node
+      if (
+        containerRef.current && 
+        !containerRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setShowSuggestions(false)
         setSelectedSuggestionIndex(-1)
       }
@@ -186,6 +195,18 @@ export function TagInput({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Update dropdown position when showing suggestions
+  useEffect(() => {
+    if (showSuggestions && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.top - 8, // 8px gap above the input
+        left: rect.left,
+        width: rect.width,
+      })
+    }
+  }, [showSuggestions])
 
   return (
     <div ref={containerRef} className={cn('relative', className)}>
@@ -277,11 +298,12 @@ export function TagInput({
         </p>
       )}
 
-      {/* Autocomplete suggestions dropdown - pops up above input */}
-      {showSuggestions && filteredSuggestions.length > 0 && (
+      {/* Autocomplete suggestions dropdown - rendered via Portal to avoid overflow clipping */}
+      {showSuggestions && filteredSuggestions.length > 0 && dropdownPosition && createPortal(
         <div
+          ref={dropdownRef}
           className={cn(
-            'absolute z-50 w-full bottom-full mb-2 py-2 rounded-2xl',
+            'fixed z-[200] py-2 rounded-2xl',
             'bg-bg backdrop-blur-xl',
             'border border-primary/20',
             'shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)]',
@@ -289,6 +311,12 @@ export function TagInput({
             'max-h-40 overflow-y-auto',
             'animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-200'
           )}
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+            transform: 'translateY(-100%)',
+          }}
         >
           {filteredSuggestions.map((suggestion, index) => {
             const isSelected = index === selectedSuggestionIndex
@@ -335,7 +363,8 @@ export function TagInput({
               </button>
             )
           })}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

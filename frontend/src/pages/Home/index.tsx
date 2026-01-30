@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Clock } from '../../components/Clock'
 import { BookmarkGrid } from '../../components/BookmarkGrid'
 import { SearchBox } from '../../components/SearchBox'
-import { BookmarkDrawer } from '../../components/BookmarkDrawer'
 import { useBookmarkDrawerStore } from '../../stores/bookmarkDrawer'
+
+// 懒加载大型组件（BookmarkDrawer 约 75KB）
+const BookmarkDrawer = lazy(() => import('../../components/BookmarkDrawer').then(m => ({ default: m.BookmarkDrawer })))
 import { useBookmarkDndStore } from '../../stores/bookmarkDnd'
 import { useSearchFocusStore } from '../../stores/searchFocus'
 import { useAppearanceStore } from '../../stores/appearance'
@@ -176,12 +178,14 @@ export function HomePage() {
       )}
       
       {/* 书签抽屉 - 传递上划进度实现拖出效果 */}
-      <BookmarkDrawer 
-        open={drawerOpen} 
-        onClose={() => setDrawerOpen(false)} 
-        swipeUpProgress={isMobile ? swipeUpProgress : 0}
-        isSwipeAnimating={isSwipeAnimating}
-      />
+      <Suspense fallback={null}>
+        <BookmarkDrawer 
+          open={drawerOpen} 
+          onClose={() => setDrawerOpen(false)} 
+          swipeUpProgress={isMobile ? swipeUpProgress : 0}
+          isSwipeAnimating={isSwipeAnimating}
+        />
+      </Suspense>
     </div>
   )
 }

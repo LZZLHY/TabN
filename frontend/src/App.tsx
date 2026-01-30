@@ -5,6 +5,7 @@ import { HomePage } from './pages/Home'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useApiError } from './hooks/useApiError'
 import { useSettingsWebSocket } from './hooks/useSettingsWebSocket'
+import { useIconRadiusCSS } from './hooks/useIconRadiusCSS'
 import { Loader2 } from 'lucide-react'
 
 // 懒加载不常用页面，减少首屏加载体积
@@ -28,6 +29,9 @@ export default function App() {
   
   // 初始化设置 WebSocket 实时同步
   useSettingsWebSocket()
+  
+  // 初始化图标圆角 CSS 变量
+  useIconRadiusCSS()
   
   return (
     <ErrorBoundary>

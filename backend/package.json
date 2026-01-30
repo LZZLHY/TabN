@@ -1,8 +1,8 @@
 {
   "name": "tabn-backend",
   "private": true,
-  "version": "1.5.0",
-  "patchVersion": 10402,
+  "version": "1.5.1",
+  "patchVersion": 10561,
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",

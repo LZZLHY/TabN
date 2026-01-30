@@ -2,11 +2,12 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Folder as FolderIcon } from 'lucide-react'
 import { cn } from '../../utils/cn'
-import { Favicon } from '../Favicon'
+import { DeleteButton } from './DeleteButton'
 import { getSortedFolderChildren } from './folderOperations'
-import { getIconUrl } from '../../utils/iconSource'
 import { useAppearanceStore } from '../../stores/appearance'
 import { useBookmarkDrag } from './useBookmarkDrag'
+import { FolderPreviewIcon } from './FolderPreviewIcon'
+import { UnifiedIcon } from '../ui/UnifiedIcon'
 import type { Bookmark } from './types'
 import type { BookmarkContext } from '../../types/bookmark'
 
@@ -22,6 +23,8 @@ type FolderModalProps = {
   hasParent?: boolean // 是否有上一级文件夹（用于区分关闭一级和关闭二级）
   autoClose?: boolean // 是否自动播放关闭动画（用于关闭动画层）
   forceExpanded?: boolean // 强制立即展开（无动画）
+  batchDeleteMode?: boolean // 是否处于批量删除模式
+  onBatchDeleteItem?: (item: Bookmark) => void // 批量删除单个书签的回调
   onClose: () => void
   onItemClick: (item: Bookmark) => void
   onSubFolderClick: (folder: Bookmark, rect: DOMRect) => void
@@ -53,6 +56,8 @@ export function FolderModal({
   hasParent = false,
   autoClose = false,
   forceExpanded = false,
+  batchDeleteMode = false,
+  onBatchDeleteItem,
   onClose,
   onItemClick,
   onSubFolderClick,
@@ -548,29 +553,52 @@ export function FolderModal({
                     }}
                   >
                     {/* bm-inner 放在内层，与书签页结构保持一致，用于 FLIP 动画 */}
-                    <div className="bm-inner flex flex-col items-center gap-1.5 p-1 rounded-xl transition-colors group/icon">
+                    <div className="bm-inner flex flex-col items-center gap-1.5 p-1 rounded-[var(--start-radius)] transition-colors group/icon">
                       <div
                         className={cn(
-                          'bookmark-icon rounded-xl overflow-hidden grid place-items-center',
+                          'bookmark-icon rounded-[var(--start-radius)] grid place-items-center relative',
                           'group-hover/icon:scale-110 group-hover/icon:shadow-lg group-hover/icon:shadow-black/10',
                           'group-active/icon:scale-95',
-                          isSubFolder
-                            ? 'bg-glass/30 border border-glass-border/20 p-[2px]'
-                            : 'bg-white/70',
+                          isSubFolder && 'bg-glass/30 border border-glass-border/20 p-[2px]',
                           isCombineTarget && 'ring-2 ring-primary ring-offset-2',
                           isCombineCandidate && 'ring-2 ring-primary/60 ring-offset-2',
+                          batchDeleteMode && 'bookmark-shake',
                         )}
                         style={{ 
-                          width: bookmarkIconSize, 
+                          width: bookmarkIconSize,
                           height: bookmarkIconSize,
                           transition: 'transform 150ms ease-out, box-shadow 150ms ease-out',
                         }}
                       >
-                        {isSubFolder ? (
-                          <FolderPreview items={getSortedFolderChildren(allItems.filter(x => x.parentId === item.id), userId, item.id, context || 'drawer').slice(0, 9)} allItems={allItems} />
-                        ) : (
-                          <FolderItemIconContent bookmark={item} />
+                        {/* 批量删除模式下的删除按钮 */}
+                        {batchDeleteMode && (
+                          <DeleteButton
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              e.preventDefault()
+                              onBatchDeleteItem?.(item)
+                            }}
+                          />
                         )}
+                        <div className="absolute inset-0 rounded-[var(--start-radius)] overflow-hidden">
+                          {isSubFolder ? (
+                            <FolderPreviewIcon
+                              folderChildren={getSortedFolderChildren(allItems.filter(x => x.parentId === item.id), userId, item.id, context || 'drawer').slice(0, 9)}
+                              allItems={allItems}
+                              size={bookmarkIconSize}
+                            />
+                          ) : (
+                            <UnifiedIcon
+                              iconType={item.iconType}
+                              iconData={item.iconData}
+                              iconUrl={item.iconUrl}
+                              iconBg={item.iconBg}
+                              url={item.url}
+                              name={item.name}
+                              size={bookmarkIconSize}
+                            />
+                          )}
+                        </div>
                       </div>
                       <span 
                         className="text-[10px] text-fg/70 truncate text-center"
@@ -600,17 +628,30 @@ export function FolderModal({
                 <div
                   ref={drag.overlayBoxRef}
                   className={cn(
-                    'bookmark-icon rounded-xl overflow-hidden grid place-items-center shadow-2xl select-none',
-                    isSubFolder
-                      ? 'bg-glass/30 border border-glass-border/20 p-[2px]'
-                      : 'bg-white/70',
+                    'bookmark-icon rounded-[var(--start-radius)] overflow-hidden grid place-items-center shadow-2xl select-none',
+                    isSubFolder && 'bg-glass/30 border border-glass-border/20 p-[2px]',
                   )}
-                  style={{ width: bookmarkIconSize, height: bookmarkIconSize }}
+                  style={{ 
+                    width: bookmarkIconSize, 
+                    height: bookmarkIconSize,
+                  }}
                 >
                   {isSubFolder ? (
-                    <FolderPreview items={getSortedFolderChildren(allItems.filter(x => x.parentId === item.id), userId, item.id, context || 'drawer').slice(0, 9)} allItems={allItems} />
+                    <FolderPreviewIcon
+                      folderChildren={getSortedFolderChildren(allItems.filter(x => x.parentId === item.id), userId, item.id, context || 'drawer').slice(0, 9)}
+                      allItems={allItems}
+                      size={bookmarkIconSize}
+                    />
                   ) : (
-                    <FolderItemIconContent bookmark={item} />
+                    <UnifiedIcon
+                      iconType={item.iconType}
+                      iconData={item.iconData}
+                      iconUrl={item.iconUrl}
+                      iconBg={item.iconBg}
+                      url={item.url}
+                      name={item.name}
+                      size={bookmarkIconSize}
+                    />
                   )}
                 </div>
                 <div className="mt-1.5 text-[11px] text-fg/80 truncate text-center" style={{ width: bookmarkIconSize }}>
@@ -623,241 +664,5 @@ export function FolderModal({
       })()}
     </div>,
     document.body
-  )
-}
-
-/**
- * 文件夹内书签图标内容组件（不包含外层容器）
- * 支持自定义图标加载失败后回退到 Favicon
- */
-function FolderItemIconContent({ bookmark }: { bookmark: Bookmark }) {
-  const [iconFailed, setIconFailed] = useState(false)
-  
-  // 检查自定义图标
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon) && !iconFailed
-  
-  if (hasCustomIcon) {
-    return (
-      <img
-        src={customIcon}
-        alt=""
-        className="h-full w-full object-cover"
-        loading="lazy"
-        decoding="async"
-        onError={() => setIconFailed(true)}
-      />
-    )
-  }
-  
-  return (
-    <Favicon
-      url={bookmark.url || ''}
-      name={bookmark.name}
-      className="h-full w-full object-cover"
-      letterClassName="h-full w-full"
-    />
-  )
-}
-
-/**
- * 文件夹预览中的小图标组件
- * 支持显示书签图标或子文件夹预览
- */
-function FolderPreviewIcon({ bookmark, subFolderItems, allItems }: { bookmark: Bookmark; subFolderItems?: Bookmark[]; allItems?: Bookmark[] }) {
-  const isSubFolder = bookmark.type === 'FOLDER'
-  
-  // 如果是子文件夹，显示其内容预览
-  if (isSubFolder) {
-    const children = subFolderItems || []
-    if (children.length === 0) {
-      return (
-        <div className="w-full pt-[100%] relative bg-amber-100/50 rounded-[2px] overflow-hidden">
-          <FolderIcon className="absolute inset-0 w-full h-full p-0.5 text-amber-500" />
-        </div>
-      )
-    }
-    // 显示子文件夹内的前 4 个项目的缩略图（始终保持 2x2 布局）
-    return (
-      <div className="w-full pt-[100%] relative bg-amber-100/30 rounded-[2px] overflow-hidden">
-        <div className="absolute inset-0 grid grid-cols-2 gap-px p-px">
-          {[0, 1, 2, 3].map((idx) => {
-            const child = children[idx]
-            if (!child) {
-              return <div key={`empty-${idx}`} className="bg-black/5 rounded-[1px] aspect-square" />
-            }
-            // 如果子项是文件夹，获取其嵌套子项
-            const nestedItems = child.type === 'FOLDER' && allItems
-              ? allItems.filter(x => x.parentId === child.id).slice(0, 4)
-              : undefined
-            return <MiniIcon key={child.id} bookmark={child} nestedItems={nestedItems} />
-          })}
-        </div>
-      </div>
-    )
-  }
-  
-  // 普通书签图标逻辑
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon)
-  
-  return (
-    <div className="w-full pt-[100%] relative bg-black/10 rounded-[2px] overflow-hidden">
-      {hasCustomIcon ? (
-        <img
-          src={customIcon}
-          className="absolute inset-0 w-full h-full object-cover"
-          alt=""
-          loading="lazy"
-          decoding="async"
-        />
-      ) : bookmark.url ? (
-        <Favicon
-          url={bookmark.url}
-          size={16}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      ) : (
-        <FolderIcon className="absolute inset-0 w-full h-full p-0.5 text-amber-500" />
-      )}
-    </div>
-  )
-}
-
-/**
- * 极小图标组件（用于嵌套文件夹预览中的 2x2 网格内的图标）
- * 不再递归，只显示简单图标
- */
-function TinyIcon({ bookmark }: { bookmark: Bookmark }) {
-  const isFolder = bookmark.type === 'FOLDER'
-  
-  if (isFolder) {
-    return (
-      <div className="bg-amber-100/50 rounded-[0.5px] flex items-center justify-center aspect-square">
-        <FolderIcon className="w-full h-full p-px text-amber-500" />
-      </div>
-    )
-  }
-  
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon)
-  
-  if (hasCustomIcon) {
-    return (
-      <img
-        src={customIcon}
-        className="w-full h-full object-cover rounded-[0.5px] aspect-square"
-        alt=""
-        loading="lazy"
-        decoding="async"
-      />
-    )
-  }
-  
-  return (
-    <Favicon
-      url={bookmark.url || ''}
-      size={6}
-      className="w-full h-full object-cover rounded-[0.5px] aspect-square"
-    />
-  )
-}
-
-/**
- * 超小图标组件（用于子文件夹预览中的 2x2 网格）
- * 支持显示嵌套文件夹内的图标预览
- */
-function MiniIcon({ bookmark, nestedItems }: { bookmark: Bookmark; nestedItems?: Bookmark[] }) {
-  const isFolder = bookmark.type === 'FOLDER'
-  
-  if (isFolder) {
-    const children = nestedItems || []
-    if (children.length === 0) {
-      // 空文件夹显示文件夹图标
-      return (
-        <div className="w-full h-full bg-amber-100/50 rounded-[1px] flex items-center justify-center aspect-square">
-          <FolderIcon className="w-full h-full p-[1px] text-amber-500" />
-        </div>
-      )
-    }
-    // 显示嵌套文件夹内的前 4 个图标（2x2 网格）
-    return (
-      <div className="w-full h-full bg-amber-100/30 rounded-[1px] grid grid-cols-2 gap-[0.5px] p-[0.5px] aspect-square">
-        {[0, 1, 2, 3].map((idx) => {
-          const child = children[idx]
-          if (!child) {
-            return <div key={`empty-${idx}`} className="bg-black/5 rounded-[0.5px] aspect-square" />
-          }
-          return <TinyIcon key={child.id} bookmark={child} />
-        })}
-      </div>
-    )
-  }
-  
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon)
-  
-  if (hasCustomIcon) {
-    return (
-      <img
-        src={customIcon}
-        className="w-full h-full object-cover rounded-[1px]"
-        alt=""
-        loading="lazy"
-        decoding="async"
-      />
-    )
-  }
-  
-  return (
-    <Favicon
-      url={bookmark.url || ''}
-      size={8}
-      className="w-full h-full object-cover rounded-[1px]"
-    />
-  )
-}
-
-// 文件夹预览组件（显示子项缩略图）
-function FolderPreview({ items, allItems }: { items: Bookmark[]; allItems?: Bookmark[] }) {
-  if (items.length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <FolderIcon className="w-6 h-6 text-amber-500" />
-      </div>
-    )
-  }
-  return (
-    <div className="grid grid-cols-3 gap-0.5 w-full h-full content-start p-[8%]">
-      {items.slice(0, 9).map((sub) => {
-        // 如果是子文件夹，获取其子项
-        const subFolderItems = sub.type === 'FOLDER' && allItems
-          ? allItems.filter(x => x.parentId === sub.id).slice(0, 4)
-          : undefined
-        return (
-          <FolderPreviewIcon key={sub.id} bookmark={sub} subFolderItems={subFolderItems} allItems={allItems} />
-        )
-      })}
-    </div>
   )
 }

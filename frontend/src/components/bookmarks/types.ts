@@ -12,7 +12,7 @@ export type Bookmark = {
   tags?: string[]
   iconUrl?: string | null
   iconData?: string | null
-  iconType?: 'URL' | 'BASE64' | null
+  iconType?: 'URL' | 'BASE64' | 'TEXT' | null
   iconBg?: string | null  // 图标背景：null/default=原始, transparent=透明, #RRGGBB=自定义颜色
   createdAt: string
   updatedAt: string

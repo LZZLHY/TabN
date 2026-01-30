@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Eye, EyeOff } from 'lucide-react'
@@ -7,6 +8,7 @@ import { Input } from '../../components/ui/Input'
 import { useAuthStore } from '../../stores/auth'
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const login = useAuthStore((s) => s.login)
@@ -31,14 +33,14 @@ export function LoginPage() {
         toast.error(resp.message)
         return
       }
-      toast.success('登录成功')
+      toast.success(t('auth.loginSuccess'))
       
       // Redirect back to previous page or home
       const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/'
       navigate(from, { replace: true })
     } catch (e) {
       console.error(e)
-      toast.error('登录发生错误')
+      toast.error(t('auth.loginFailed'))
     } finally {
       setLoading(false)
     }
@@ -48,16 +50,16 @@ export function LoginPage() {
     return (
       <div className="w-full max-w-md">
         <div className="glass-modal rounded-2xl p-6 sm:p-8 text-left animate-in fade-in zoom-in-95 duration-200">
-          <div className="text-xl font-semibold text-fg">你已登录</div>
+          <div className="text-xl font-semibold text-fg">{t('auth.loginSuccess')}</div>
           <div className="mt-2 text-sm text-fg/70">
-            当前用户：<span className="font-medium text-fg">{user.nickname}</span>
+            {t('auth.username')}: <span className="font-medium text-fg">{user.nickname}</span>
           </div>
           <div className="mt-6 flex gap-2">
             <Button variant="primary" onClick={() => navigate('/')}>
-              回到首页
+              {t('error.backHome')}
             </Button>
             <Button variant="glass" onClick={() => navigate('/bookmarks')}>
-              我的书签
+              {t('nav.bookmarks')}
             </Button>
           </div>
         </div>
@@ -74,26 +76,26 @@ export function LoginPage() {
           onSubmit()
         }}
       >
-        <div className="text-xl font-semibold text-fg">登录</div>
+        <div className="text-xl font-semibold text-fg">{t('auth.login')}</div>
 
         <div className="mt-6 space-y-3">
           <div className="space-y-2">
-            <div className="text-sm text-fg/80">账号 / 邮箱 / 手机号</div>
+            <div className="text-sm text-fg/80">{t('auth.username')}</div>
             <Input
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              placeholder="请输入账号"
+              placeholder={t('auth.username')}
               autoComplete="username"
             />
           </div>
 
           <div className="space-y-2">
-            <div className="text-sm text-fg/80">密码</div>
+            <div className="text-sm text-fg/80">{t('auth.password')}</div>
             <div className="relative">
               <Input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="请输入密码"
+                placeholder={t('auth.password')}
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 className="pr-10"
@@ -112,13 +114,13 @@ export function LoginPage() {
 
         <div className="mt-6 flex items-center justify-between gap-3">
           <div className="text-sm text-fg/70">
-            还没有账号？{' '}
+            {t('auth.noAccount')}{' '}
             <NavLink to="/register" className="text-primary hover:underline">
-              去注册
+              {t('auth.register')}
             </NavLink>
           </div>
           <Button type="submit" variant="primary" disabled={disabled}>
-            {loading ? '登录中…' : '登录'}
+            {loading ? t('common.loading') : t('auth.login')}
           </Button>
         </div>
       </form>

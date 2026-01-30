@@ -13,6 +13,7 @@ import utilsRouter from './routes/utils'
 import { logsRouter } from './routes/logs'
 import { apiKeysRouter } from './routes/apiKeys'
 import { iconsRouter } from './routes/icons'
+import { presetsRouter } from './routes/presets'
 import { updateRouter } from './controllers/updateController'
 import { initLogger, createLogger } from './services/logger'
 import { getLogStorage } from './services/logStorage'
@@ -93,6 +94,7 @@ app.use('/api/utils', utilsRouter)
 app.use('/api', logsRouter)
 app.use('/api/api-keys', apiKeysRouter)
 app.use('/api/icons', iconsRouter)
+app.use('/api/presets', presetsRouter)
 
 // 404 处理（在所有路由之后）
 app.use(notFoundHandler)

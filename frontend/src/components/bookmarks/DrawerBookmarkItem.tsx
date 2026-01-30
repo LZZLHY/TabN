@@ -1,11 +1,12 @@
 import { Folder } from 'lucide-react'
 import { cn } from '../../utils/cn'
-import { Favicon } from '../Favicon'
 import { Tooltip } from '../ui/Tooltip'
 import { DraggableBookmarkItem } from './DraggableItem'
+import { DeleteButton } from './DeleteButton'
 import { getSortedFolderChildren } from './folderOperations'
-import { getIconUrl } from '../../utils/iconSource'
 import { useAppearanceStore } from '../../stores/appearance'
+import { FolderPreviewIcon } from './FolderPreviewIcon'
+import { UnifiedIcon, type IconData } from '../ui/UnifiedIcon'
 import type { Bookmark } from './types'
 
 type DrawerBookmarkItemProps = {
@@ -27,10 +28,15 @@ type DrawerBookmarkItemProps = {
   onContextMenu: (item: Bookmark, x: number, y: number) => void
   onLongPress: (x: number, y: number) => void
   onTagClick: (tag: string) => void
+  batchDeleteMode?: boolean
+  onBatchDeleteItem?: (item: Bookmark) => void
 }
 
 /**
  * 书签页单个书签/文件夹渲染组件
+ * 
+ * 使用 UnifiedIcon 组件进行图标渲染，确保所有图标类型正确显示
+ * 使用 FolderPreviewIcon 组件进行文件夹预览渲染
  */
 export function DrawerBookmarkItem({
   item: b,
@@ -45,6 +51,8 @@ export function DrawerBookmarkItem({
   onContextMenu,
   onLongPress,
   onTagClick,
+  batchDeleteMode = false,
+  onBatchDeleteItem,
 }: DrawerBookmarkItemProps) {
   const isFolder = b.type === 'FOLDER'
   const isCombineCandidate = drag.combineCandidateId === b.id
@@ -55,20 +63,8 @@ export function DrawerBookmarkItem({
     ? getSortedFolderChildren(allItems.filter(x => x.parentId === b.id), userId, b.id, 'drawer').slice(0, 9) 
     : []
   
-  // Determine custom icon source
-  let customIconSrc = ''
-  if (!isFolder) {
-    if (b.iconType === 'BASE64' && b.iconData) {
-      // Base64 图标优先
-      customIconSrc = b.iconData
-    } else if (b.iconUrl) {
-      // 使用 iconUrl（可能是来源标记或自定义 URL）
-      customIconSrc = getIconUrl(b.url, b.iconUrl)
-    }
-  }
-  const hasCustomIcon = Boolean(customIconSrc)
+  // 检查自定义图标是否失败
   const customIconFailed = customIconOk[b.id] === false
-  const showCustomIcon = hasCustomIcon && !customIconFailed
 
   const showCombine = isCombineCandidate || isCombineTarget
   const iconRing = isCombineTarget
@@ -111,21 +107,16 @@ export function DrawerBookmarkItem({
       const bgOpacity = blurIntensity / 100 * 0.7  // 0-0.7
       
       // 毛玻璃效果：白色半透明背景 + 可选的主题色叠加
-      // 主题色时：使用主题色作为背景色（通过内联样式设置 RGBA）
-      // 非主题色时：纯白色毛玻璃
       const baseStyle: React.CSSProperties = {
         backdropFilter: blurPx > 0 ? `blur(${blurPx}px)` : undefined,
         WebkitBackdropFilter: blurPx > 0 ? `blur(${blurPx}px)` : undefined,
       }
       
       if (usePrimary) {
-        // 主题色背景：使用 CSS 变量或固定的主题色
-        // 由于无法直接获取主题色 RGB 值，使用类名 + 白色底层的组合
         return { 
           className: 'bg-primary/20',
           style: {
             ...baseStyle,
-            // 添加白色底层增强毛玻璃效果
             boxShadow: `inset 0 0 0 100px rgba(255, 255, 255, ${bgOpacity * 0.5})`
           }
         }
@@ -141,13 +132,32 @@ export function DrawerBookmarkItem({
     }
     
     // 默认背景（原始）- fallback
-    if (showCustomIcon) {
+    // 判断是否有自定义图标
+    const hasCustomIcon = Boolean(
+      (b.iconType === 'BASE64' && b.iconData) || 
+      b.iconUrl || 
+      b.iconType === 'TEXT'
+    )
+    if (hasCustomIcon && !customIconFailed) {
       return { className: 'bg-white/70' }
     }
     return { className: 'bg-primary/15 text-primary font-semibold' }
   }
   
   const iconBgStyle = getIconBgStyle()
+
+  // 将 Bookmark 转换为 IconData 格式
+  const convertToIconData = (bookmark: Bookmark): IconData & { id: string; type: string; parentId: string | null } => ({
+    id: bookmark.id,
+    type: bookmark.type,
+    parentId: bookmark.parentId,
+    iconType: bookmark.iconType,
+    iconData: bookmark.iconData,
+    iconUrl: bookmark.iconUrl,
+    iconBg: bookmark.iconBg,
+    url: bookmark.url,
+    name: bookmark.name,
+  })
 
   return (
     <DraggableBookmarkItem
@@ -211,12 +221,13 @@ export function DrawerBookmarkItem({
       <div className="grid place-items-center group/icon">
         <div
           className={cn(
-            'bookmark-icon rounded-[var(--start-radius)] overflow-hidden grid place-items-center relative',
+            'bookmark-icon rounded-[var(--start-radius)] grid place-items-center relative',
             'group-hover/icon:scale-110 group-hover/icon:shadow-lg group-hover/icon:shadow-black/10',
             'group-active/icon:scale-95',
             iconBgStyle.className,
             iconRing,
             showCombine && 'scale-[1.03]',
+            batchDeleteMode && 'bookmark-shake',
           )}
           style={{
             width: bookmarkIconSize,
@@ -225,195 +236,50 @@ export function DrawerBookmarkItem({
             ...iconBgStyle.style,
           }}
         >
+          {/* 批量删除模式下的删除按钮 - 放在图标容器内但不受 overflow-hidden 影响 */}
+          {batchDeleteMode && (
+            <DeleteButton
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                onBatchDeleteItem?.(b)
+              }}
+            />
+          )}
           {showCombine && !isFolder ? (
-            <div className="absolute inset-0 rounded-[var(--start-radius)] bg-glass/25 border border-primary/60 grid place-items-center">
+            <div className="absolute inset-0 rounded-[var(--start-radius)] overflow-hidden bg-glass/25 border border-primary/60 grid place-items-center">
               <Folder className="w-5 h-5 text-primary" />
             </div>
           ) : null}
 
-          <div className={cn('absolute inset-0', showCombine && !isFolder ? 'opacity-15' : 'opacity-100')}>
+          <div className={cn('absolute inset-0 rounded-[var(--start-radius)] overflow-hidden', showCombine && !isFolder ? 'opacity-15' : 'opacity-100')}>
             {isFolder ? (
-              <div className="grid grid-cols-3 gap-0.5 w-full h-full content-start p-[8%]">
-                {folderItems.map((sub) => {
-                  const isSubFolder = sub.type === 'FOLDER'
-                  
-                  // 如果是子文件夹，显示其内容预览
-                  if (isSubFolder) {
-                    const subFolderItems = allItems.filter(x => x.parentId === sub.id).slice(0, 4)
-                    if (subFolderItems.length === 0) {
-                      // 空文件夹显示文件夹图标
-                      return (
-                        <div
-                          key={sub.id}
-                          className="w-full pt-[100%] relative bg-amber-100/50 rounded-[2px] overflow-hidden"
-                        >
-                          <Folder className="absolute inset-0 w-full h-full p-0.5 text-amber-500" />
-                        </div>
-                      )
-                    }
-                    // 显示子文件夹内的前 4 个项目的缩略图（始终保持 2x2 布局）
-                    const gridItems = [...subFolderItems]
-                    // 填充到 4 个位置
-                    while (gridItems.length < 4) {
-                      gridItems.push(null as unknown as typeof subFolderItems[0])
-                    }
-                    return (
-                      <div
-                        key={sub.id}
-                        className="w-full pt-[100%] relative bg-amber-100/30 rounded-[2px] overflow-hidden"
-                      >
-                        <div className="absolute inset-0 grid grid-cols-2 gap-px p-px">
-                          {gridItems.slice(0, 4).map((child, idx) => {
-                            // 空位置显示透明占位符（保持正方形）
-                            if (!child) {
-                              return <div key={`empty-${idx}`} className="bg-black/5 rounded-[1px] aspect-square" />
-                            }
-                            const isChildFolder = child.type === 'FOLDER'
-                            if (isChildFolder) {
-                              // 获取嵌套文件夹内的子项
-                              const nestedItems = allItems.filter(x => x.parentId === child.id).slice(0, 4)
-                              if (nestedItems.length === 0) {
-                                // 空文件夹显示文件夹图标
-                                return (
-                                  <div key={child.id} className="w-full h-full bg-amber-100/50 rounded-[1px] flex items-center justify-center aspect-square">
-                                    <Folder className="w-full h-full p-[1px] text-amber-500" />
-                                  </div>
-                                )
-                              }
-                              // 显示嵌套文件夹内的前 4 个图标（2x2 网格）
-                              return (
-                                <div key={child.id} className="w-full h-full bg-amber-100/30 rounded-[1px] grid grid-cols-2 gap-[0.5px] p-[0.5px] aspect-square">
-                                  {[0, 1, 2, 3].map((nestedIdx) => {
-                                    const nestedChild = nestedItems[nestedIdx]
-                                    if (!nestedChild) {
-                                      return <div key={`nested-empty-${nestedIdx}`} className="bg-black/5 rounded-[0.5px] aspect-square" />
-                                    }
-                                    if (nestedChild.type === 'FOLDER') {
-                                      return (
-                                        <div key={nestedChild.id} className="bg-amber-100/50 rounded-[0.5px] flex items-center justify-center aspect-square">
-                                          <Folder className="w-full h-full p-px text-amber-500" />
-                                        </div>
-                                      )
-                                    }
-                                    let nestedIcon = ''
-                                    if (nestedChild.iconType === 'BASE64' && nestedChild.iconData) {
-                                      nestedIcon = nestedChild.iconData
-                                    } else if (nestedChild.iconUrl) {
-                                      nestedIcon = getIconUrl(nestedChild.url, nestedChild.iconUrl)
-                                    }
-                                    if (nestedIcon) {
-                                      return (
-                                        <img
-                                          key={nestedChild.id}
-                                          src={nestedIcon}
-                                          className="w-full h-full object-cover rounded-[0.5px] aspect-square"
-                                          alt=""
-                                          loading="lazy"
-                                          decoding="async"
-                                        />
-                                      )
-                                    }
-                                    return (
-                                      <Favicon
-                                        key={nestedChild.id}
-                                        url={nestedChild.url || ''}
-                                        size={6}
-                                        className="w-full h-full object-cover rounded-[0.5px] aspect-square"
-                                      />
-                                    )
-                                  })}
-                                </div>
-                              )
-                            }
-                            let childIcon = ''
-                            if (child.iconType === 'BASE64' && child.iconData) {
-                              childIcon = child.iconData
-                            } else if (child.iconUrl) {
-                              childIcon = getIconUrl(child.url, child.iconUrl)
-                            }
-                            if (childIcon) {
-                              return (
-                                <img
-                                  key={child.id}
-                                  src={childIcon}
-                                  className="w-full h-full object-cover rounded-[1px]"
-                                  alt=""
-                                  loading="lazy"
-                                  decoding="async"
-                                />
-                              )
-                            }
-                            return (
-                              <Favicon
-                                key={child.id}
-                                url={child.url || ''}
-                                size={8}
-                                className="w-full h-full object-cover rounded-[1px]"
-                              />
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  }
-                  
-                  // 普通书签图标逻辑
-                  let subIcon = ''
-                  if (sub.iconType === 'BASE64' && sub.iconData) {
-                    subIcon = sub.iconData
-                  } else if (sub.iconUrl) {
-                    subIcon = getIconUrl(sub.url, sub.iconUrl)
-                  }
-                  const hasCustomSubIcon = Boolean(subIcon)
-                  return (
-                    <div
-                      key={sub.id}
-                      className="w-full pt-[100%] relative bg-black/10 rounded-[2px] overflow-hidden"
-                    >
-                      {hasCustomSubIcon ? (
-                        <img
-                          src={subIcon}
-                          className="absolute inset-0 w-full h-full object-cover"
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      ) : sub.url ? (
-                        <Favicon
-                          url={sub.url}
-                          size={16}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                      ) : (
-                        <Folder className="absolute inset-0 w-full h-full p-0.5 text-amber-500" />
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+              // 文件夹使用 FolderPreviewIcon 组件
+              <FolderPreviewIcon
+                children={folderItems.map(convertToIconData)}
+                allItems={allItems.map(convertToIconData)}
+                variant="full"
+                size={bookmarkIconSize}
+                borderRadius="var(--start-radius)"
+                className="w-full h-full"
+              />
             ) : (
-              <>
-                {showCustomIcon ? (
-                  <img
-                    src={customIconSrc}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    decoding="async"
-                    onError={() => {
-                      setCustomIconOk((prev) => ({ ...prev, [b.id]: false }))
-                    }}
-                  />
-                ) : null}
-                {!showCustomIcon && (
-                  <Favicon
-                    url={b.url || ''}
-                    name={b.name}
-                    className="h-full w-full object-cover"
-                    letterClassName="h-full w-full"
-                  />
-                )}
-              </>
+              // 普通书签使用 UnifiedIcon 组件
+              <UnifiedIcon
+                iconType={b.iconType}
+                iconData={b.iconData}
+                iconUrl={b.iconUrl}
+                iconBg={b.iconBg}
+                url={b.url}
+                name={b.name}
+                variant="full"
+                size={bookmarkIconSize}
+                borderRadius="var(--start-radius)"
+                className="h-full w-full"
+                onError={() => {
+                  setCustomIconOk((prev) => ({ ...prev, [b.id]: false }))
+                }}
+              />
             )}
           </div>
         </div>

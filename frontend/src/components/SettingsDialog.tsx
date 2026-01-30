@@ -1,29 +1,42 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { 
   X, History, Eye, EyeOff, Palette, Clock, Monitor, Search, User, 
-  RotateCcw, ChevronRight, ArrowLeft, AlertTriangle, Bookmark, Download
+  RotateCcw, ChevronRight, ArrowLeft, AlertTriangle, Bookmark, Download, Trash2, Globe, Check,
+  ChevronDown, ChevronUp
 } from 'lucide-react'
 import { useIsMobile, useIsDesktop } from '../hooks/useIsMobile'
+import { changeLanguage, getCurrentLanguage, supportedLanguages, type LanguageCode } from '../i18n'
 import { useBackgroundImage } from '../hooks/useBackgroundImage'
 import { toast } from 'sonner'
 import {
   useAppearanceStore,
   type BackgroundType,
   type ClockHourCycle,
-  type SearchEngine,
   type ThemeMode,
 } from '../stores/appearance'
 import { useAuthStore } from '../stores/auth'
 import { useBookmarkDndStore } from '../stores/bookmarkDnd'
 import { useBookmarkDrawerStore } from '../stores/bookmarkDrawer'
+import { useBookmarkCacheStore } from '../stores/bookmarkCache'
 import { useSearchFocusStore } from '../stores/searchFocus'
 import { cn } from '../utils/cn'
 import { applySettingsFile, createSettingsFile } from '../utils/settingsFile'
-import { isValidCustomSearchUrl } from '../utils/searchEngine'
+import { PRESET_SEARCH_ENGINES, type SearchEngineConfig } from '../utils/searchEngine'
 import { Button } from './ui/Button'
+import { Select, type SelectOption } from './ui/Select'
+import { 
+  findMatchingBookmarkIcon, 
+  getGlobalIconBackground,
+  parseIconBgStyle,
+  type SyncedIconInfo,
+} from '../services/iconSyncService'
+import { getIconUrl } from '../utils/iconSource'
 import { Input } from './ui/Input'
 import { ChangelogDialog } from './ChangelogDialog'
 import { APIKeyManager } from './settings/APIKeyManager'
+import { getFaviconSources } from '../utils/url'
 
 type Props = {
   open: boolean
@@ -166,7 +179,7 @@ function Slider({ value, onChange, min, max, step = 1, unit = '', onReset, defau
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-fg/80">{value}{unit}</span>
         {onReset && defaultValue !== undefined && value !== defaultValue && (
-          <button type="button" onClick={onReset} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">重置</button>
+          <button type="button" onClick={onReset} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">Reset</button>
         )}
       </div>
       <input 
@@ -186,8 +199,6 @@ function Slider({ value, onChange, min, max, step = 1, unit = '', onReset, defau
 
 // 导航配置
 const NAV_ICONS: Record<TabKey, typeof Palette> = { appearance: Palette, clock: Clock, desktop: Monitor, bookmark: Bookmark, search: Search, account: User, reset: RotateCcw }
-const NAV_LABELS: Record<TabKey, string> = { appearance: '外观', clock: '时钟', desktop: '桌面', bookmark: '书签', search: '搜索', account: '账户', reset: '重置' }
-const NAV_DESCRIPTIONS: Record<TabKey, string> = { appearance: '主题、颜色、背景', clock: '时间格式、显示内容', desktop: '首页布局、侧边栏', bookmark: '图标圆角、排序、拖拽', search: '搜索引擎、历史记录', account: '个人资料、安全设置', reset: '恢复默认设置' }
 
 // 所有可搜索的设置项配置
 interface SettingSearchItem {
@@ -198,40 +209,42 @@ interface SettingSearchItem {
   group: string
 }
 
-const SEARCHABLE_SETTINGS: SettingSearchItem[] = [
-  // 外观
-  { id: 'theme-mode', label: '深色模式', keywords: ['主题', '深色', '浅色', '跟随系统', 'dark', 'light', 'theme'], tab: 'appearance', group: '主题与颜色' },
-  { id: 'accent-color', label: '主题色', keywords: ['颜色', '强调色', 'accent', 'color'], tab: 'appearance', group: '主题与颜色' },
-  { id: 'background', label: '背景', keywords: ['背景', '壁纸', '必应', 'bing', 'background'], tab: 'appearance', group: '背景' },
-  { id: 'mobile-nav', label: '移动端导航栏', keywords: ['移动端', '导航栏', 'mobile', 'nav'], tab: 'appearance', group: '移动端导航栏' },
-  // 时钟
-  { id: 'hour-cycle', label: '小时制', keywords: ['时间', '24小时', '12小时', 'hour'], tab: 'clock', group: '时间格式' },
-  { id: 'clock-seconds', label: '显示秒', keywords: ['秒', 'seconds'], tab: 'clock', group: '显示内容' },
-  { id: 'clock-date', label: '显示日期', keywords: ['日期', 'date'], tab: 'clock', group: '显示内容' },
-  { id: 'clock-color', label: '时钟颜色', keywords: ['时钟颜色', '跟随主题色'], tab: 'clock', group: '字体颜色' },
-  // 桌面
-  { id: 'home-layout', label: '首页布局', keywords: ['布局', '动态', '固定', 'layout'], tab: 'desktop', group: '首页布局' },
-  { id: 'sidebar', label: '侧边栏', keywords: ['侧边栏', '自动隐藏', 'sidebar'], tab: 'desktop', group: '侧边栏' },
-  { id: 'dock', label: 'Dock栏', keywords: ['dock', '底部栏', '快捷栏', '书签入口', '设置入口'], tab: 'desktop', group: '底部 Dock 栏' },
-  // 书签
-  { id: 'icon-size', label: '图标大小', keywords: ['大小', 'size', '图标', '尺寸'], tab: 'bookmark', group: '图标大小' },
-  { id: 'corner-radius', label: '图标圆角', keywords: ['圆角', 'radius', '边角', '图标'], tab: 'bookmark', group: '图标圆角' },
-  { id: 'bookmark-sort', label: '书签排序', keywords: ['排序', '书签', 'sort', 'bookmark'], tab: 'bookmark', group: '书签排序' },
-  { id: 'dnd-animation', label: '拖拽动画', keywords: ['拖拽', '动画', 'drag', 'animation'], tab: 'bookmark', group: '拖拽动画' },
-  // 搜索
-  { id: 'search-engine', label: '搜索引擎', keywords: ['搜索引擎', '百度', '必应', '谷歌', 'baidu', 'bing', 'google'], tab: 'search', group: '搜索引擎' },
-  { id: 'search-glow', label: '流光边框', keywords: ['流光', '边框', 'glow', 'border'], tab: 'search', group: '流光边框' },
-  { id: 'search-history', label: '搜索历史', keywords: ['历史', 'history'], tab: 'search', group: '搜索历史' },
-  { id: 'recent-bookmarks', label: '最近打开', keywords: ['最近', '打开', 'recent'], tab: 'search', group: '最近打开' },
-  { id: 'search-row-height', label: '选项行高', keywords: ['行高', 'row', 'height'], tab: 'search', group: '选项行高' },
-  // 账户
-  { id: 'login-status', label: '登录状态', keywords: ['登录', '账户', 'login', 'account'], tab: 'account', group: '登录状态' },
-  { id: 'profile', label: '个人资料', keywords: ['资料', '昵称', '用户名', 'profile'], tab: 'account', group: '个人资料' },
-  { id: 'password', label: '修改密码', keywords: ['密码', 'password'], tab: 'account', group: '修改密码' },
-  { id: 'api-key', label: '扩展 API', keywords: ['API', '密钥', 'key'], tab: 'account', group: '扩展 API' },
-  { id: 'import-export', label: '设置导入/导出', keywords: ['导入', '导出', 'import', 'export'], tab: 'account', group: '设置导入 / 导出' },
-  { id: 'about', label: '关于', keywords: ['关于', '版本', 'about', 'version'], tab: 'account', group: '关于' },
-]
+function useSearchableSettings(): SettingSearchItem[] {
+  const { t } = useTranslation()
+  return [
+    { id: 'theme-mode', label: t('settings.searchItems.themeMode'), keywords: ['theme', 'dark', 'light'], tab: 'appearance', group: t('settings.searchGroups.themeColor') },
+    { id: 'accent-color', label: t('settings.searchItems.themeColor'), keywords: ['accent', 'color'], tab: 'appearance', group: t('settings.searchGroups.themeColor') },
+    { id: 'background', label: t('settings.searchItems.background'), keywords: ['bing', 'background', 'wallpaper'], tab: 'appearance', group: t('settings.searchGroups.background') },
+    { id: 'mobile-nav', label: t('settings.mobileNav.title'), keywords: ['mobile', 'nav'], tab: 'appearance', group: t('settings.mobileNav.title') },
+
+    { id: 'hour-cycle', label: t('settings.searchItems.hourCycle'), keywords: ['12', '24', 'hour'], tab: 'clock', group: t('settings.searchGroups.timeFormat') },
+    { id: 'clock-seconds', label: t('settings.searchItems.showSeconds'), keywords: ['seconds'], tab: 'clock', group: t('settings.searchGroups.clockContent') },
+    { id: 'clock-date', label: t('settings.searchItems.showDate'), keywords: ['date'], tab: 'clock', group: t('settings.searchGroups.clockContent') },
+    { id: 'clock-color', label: t('settings.searchItems.clockColor'), keywords: ['color'], tab: 'clock', group: t('settings.searchGroups.fontColor') },
+
+    { id: 'home-layout', label: t('settings.searchItems.homeLayout'), keywords: ['layout'], tab: 'desktop', group: t('settings.searchItems.homeLayout') },
+    { id: 'sidebar', label: t('settings.sidebar.title'), keywords: ['sidebar'], tab: 'desktop', group: t('settings.sidebar.title') },
+    { id: 'dock', label: t('settings.dock.title'), keywords: ['dock'], tab: 'desktop', group: t('settings.dock.title') },
+
+    { id: 'icon-size', label: t('settings.iconSize.title'), keywords: ['size', 'icon'], tab: 'bookmark', group: t('settings.iconSize.title') },
+    { id: 'icon-radius-ratio', label: t('settings.iconRadiusRatio.title'), keywords: ['radius', 'ratio'], tab: 'bookmark', group: t('settings.iconRadiusRatio.title') },
+    { id: 'bookmark-sort', label: t('settings.searchItems.bookmarkSort'), keywords: ['sort', 'bookmark'], tab: 'bookmark', group: t('settings.searchItems.bookmarkSort') },
+    { id: 'dnd-animation', label: t('settings.searchItems.dndAnimation'), keywords: ['drag', 'animation'], tab: 'bookmark', group: t('settings.searchItems.dndAnimation') },
+
+    { id: 'search-engine', label: t('settings.searchEngine.title'), keywords: ['baidu', 'bing', 'google'], tab: 'search', group: t('settings.searchEngine.title') },
+    { id: 'search-glow', label: t('settings.searchGlow.title'), keywords: ['glow', 'border'], tab: 'search', group: t('settings.searchGlow.title') },
+    { id: 'search-history', label: t('settings.searchHistory.title'), keywords: ['history'], tab: 'search', group: t('settings.searchHistory.title') },
+    { id: 'recent-bookmarks', label: t('settings.recentBookmarks.title'), keywords: ['recent'], tab: 'search', group: t('settings.recentBookmarks.title') },
+    { id: 'search-row-height', label: t('settings.searchRowHeight.title'), keywords: ['row', 'height'], tab: 'search', group: t('settings.searchRowHeight.title') },
+
+    { id: 'login-status', label: t('settings.loginStatus.title'), keywords: ['login', 'account'], tab: 'account', group: t('settings.loginStatus.title') },
+    { id: 'profile', label: t('settings.profile.title'), keywords: ['profile'], tab: 'account', group: t('settings.profile.title') },
+    { id: 'password', label: t('settings.changePassword.title'), keywords: ['password'], tab: 'account', group: t('settings.changePassword.title') },
+    { id: 'api-key', label: t('settings.apiKey.title'), keywords: ['api', 'key'], tab: 'account', group: t('settings.apiKey.title') },
+    { id: 'import-export', label: t('settings.importExport.title'), keywords: ['import', 'export'], tab: 'account', group: t('settings.importExport.title') },
+    { id: 'about', label: t('settings.about.title'), keywords: ['about', 'version'], tab: 'account', group: t('settings.about.title') },
+  ]
+}
 
 // 重置确认框组件
 function ResetConfirmDialog({ 
@@ -247,6 +260,7 @@ function ResetConfirmDialog({
   title: string
   description: string
 }) {
+  const { t } = useTranslation()
   if (!open) return null
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -262,15 +276,195 @@ function ResetConfirmDialog({
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="ghost" size="sm" onClick={onClose}>取消</Button>
-          <Button variant="primary" size="sm" onClick={() => { onConfirm(); onClose() }}>确认重置</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button variant="primary" size="sm" onClick={() => { onConfirm(); onClose() }}>{t('common.confirm')}</Button>
         </div>
       </div>
     </div>
   )
 }
 
+// 搜索引擎卡片组件
+function SearchEngineCard({
+  engine,
+  isSelected,
+  accent,
+  onClick,
+  syncedIcon,
+  globalBg,
+}: {
+  engine: SearchEngineConfig
+  isSelected: boolean
+  accent: string
+  onClick: () => void
+  syncedIcon: SyncedIconInfo | null
+  globalBg: string | null
+}) {
+  const [iconSrc, setIconSrc] = useState<string | null>(null)
+  const [iconLoading, setIconLoading] = useState(true)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    setIconLoading(true)
+    setIconSrc(null)
+
+    // 优先使用同步图标
+    if (syncedIcon) {
+      if (syncedIcon.iconType === 'BASE64' && syncedIcon.iconData) {
+        setIconSrc(syncedIcon.iconData)
+        setIconLoading(false)
+        return
+      }
+      if (syncedIcon.iconUrl) {
+        const url = getIconUrl(`https://${engine.domain}`, syncedIcon.iconUrl)
+        setIconSrc(url)
+        setIconLoading(false)
+        return
+      }
+    }
+
+    const sources = getFaviconSources(engine.domain, 64)
+    if (engine.iconUrl) {
+      sources.unshift(engine.iconUrl)
+    }
+
+    if (sources.length === 0) {
+      setIconLoading(false)
+      return
+    }
+
+    let successFound = false
+    let failedCount = 0
+
+    sources.forEach((src) => {
+      const img = new Image()
+      img.onload = () => {
+        if (!mountedRef.current || successFound) return
+        successFound = true
+        setIconSrc(src)
+        setIconLoading(false)
+      }
+      img.onerror = () => {
+        if (!mountedRef.current || successFound) return
+        failedCount++
+        if (failedCount >= sources.length) {
+          setIconLoading(false)
+        }
+      }
+      img.src = src
+    })
+
+    return () => {
+      mountedRef.current = false
+    }
+  }, [engine.domain, engine.iconUrl, syncedIcon])
+
+  const letter = (engine.name?.[0] || '?').toUpperCase()
+
+  // 计算图标背景样式
+  const getIconBgStyle = (): React.CSSProperties => {
+    if (syncedIcon?.iconBg) {
+      return parseIconBgStyle(syncedIcon.iconBg)
+    }
+    if (globalBg) {
+      return parseIconBgStyle(globalBg)
+    }
+    return parseIconBgStyle(null)
+  }
+
+  const bgStyle = getIconBgStyle()
+  const hasIcon = Boolean(iconSrc)
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'relative flex items-center gap-3 p-3 rounded-xl transition-all duration-200',
+        'bg-white/5 backdrop-blur-sm border-2',
+        isSelected
+          ? 'hover:bg-white/10'
+          : 'border-transparent hover:bg-white/10 hover:border-white/20',
+      )}
+      style={isSelected ? { borderColor: accent } : undefined}
+    >
+      {/* 图标 */}
+      <div 
+        className={cn(
+          'w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0',
+          !hasIcon && !syncedIcon?.iconBg && !globalBg && 'bg-primary/15 text-primary font-semibold',
+        )}
+        style={bgStyle}
+      >
+        {iconSrc ? (
+          <img src={iconSrc} alt={engine.name} className="w-full h-full object-cover" />
+        ) : iconLoading ? (
+          <span className="text-sm font-semibold">{letter}</span>
+        ) : (
+          <span className="text-sm font-semibold">{letter}</span>
+        )}
+      </div>
+
+      {/* 名称和描述 */}
+      <div className="flex-1 min-w-0 text-left">
+        <div className={cn('text-sm font-medium truncate', isSelected ? 'text-fg' : 'text-fg/70')}>
+          {engine.name}
+        </div>
+        <div className="text-xs text-fg/40 truncate">{engine.urlTemplate.replace('{query}', '')}</div>
+      </div>
+
+      {/* 复选框 */}
+      <div
+        className={cn(
+          'w-6 h-6 rounded-full flex items-center justify-center transition-all flex-shrink-0',
+          isSelected ? 'text-white' : 'border-2 border-white/30',
+        )}
+        style={isSelected ? { backgroundColor: accent } : undefined}
+      >
+        {isSelected && <Check className="w-4 h-4" strokeWidth={3} />}
+      </div>
+    </button>
+  )
+}
+
 export function SettingsDialog({ open, onClose }: Props) {
+  const { t, i18n } = useTranslation()
+  const SEARCHABLE_SETTINGS = useSearchableSettings()
+  
+  // 语言切换
+  const [currentLanguage, setCurrentLanguage] = useState<LanguageCode>(() => getCurrentLanguage())
+  const handleLanguageChange = useCallback((lang: LanguageCode) => {
+    setCurrentLanguage(lang)
+    void changeLanguage(lang)
+  }, [])
+  
+  // 监听语言变化（其他地方切换时同步）
+  useEffect(() => {
+    setCurrentLanguage(i18n.language as LanguageCode)
+  }, [i18n.language])
+  
+  // 翻译后的导航标签和描述
+  const NAV_LABELS = useMemo(() => ({
+    appearance: t('settings.appearance'),
+    clock: t('settings.clock'),
+    desktop: t('nav.home'),
+    bookmark: t('nav.bookmarks'),
+    search: t('settings.search'),
+    account: t('settings.account'),
+    reset: t('settings.reset')
+  }), [t])
+  
+  const NAV_DESCRIPTIONS = useMemo(() => ({
+    appearance: t('settings.theme.description'),
+    clock: t('settings.clockFormat.description'),
+    desktop: t('settings.sidebar.description'),
+    bookmark: t('bookmarks.sortMode'),
+    search: t('settings.searchEngine.description'),
+    account: t('settings.profile.description'),
+    reset: t('settings.resetAppearance.description')
+  }), [t])
+  
   // Store values
   const mode = useAppearanceStore((s) => s.mode)
   const accent = useAppearanceStore((s) => s.accent)
@@ -283,12 +477,10 @@ export function SettingsDialog({ open, onClose }: Props) {
   const clockShowDate = useAppearanceStore((s) => s.clockShowDate)
   const clockFollowAccent = useAppearanceStore((s) => s.clockFollowAccent)
   const clockScale = useAppearanceStore((s) => s.clockScale)
-  const cornerRadius = useAppearanceStore((s) => s.cornerRadius)
   const sidebarAutoHide = useAppearanceStore((s) => s.sidebarAutoHide)
   const sidebarAutoHideDelay = useAppearanceStore((s) => s.sidebarAutoHideDelay)
   const sidebarClickKeepCollapsed = useAppearanceStore((s) => s.sidebarClickKeepCollapsed)
-  const searchEngine = useAppearanceStore((s) => s.searchEngine)
-  const customSearchUrl = useAppearanceStore((s) => s.customSearchUrl)
+  const selectedEngineId = useAppearanceStore((s) => s.selectedEngineId)
   const searchHistoryCount = useAppearanceStore((s) => s.searchHistoryCount)
   const searchRowHeight = useAppearanceStore((s) => s.searchRowHeight)
   const recentBookmarksCount = useAppearanceStore((s) => s.recentBookmarksCount)
@@ -305,6 +497,7 @@ export function SettingsDialog({ open, onClose }: Props) {
   const bookmarkSortLocked = useAppearanceStore((s) => s.bookmarkSortLocked)
   const bookmarkIconSize = useAppearanceStore((s) => s.bookmarkIconSize)
   const bookmarkIconGap = useAppearanceStore((s) => s.bookmarkIconGap)
+  const iconRadiusRatio = useAppearanceStore((s) => s.iconRadiusRatio)
   const dockVisible = useAppearanceStore((s) => s.dockVisible)
   const dockShowBookmarks = useAppearanceStore((s) => s.dockShowBookmarks)
   const dockShowSettings = useAppearanceStore((s) => s.dockShowSettings)
@@ -312,6 +505,14 @@ export function SettingsDialog({ open, onClose }: Props) {
   const dndPrePush = useBookmarkDndStore((s) => s.prePush)
   const dndPushAnim = useBookmarkDndStore((s) => s.pushAnimation)
   const dndDropAnim = useBookmarkDndStore((s) => s.dropAnimation)
+  // 书签缓存 - 用于同步搜索引擎图标
+  const bookmarks = useBookmarkCacheStore((s) => s.items)
+  // 获取引擎的同步图标信息
+  const getSyncedIcon = useCallback((engineDomain: string): SyncedIconInfo | null => {
+    return findMatchingBookmarkIcon(engineDomain, bookmarks)
+  }, [bookmarks])
+  // 获取全局背景设置
+  const globalIconBg = useMemo(() => getGlobalIconBackground(bookmarks), [bookmarks])
 
   // Store setters
   const setMode = useAppearanceStore((s) => s.setMode)
@@ -326,12 +527,10 @@ export function SettingsDialog({ open, onClose }: Props) {
   const setClockShowDate = useAppearanceStore((s) => s.setClockShowDate)
   const setClockFollowAccent = useAppearanceStore((s) => s.setClockFollowAccent)
   const setClockScale = useAppearanceStore((s) => s.setClockScale)
-  const setCornerRadius = useAppearanceStore((s) => s.setCornerRadius)
   const setSidebarAutoHide = useAppearanceStore((s) => s.setSidebarAutoHide)
   const setSidebarAutoHideDelay = useAppearanceStore((s) => s.setSidebarAutoHideDelay)
   const setSidebarClickKeepCollapsed = useAppearanceStore((s) => s.setSidebarClickKeepCollapsed)
-  const setSearchEngine = useAppearanceStore((s) => s.setSearchEngine)
-  const setCustomSearchUrl = useAppearanceStore((s) => s.setCustomSearchUrl)
+  const setSelectedEngineId = useAppearanceStore((s) => s.setSelectedEngineId)
   const setSearchHistoryCount = useAppearanceStore((s) => s.setSearchHistoryCount)
   const setSearchRowHeight = useAppearanceStore((s) => s.setSearchRowHeight)
   const setRecentBookmarksCount = useAppearanceStore((s) => s.setRecentBookmarksCount)
@@ -348,6 +547,7 @@ export function SettingsDialog({ open, onClose }: Props) {
   const setBookmarkSortLocked = useAppearanceStore((s) => s.setBookmarkSortLocked)
   const setBookmarkIconSize = useAppearanceStore((s) => s.setBookmarkIconSize)
   const setBookmarkIconGap = useAppearanceStore((s) => s.setBookmarkIconGap)
+  const setIconRadiusRatio = useAppearanceStore((s) => s.setIconRadiusRatio)
   const setDockVisible = useAppearanceStore((s) => s.setDockVisible)
   const setDockShowBookmarks = useAppearanceStore((s) => s.setDockShowBookmarks)
   const setDockShowSettings = useAppearanceStore((s) => s.setDockShowSettings)
@@ -368,7 +568,23 @@ export function SettingsDialog({ open, onClose }: Props) {
   const [bgUrlInput, setBgUrlInput] = useState(() => backgroundCustomUrl)
   const [apiUrlInput, setApiUrlInput] = useState(() => backgroundApiUrl)
   const [nicknameInput, setNicknameInput] = useState(() => user?.nickname ?? '')
-  const [customSearchUrlInput, setCustomSearchUrlInput] = useState(() => customSearchUrl)
+  
+  // 引擎选择器展开/收起状态
+  const COLLAPSED_ENGINE_COUNT = 4
+  const [engineSelectorExpanded, setEngineSelectorExpanded] = useState(() => {
+    // 如果选中的引擎不在前 4 个，默认展开
+    const selectedIndex = PRESET_SEARCH_ENGINES.findIndex(e => e.id === selectedEngineId)
+    return selectedIndex >= COLLAPSED_ENGINE_COUNT
+  })
+
+  // 当选中的引擎变化时，如果不在前 4 个则自动展开
+  useEffect(() => {
+    const selectedIndex = PRESET_SEARCH_ENGINES.findIndex(e => e.id === selectedEngineId)
+    if (selectedIndex >= COLLAPSED_ENGINE_COUNT && !engineSelectorExpanded) {
+      setEngineSelectorExpanded(true)
+    }
+  }, [selectedEngineId, engineSelectorExpanded])
+
   const [tab, setTab] = useState<TabKey | null>(null) // null = 显示列表（仅移动端/平板）
   const isMobile = useIsMobile()
   const isDesktop = useIsDesktop() // >= 1024px，与 lg 断点一致
@@ -394,7 +610,7 @@ export function SettingsDialog({ open, onClose }: Props) {
   
   // 明暗度默认值：浅色模式 100%，深色模式 70%
   const dimmingDefault = isDark ? 70 : 100
-  
+
   // 响应式布局切换：桌面端显示第一个 tab，非桌面端显示列表
   const prevIsDesktop = useRef(isDesktop)
   useEffect(() => {
@@ -421,7 +637,7 @@ export function SettingsDialog({ open, onClose }: Props) {
   const [showConfirmPwd, setShowConfirmPwd] = useState(false)
   const [changelogOpen, setChangelogOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [resetDialogType, setResetDialogType] = useState<'appearance' | 'dnd' | null>(null)
+  const [resetDialogType, setResetDialogType] = useState<'appearance' | 'dnd' | 'cache' | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null)
   
@@ -444,15 +660,15 @@ export function SettingsDialog({ open, onClose }: Props) {
   const [iconSizeSliderRect, setIconSizeSliderRect] = useState<DOMRect | null>(null)
   const setBookmarkDrawerOpenForPreview = useBookmarkDrawerStore((s) => s.setOpenForPreview)
   
-  // 圆角拖动时打开书签页预览
-  const [isPreviewingCornerRadius, setIsPreviewingCornerRadius] = useState(false)
-  const cornerRadiusSliderRef = useRef<HTMLInputElement>(null)
-  const [cornerRadiusSliderRect, setCornerRadiusSliderRect] = useState<DOMRect | null>(null)
-  
   // 间距拖动时打开书签页预览
   const [isPreviewingIconGap, setIsPreviewingIconGap] = useState(false)
   const iconGapSliderRef = useRef<HTMLInputElement>(null)
   const [iconGapSliderRect, setIconGapSliderRect] = useState<DOMRect | null>(null)
+  
+  // 圆角比例拖动时打开书签页预览
+  const [isPreviewingIconRadius, setIsPreviewingIconRadius] = useState(false)
+  const iconRadiusSliderRef = useRef<HTMLInputElement>(null)
+  const [iconRadiusSliderRect, setIconRadiusSliderRect] = useState<DOMRect | null>(null)
   
   // 背景明暗度拖动时隐藏设置页面预览
   const [isPreviewingDimming, setIsPreviewingDimming] = useState(false)
@@ -492,21 +708,21 @@ export function SettingsDialog({ open, onClose }: Props) {
     setBookmarkDrawerOpenForPreview(true)
   }, [setBookmarkDrawerOpenForPreview])
   
-  // 开始圆角预览（打开书签页）
-  const handleStartCornerRadiusPreview = useCallback(() => {
-    if (cornerRadiusSliderRef.current) {
-      setCornerRadiusSliderRect(cornerRadiusSliderRef.current.getBoundingClientRect())
-    }
-    setIsPreviewingCornerRadius(true)
-    setBookmarkDrawerOpenForPreview(true)
-  }, [setBookmarkDrawerOpenForPreview])
-  
   // 开始间距预览（打开书签页）
   const handleStartIconGapPreview = useCallback(() => {
     if (iconGapSliderRef.current) {
       setIconGapSliderRect(iconGapSliderRef.current.getBoundingClientRect())
     }
     setIsPreviewingIconGap(true)
+    setBookmarkDrawerOpenForPreview(true)
+  }, [setBookmarkDrawerOpenForPreview])
+  
+  // 开始圆角比例预览（打开书签页）
+  const handleStartIconRadiusPreview = useCallback(() => {
+    if (iconRadiusSliderRef.current) {
+      setIconRadiusSliderRect(iconRadiusSliderRef.current.getBoundingClientRect())
+    }
+    setIsPreviewingIconRadius(true)
     setBookmarkDrawerOpenForPreview(true)
   }, [setBookmarkDrawerOpenForPreview])
   
@@ -577,21 +793,6 @@ export function SettingsDialog({ open, onClose }: Props) {
     }
   }, [isPreviewingIconSize, setBookmarkDrawerOpenForPreview])
   
-  // 监听全局 mouseup/touchend 事件，圆角拖动结束时关闭书签页
-  useEffect(() => {
-    if (!isPreviewingCornerRadius) return
-    const handleEnd = () => {
-      setIsPreviewingCornerRadius(false)
-      setBookmarkDrawerOpenForPreview(false)
-    }
-    window.addEventListener('mouseup', handleEnd)
-    window.addEventListener('touchend', handleEnd)
-    return () => {
-      window.removeEventListener('mouseup', handleEnd)
-      window.removeEventListener('touchend', handleEnd)
-    }
-  }, [isPreviewingCornerRadius, setBookmarkDrawerOpenForPreview])
-  
   // 监听全局 mouseup/touchend 事件，间距拖动结束时关闭书签页
   useEffect(() => {
     if (!isPreviewingIconGap) return
@@ -606,6 +807,21 @@ export function SettingsDialog({ open, onClose }: Props) {
       window.removeEventListener('touchend', handleEnd)
     }
   }, [isPreviewingIconGap, setBookmarkDrawerOpenForPreview])
+  
+  // 监听全局 mouseup/touchend 事件，圆角比例拖动结束时关闭书签页
+  useEffect(() => {
+    if (!isPreviewingIconRadius) return
+    const handleEnd = () => {
+      setIsPreviewingIconRadius(false)
+      setBookmarkDrawerOpenForPreview(false)
+    }
+    window.addEventListener('mouseup', handleEnd)
+    window.addEventListener('touchend', handleEnd)
+    return () => {
+      window.removeEventListener('mouseup', handleEnd)
+      window.removeEventListener('touchend', handleEnd)
+    }
+  }, [isPreviewingIconRadius, setBookmarkDrawerOpenForPreview])
   
   // 监听全局 mouseup/touchend 事件，背景明暗度拖动结束时恢复设置页面
   useEffect(() => {
@@ -647,16 +863,16 @@ export function SettingsDialog({ open, onClose }: Props) {
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return []
     const query = searchQuery.toLowerCase()
-    return SEARCHABLE_SETTINGS.filter(item => 
+    return SEARCHABLE_SETTINGS.filter((item: SettingSearchItem) => 
       item.label.toLowerCase().includes(query) ||
-      item.keywords.some(kw => kw.toLowerCase().includes(query))
+      item.keywords.some((kw: string) => kw.toLowerCase().includes(query))
     )
-  }, [searchQuery])
+  }, [searchQuery, SEARCHABLE_SETTINGS])
 
   // 移动端打开设置详情页
-  const handleOpenTab = useCallback((key: TabKey) => {
+  const handleOpenTab: (key: TabKey) => void = useCallback((key: TabKey) => {
     setTab(key)
-  }, [])
+  }, [setTab])
 
   // 移动端返回列表页
   const handleBackToList = useCallback(() => {
@@ -731,17 +947,12 @@ export function SettingsDialog({ open, onClose }: Props) {
     setConfirmPassword('')
   }, [open, user?.nickname, user?.username, user?.email, user?.phone])
 
-  useEffect(() => {
-    if (!open) return
-    setCustomSearchUrlInput(customSearchUrl)
-  }, [open, customSearchUrl])
-
   // Computed
   const accentHint = useMemo(() => {
-    if (!accentInput.trim()) return '例如：#3b82f6'
-    if (isValidHex(accentInput)) return '看起来没问题'
-    return '格式不对，应该是 #RRGGBB 或 #RGB'
-  }, [accentInput])
+    if (!accentInput.trim()) return t('settings.themeColor.example')
+    if (isValidHex(accentInput)) return t('settings.themeColor.valid')
+    return t('settings.themeColor.invalid')
+  }, [accentInput, t])
 
   const usernameValid = usernameInput.trim().length >= 3 && usernameInput.trim().length <= 32
   const nicknameValid = nicknameInput.trim().length >= 2 && nicknameInput.trim().length <= 32
@@ -758,7 +969,7 @@ export function SettingsDialog({ open, onClose }: Props) {
     setProfileLoading(true)
     try {
       const result = await updateProfile({ username: usernameInput.trim(), nickname: nicknameInput.trim(), email: emailInput.trim() || null, phone: phoneInput.trim() || null })
-      if (result.ok) toast.success('资料已更新')
+      if (result.ok) toast.success(t('toast.saved'))
       else toast.error(result.message)
     } finally { setProfileLoading(false) }
   }
@@ -768,18 +979,17 @@ export function SettingsDialog({ open, onClose }: Props) {
     setPasswordLoading(true)
     try {
       const result = await changePassword(currentPassword, newPassword)
-      if (result.ok) { toast.success('密码已修改'); setCurrentPassword(''); setNewPassword(''); setConfirmPassword('') }
+      if (result.ok) { toast.success(t('settings.profile.passwordChanged')); setCurrentPassword(''); setNewPassword(''); setConfirmPassword('') }
       else toast.error(result.message)
     } finally { setPasswordLoading(false) }
   }
 
   if (!open) return null
 
-  const closeAndToast = () => { toast.success('设置已保存'); onClose() }
+  const closeAndToast = () => { toast.success(t('settings.saved')); onClose() }
   const onChangeMode = (m: ThemeMode) => setMode(m)
   const onChangeBgType = (t: BackgroundType) => setBackgroundType(t)
   const onChangeHourCycle = (v: ClockHourCycle) => setClockHourCycle(v)
-  const onChangeSearchEngine = (v: SearchEngine) => setSearchEngine(v)
 
   const exportSettings = () => {
     const data = createSettingsFile()
@@ -790,7 +1000,7 @@ export function SettingsDialog({ open, onClose }: Props) {
     a.download = 'start-settings.json'
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('设置已导出')
+    toast.success(t('settings.importExport.exportSuccess'))
   }
 
   const importSettings = async (file: File) => {
@@ -801,7 +1011,7 @@ export function SettingsDialog({ open, onClose }: Props) {
       if (!resp.ok) { toast.error(resp.message); return }
       if (resp.partial) toast.warning(resp.message)
       else toast.success(resp.message)
-    } catch { toast.error('导入失败：文件不是合法 JSON') }
+    } catch { toast.error(t('settings.importExport.importError')) }
   }
 
   const navItems: TabKey[] = ['appearance', 'clock', 'desktop', 'bookmark', 'search', 'account', 'reset']
@@ -910,40 +1120,6 @@ export function SettingsDialog({ open, onClose }: Props) {
         </>
       )}
       
-      {/* 预览时显示固定位置的滑块条 - 圆角 */}
-      {isPreviewingCornerRadius && cornerRadiusSliderRect && (
-        <>
-          <span 
-            className="text-sm font-medium text-fg/80"
-            style={{
-              position: 'fixed',
-              top: cornerRadiusSliderRect.top - 24,
-              left: cornerRadiusSliderRect.left,
-              zIndex: 9999,
-            }}
-          >
-            {cornerRadius}px
-          </span>
-          <input 
-            type="range" 
-            min={0} 
-            max={48} 
-            step={1} 
-            value={cornerRadius} 
-            onChange={(e) => setCornerRadius(Number(e.target.value))} 
-            style={{
-              position: 'fixed',
-              top: cornerRadiusSliderRect.top,
-              left: cornerRadiusSliderRect.left,
-              width: cornerRadiusSliderRect.width,
-              height: cornerRadiusSliderRect.height,
-              zIndex: 9999,
-            }}
-            className="accent-[rgb(var(--primary))] rounded-full cursor-pointer" 
-          />
-        </>
-      )}
-      
       {/* 预览时显示固定位置的滑块条 - 背景明暗度 */}
       {isPreviewingDimming && dimmingSliderRect && (
         <>
@@ -1005,6 +1181,43 @@ export function SettingsDialog({ open, onClose }: Props) {
               left: iconGapSliderRect.left,
               width: iconGapSliderRect.width,
               height: iconGapSliderRect.height,
+              zIndex: 9999,
+            }}
+            className="accent-[rgb(var(--primary))] rounded-full cursor-pointer" 
+          />
+        </>
+      )}
+      
+      {/* 预览时显示固定位置的滑块条 - 圆角比例 */}
+      {isPreviewingIconRadius && iconRadiusSliderRect && (
+        <>
+          <span 
+            className="text-sm font-medium text-fg/80"
+            style={{
+              position: 'fixed',
+              top: iconRadiusSliderRect.top - 24,
+              left: iconRadiusSliderRect.left,
+              zIndex: 9999,
+            }}
+          >
+            {Math.round(iconRadiusRatio * 100)}%
+            <span className="text-fg/50 ml-2">
+              ({Math.round(bookmarkIconSize * iconRadiusRatio * 2) / 2}px)
+            </span>
+          </span>
+          <input 
+            type="range" 
+            min={0} 
+            max={50} 
+            step={1} 
+            value={Math.round(iconRadiusRatio * 100)} 
+            onChange={(e) => setIconRadiusRatio(Number(e.target.value) / 100)} 
+            style={{
+              position: 'fixed',
+              top: iconRadiusSliderRect.top,
+              left: iconRadiusSliderRect.left,
+              width: iconRadiusSliderRect.width,
+              height: iconRadiusSliderRect.height,
               zIndex: 9999,
             }}
             className="accent-[rgb(var(--primary))] rounded-full cursor-pointer" 
@@ -1084,7 +1297,7 @@ export function SettingsDialog({ open, onClose }: Props) {
         >
         {/* Header */}
         <header className={cn(
-          'flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-b',
+          'relative z-10 flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-b',
           isMobile 
             ? 'bg-zinc-100 dark:bg-black border-zinc-200 dark:border-zinc-800' 
             : 'bg-glass/15 backdrop-blur-md border-glass-border/20'
@@ -1103,7 +1316,7 @@ export function SettingsDialog({ open, onClose }: Props) {
               )}
               <div>
                 <h1 className={cn('font-semibold text-fg', !isDesktop && tab === null ? 'text-2xl' : 'text-xl')}>
-                  {!isDesktop && tab === null ? '设置' : tab ? NAV_LABELS[tab] : '设置'}
+                  {!isDesktop && tab === null ? t('settings.title') : tab ? NAV_LABELS[tab] : t('settings.title')}
                 </h1>
                 {tab && isDesktop && (
                   <p className="text-sm text-fg/60 mt-0.5">{NAV_DESCRIPTIONS[tab]}</p>
@@ -1112,9 +1325,9 @@ export function SettingsDialog({ open, onClose }: Props) {
             </div>
             <div className="flex items-center gap-2">
               {(isDesktop || tab !== null) && (
-                <Button variant="primary" size="sm" onClick={closeAndToast}>保存</Button>
+                <Button variant="primary" size="sm" onClick={closeAndToast}>{t('common.save')}</Button>
               )}
-              <Button variant="ghost" size="sm" onClick={handleClose} aria-label="关闭" className="h-9 w-9 p-0"><X className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="sm" onClick={handleClose} aria-label={t('common.close')} className="h-9 w-9 p-0"><X className="h-4 w-4" /></Button>
             </div>
           </div>
           
@@ -1128,7 +1341,7 @@ export function SettingsDialog({ open, onClose }: Props) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onBlur={() => setTimeout(() => setSearchQuery(''), 150)}
-                placeholder="搜索设置项..."
+                placeholder={t('settings.searchPlaceholder')}
                 className={cn(
                   'w-full h-10 pl-10 pr-4 rounded-xl text-sm text-fg placeholder:text-fg/40 focus:outline-none transition-all',
                   // 移动端：华为风格卡片背景
@@ -1137,13 +1350,26 @@ export function SettingsDialog({ open, onClose }: Props) {
                     : 'bg-glass/20 border border-glass-border/20 focus:border-primary/50 focus:bg-glass/30'
                 )}
               />
-              {/* 搜索结果下拉 - 采用搜索框建议样式 */}
-              {searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-2 py-2 rounded-2xl bg-glass/75 backdrop-blur-xl border border-glass-border/20 shadow-glass z-10 max-h-72 overflow-y-auto">
-                  <div className="text-[10px] text-fg/50 px-4 pb-1.5">搜索结果</div>
-                  <div className="px-2 space-y-0.5">
-                    {searchResults.map((item) => {
-                      const Icon = NAV_ICONS[item.tab]
+              {/* 搜索结果下拉 - 使用 portal 渲染到 body 确保在最上层 */}
+              {searchResults.length > 0 && searchInputRef.current && createPortal(
+                <div 
+                  className={cn(
+                    'fixed rounded-2xl overflow-hidden z-[9999] max-h-80 overflow-y-auto',
+                    isMobile 
+                      ? 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl'
+                      : 'bg-glass/40 backdrop-blur-xl border border-glass-border/25 shadow-2xl'
+                  )}
+                  style={{
+                    top: searchInputRef.current.getBoundingClientRect().bottom + 8,
+                    left: searchInputRef.current.getBoundingClientRect().left,
+                    width: searchInputRef.current.getBoundingClientRect().width,
+                  }}
+                >
+                  <div className="text-[10px] text-fg/50 px-4 py-1.5">{t('settings.searchResults')}</div>
+                  <div className="px-2 pb-2 space-y-0.5">
+                    {searchResults.map((item: SettingSearchItem) => {
+                      const tabKey: TabKey = item.tab
+                      const Icon = NAV_ICONS[tabKey]
                       return (
                         <button
                           key={item.id}
@@ -1156,18 +1382,19 @@ export function SettingsDialog({ open, onClose }: Props) {
                             <span className="text-sm truncate">{item.label}</span>
                             <span className="text-xs text-fg/40 ml-2">{item.group}</span>
                           </div>
-                          <span className="text-[10px] text-fg/40 px-1.5 py-0.5 rounded bg-glass/30">{NAV_LABELS[item.tab]}</span>
+                          <span className="text-[10px] text-fg/40 px-1.5 py-0.5 rounded bg-glass/30">{NAV_LABELS[tabKey]}</span>
                         </button>
                       )
                     })}
                   </div>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           )}
         </header>
 
-        <div className="flex-1 flex overflow-hidden min-h-0">
+        <div className="relative z-0 flex-1 flex overflow-hidden min-h-0">
           {/* Left Nav - Desktop (Windows 风格) */}
           <nav className="hidden lg:flex flex-col w-56 flex-shrink-0 border-r border-glass-border/20 bg-glass/15 backdrop-blur-md">
             <div className="flex-1 p-3 space-y-0.5 overflow-y-auto">
@@ -1248,25 +1475,25 @@ export function SettingsDialog({ open, onClose }: Props) {
               {/* Appearance */}
               {tab === 'appearance' && (
                 <>
-                  <Card id="settings-card-theme-mode" title="主题与颜色" description="自定义应用的视觉风格" highlighted={highlightedCardId === 'theme-mode' || highlightedCardId === 'accent-color'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-theme-mode" title={t('settings.theme.title')} description={t('settings.theme.description')} highlighted={highlightedCardId === 'theme-mode' || highlightedCardId === 'accent-color'} isMobileStyle={isMobile}>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <SettingItem label="深色模式">
+                      <SettingItem label={t('settings.theme.title')}>
                         <div className="flex flex-wrap gap-2">
-                          <SegButton active={mode === 'system'} onClick={() => onChangeMode('system')}>跟随系统</SegButton>
-                          <SegButton active={mode === 'light'} onClick={() => onChangeMode('light')}>浅色</SegButton>
-                          <SegButton active={mode === 'dark'} onClick={() => onChangeMode('dark')}>深色</SegButton>
+                          <SegButton active={mode === 'system'} onClick={() => onChangeMode('system')}>{t('settings.theme.system')}</SegButton>
+                          <SegButton active={mode === 'light'} onClick={() => onChangeMode('light')}>{t('settings.theme.light')}</SegButton>
+                          <SegButton active={mode === 'dark'} onClick={() => onChangeMode('dark')}>{t('settings.theme.dark')}</SegButton>
                         </div>
                       </SettingItem>
-                      <SettingItem label="主题色">
+                      <SettingItem label={t('settings.themeColor.title')}>
                         <div className="flex items-center gap-3">
-                          <input type="color" value={accent} onChange={(e) => { setAccent(e.target.value); setAccentInput(e.target.value) }} className="h-9 w-12 rounded-lg border border-glass-border/25 bg-glass/10 p-1 cursor-pointer" title="选择主题色" />
-                          <div className="flex-1"><Input value={accentInput} onChange={(e) => { const v = e.target.value; setAccentInput(v); if (isValidHex(v)) setAccent(v.trim()) }} placeholder="#3b82f6" className="h-9" /></div>
+                          <input type="color" value={accent} onChange={(e) => { setAccent(e.target.value); setAccentInput(e.target.value) }} className="h-9 w-12 rounded-lg border border-glass-border/25 bg-glass/10 p-1 cursor-pointer" title={t('settings.themeColor.pick')} />
+                          <div className="flex-1"><Input value={accentInput} onChange={(e) => { const v = e.target.value; setAccentInput(v); if (isValidHex(v)) setAccent(v.trim()) }} placeholder={t('settings.themeColor.exampleValue')} className="h-9" /></div>
                         </div>
                         <p className={cn('text-xs', isValidHex(accentInput) ? 'text-fg/50' : 'text-red-400')}>{accentHint}</p>
                       </SettingItem>
                     </div>
                   </Card>
-                  <Card id="settings-card-background" title="背景" description="设置首页背景图片" highlighted={highlightedCardId === 'background'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-background" title={t('settings.background.title')} description={t('settings.background.description')} highlighted={highlightedCardId === 'background'} isMobileStyle={isMobile}>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {/* 必应每日一图预览 */}
                       <button
@@ -1281,11 +1508,11 @@ export function SettingsDialog({ open, onClose }: Props) {
                       >
                         <img 
                           src="https://bing.img.run/1920x1080.php" 
-                          alt="必应每日一图" 
+                          alt={t('settings.background.bing')} 
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <span className="absolute bottom-2 left-2 text-xs text-white font-medium">必应每日</span>
+                        <span className="absolute bottom-2 left-2 text-xs text-white font-medium">{t('settings.background.bing')}</span>
                         {backgroundType === 'bing' && (
                           <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[rgb(var(--primary))] flex items-center justify-center">
                             <span className="text-white text-xs">✓</span>
@@ -1309,7 +1536,7 @@ export function SettingsDialog({ open, onClose }: Props) {
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <span className="absolute bottom-2 left-2 text-xs text-white font-medium">Picsum</span>
+                        <span className="absolute bottom-2 left-2 text-xs text-white font-medium">{t('settings.background.picsum')}</span>
                         {backgroundType === 'picsum' && (
                           <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[rgb(var(--primary))] flex items-center justify-center">
                             <span className="text-white text-xs">✓</span>
@@ -1331,16 +1558,16 @@ export function SettingsDialog({ open, onClose }: Props) {
                           <>
                             <img 
                               src={backgroundCustomUrl} 
-                              alt="自定义壁纸" 
+                              alt={t('settings.background.custom')} 
                               className="w-full h-full object-cover"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                            <span className="absolute bottom-2 left-2 text-xs text-white font-medium">自定义</span>
+                            <span className="absolute bottom-2 left-2 text-xs text-white font-medium">{t('settings.background.custom')}</span>
                           </>
                         ) : (
                           <div className="w-full h-full bg-glass/20 flex flex-col items-center justify-center gap-1">
                             <span className="text-2xl text-fg/40">+</span>
-                            <span className="text-xs text-fg/50">自定义</span>
+                            <span className="text-xs text-fg/50">{t('settings.background.custom')}</span>
                           </div>
                         )}
                         {backgroundType === 'custom' && backgroundCustomUrl && (
@@ -1364,16 +1591,16 @@ export function SettingsDialog({ open, onClose }: Props) {
                           <>
                             <img 
                               src={backgroundApiUrl} 
-                              alt="自定义 API" 
+                              alt={t('settings.background.api')} 
                               className="w-full h-full object-cover"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                            <span className="absolute bottom-2 left-2 text-xs text-white font-medium">自定义API</span>
+                            <span className="absolute bottom-2 left-2 text-xs text-white font-medium">{t('settings.background.api')}</span>
                           </>
                         ) : (
                           <div className="w-full h-full bg-glass/20 flex flex-col items-center justify-center gap-1">
                             <span className="text-2xl text-fg/40">+</span>
-                            <span className="text-xs text-fg/50">自定义API</span>
+                            <span className="text-xs text-fg/50">{t('settings.background.api')}</span>
                           </div>
                         )}
                         {backgroundType === 'api' && backgroundApiUrl && (
@@ -1385,20 +1612,20 @@ export function SettingsDialog({ open, onClose }: Props) {
                     </div>
                     {backgroundType === 'custom' && (
                       <div className="mt-4">
-                        <SettingItem label="自定义图片 URL" hint="粘贴可访问的图片链接" fullWidth>
+                        <SettingItem label={t('settings.background.custom')} hint={t('settings.background.customUrlPlaceholder')} fullWidth>
                           <div className="flex gap-2">
-                            <Input value={bgUrlInput} onChange={(e) => setBgUrlInput(e.target.value)} placeholder="https://..." className="flex-1" />
-                            <Button size="sm" onClick={() => { setBackgroundCustomUrl(bgUrlInput.trim()); toast('背景已更新') }}>应用</Button>
+                            <Input value={bgUrlInput} onChange={(e) => setBgUrlInput(e.target.value)} placeholder={t('common.urlPlaceholder')} className="flex-1" />
+                            <Button size="sm" onClick={() => { setBackgroundCustomUrl(bgUrlInput.trim()); toast(t('toast.updateSuccess')) }}>{t('common.apply')}</Button>
                           </div>
                         </SettingItem>
                       </div>
                     )}
                     {backgroundType === 'api' && (
                       <div className="mt-4">
-                        <SettingItem label="壁纸 API 地址" hint="输入返回图片的 API 接口地址（每次刷新获取新图片）" fullWidth>
+                        <SettingItem label={t('settings.background.api')} hint={t('settings.background.apiUrlPlaceholder')} fullWidth>
                           <div className="flex gap-2">
-                            <Input value={apiUrlInput} onChange={(e) => setApiUrlInput(e.target.value)} placeholder="https://api.example.com/wallpaper" className="flex-1" />
-                            <Button size="sm" onClick={() => { setBackgroundApiUrl(apiUrlInput.trim()); toast('API 已设置') }}>应用</Button>
+                            <Input value={apiUrlInput} onChange={(e) => setApiUrlInput(e.target.value)} placeholder={t('settings.background.apiUrlExample')} className="flex-1" />
+                            <Button size="sm" onClick={() => { setBackgroundApiUrl(apiUrlInput.trim()); toast(t('toast.updateSuccess')) }}>{t('common.apply')}</Button>
                           </div>
                         </SettingItem>
                       </div>
@@ -1409,7 +1636,11 @@ export function SettingsDialog({ open, onClose }: Props) {
                         size="sm" 
                         onClick={async () => {
                           try {
-                            toast('正在下载壁纸...')
+                            if (!currentBackgroundUrl) {
+                              toast.error(t('toast.downloadFailed'))
+                              return
+                            }
+                            toast(t('common.loading'))
                             const response = await fetch(currentBackgroundUrl)
                             const blob = await response.blob()
                             const url = URL.createObjectURL(blob)
@@ -1420,22 +1651,22 @@ export function SettingsDialog({ open, onClose }: Props) {
                             link.click()
                             document.body.removeChild(link)
                             URL.revokeObjectURL(url)
-                            toast.success('壁纸下载完成')
+                            toast.success(t('toast.saveSuccess'))
                           } catch {
-                            toast.error('下载失败，请右键图片另存为')
+                            toast.error(t('toast.downloadFailed'))
                           }
                         }}
                         className="flex items-center gap-2"
                       >
                         <Download className="w-4 h-4" />
-                        下载当前壁纸
+                        {t('settings.background.downloadWallpaper')}
                       </Button>
                     </div>
                   </Card>
                   {isMobile && (
-                    <Card id="settings-card-mobile-nav" title="移动端导航栏" description="仅在移动设备上生效" highlighted={highlightedCardId === 'mobile-nav'} isMobileStyle={isMobile}>
-                      <SettingItem label="隐藏导航栏文字" hint="只显示图标，不显示文字标签">
-                        <Toggle checked={mobileNavHideText} onChange={setMobileNavHideText} label={mobileNavHideText ? '已隐藏' : '已显示'} />
+                    <Card id="settings-card-mobile-nav" title={t('settings.mobileNav.title')} description={t('settings.mobileNav.description')} highlighted={highlightedCardId === 'mobile-nav'} isMobileStyle={isMobile}>
+                      <SettingItem label={t('settings.mobileNav.hideText')} hint={t('settings.mobileNav.hideTextHint')}>
+                        <Toggle checked={mobileNavHideText} onChange={setMobileNavHideText} label={mobileNavHideText ? t('common.hidden') : t('common.visible')} />
                       </SettingItem>
                     </Card>
                   )}
@@ -1445,30 +1676,30 @@ export function SettingsDialog({ open, onClose }: Props) {
               {/* Clock */}
               {tab === 'clock' && (
                 <>
-                  <Card id="settings-card-hour-cycle" title="时间格式" description="选择时钟显示的小时制" highlighted={highlightedCardId === 'hour-cycle'} isMobileStyle={isMobile}>
-                    <SettingItem label="小时制">
+                  <Card id="settings-card-hour-cycle" title={t('settings.clockFormat.title')} description={t('settings.clockFormat.description')} highlighted={highlightedCardId === 'hour-cycle'} isMobileStyle={isMobile}>
+                    <SettingItem label={t('settings.clockFormat.title')}>
                       <div className="flex flex-wrap gap-2">
-                        <SegButton active={clockHourCycle === '24'} onClick={() => onChangeHourCycle('24')}>24 小时</SegButton>
-                        <SegButton active={clockHourCycle === '12'} onClick={() => onChangeHourCycle('12')}>12 小时</SegButton>
+                        <SegButton active={clockHourCycle === '24'} onClick={() => onChangeHourCycle('24')}>{t('settings.clockFormat.hour24')}</SegButton>
+                        <SegButton active={clockHourCycle === '12'} onClick={() => onChangeHourCycle('12')}>{t('settings.clockFormat.hour12')}</SegButton>
                       </div>
                     </SettingItem>
                   </Card>
-                  <Card id="settings-card-clock-seconds" title="显示内容" description="控制时钟显示的信息" highlighted={highlightedCardId === 'clock-seconds' || highlightedCardId === 'clock-date'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-clock-seconds" title={t('settings.showSeconds.title')} description={t('settings.showSeconds.description')} highlighted={highlightedCardId === 'clock-seconds' || highlightedCardId === 'clock-date'} isMobileStyle={isMobile}>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <SettingItem label="显示秒"><Toggle checked={clockShowSeconds} onChange={setClockShowSeconds} label={clockShowSeconds ? '显示' : '隐藏'} /></SettingItem>
-                      <SettingItem label="显示日期"><Toggle checked={clockShowDate} onChange={setClockShowDate} label={clockShowDate ? '显示' : '隐藏'} /></SettingItem>
+                      <SettingItem label={t('settings.showSeconds.title')}><Toggle checked={clockShowSeconds} onChange={setClockShowSeconds} label={clockShowSeconds ? t('common.on') : t('common.off')} /></SettingItem>
+                      <SettingItem label={t('settings.showDate.title')}><Toggle checked={clockShowDate} onChange={setClockShowDate} label={clockShowDate ? t('common.on') : t('common.off')} /></SettingItem>
                     </div>
                   </Card>
-                  <Card id="settings-card-clock-color" title="字体颜色" description="时钟文字的颜色设置" highlighted={highlightedCardId === 'clock-color'} isMobileStyle={isMobile}>
-                    <SettingItem label="跟随主题色" hint="开启后时钟使用主题色显示"><Toggle checked={clockFollowAccent} onChange={setClockFollowAccent} label={clockFollowAccent ? '已开启' : '已关闭'} /></SettingItem>
+                  <Card id="settings-card-clock-color" title={t('settings.clockColor.title')} description={t('settings.clockColor.description')} highlighted={highlightedCardId === 'clock-color'} isMobileStyle={isMobile}>
+                    <SettingItem label={t('settings.clockColor.followAccent')} hint={t('settings.clockColor.followAccentHint')}><Toggle checked={clockFollowAccent} onChange={setClockFollowAccent} label={clockFollowAccent ? t('common.on') : t('common.off')} /></SettingItem>
                   </Card>
-                  <Card id="settings-card-clock-size" title="时钟大小" description="调整时钟的显示大小" highlighted={highlightedCardId === 'clock-size'} isMobileStyle={isMobile}>
-                    <SettingItem label="缩放比例" hint="时钟大小（50-150%），拖动滑块时可实时预览" fullWidth>
+                  <Card id="settings-card-clock-size" title={t('settings.clockSize.title')} description={t('settings.clockSize.description')} highlighted={highlightedCardId === 'clock-size'} isMobileStyle={isMobile}>
+                    <SettingItem label={t('settings.clockSize.scale')} hint={t('settings.clockSize.scaleHint')} fullWidth>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-medium text-fg/80">{clockScale}%</span>
                           {clockScale !== 100 && (
-                            <button type="button" onClick={() => setClockScale(100)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">重置</button>
+                            <button type="button" onClick={() => setClockScale(100)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">{t('common.reset')}</button>
                           )}
                         </div>
                         <input 
@@ -1492,13 +1723,13 @@ export function SettingsDialog({ open, onClose }: Props) {
               {/* Desktop */}
               {tab === 'desktop' && (
                 <>
-                  <Card id="settings-card-home-layout" title="首页布局" description="时钟和搜索框的垂直位置" highlighted={highlightedCardId === 'home-layout'} isMobileStyle={isMobile}>
-                    <SettingItem label="垂直位置" hint="时钟和搜索框距离顶部的位置（15-50%），拖动滑块时可实时预览" fullWidth>
+                  <Card id="settings-card-home-layout" title={t('settings.clockPosition.title')} description={t('settings.clockPosition.description')} highlighted={highlightedCardId === 'home-layout'} isMobileStyle={isMobile}>
+                    <SettingItem label={t('settings.clockPosition.verticalPosition')} hint={t('settings.clockPosition.verticalPositionHint')} fullWidth>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-medium text-fg/80">{homeFixedPosition}%</span>
                           {homeFixedPosition !== 30 && (
-                            <button type="button" onClick={() => setHomeFixedPosition(30)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">重置</button>
+                            <button type="button" onClick={() => setHomeFixedPosition(30)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">{t('common.reset')}</button>
                           )}
                         </div>
                         <input 
@@ -1517,13 +1748,13 @@ export function SettingsDialog({ open, onClose }: Props) {
                       </div>
                     </SettingItem>
                   </Card>
-                  <Card id="settings-card-background-dimming" title="背景明暗" description="调整背景图片的明暗度，拖动时可预览" highlighted={highlightedCardId === 'background-dimming'} isMobileStyle={isMobile}>
-                    <SettingItem label="明暗度" hint={`0为全黑，100为原图亮度（当前模式默认${dimmingDefault}%）`} fullWidth>
+                  <Card id="settings-card-background-dimming" title={t('settings.dimming.title')} description={t('settings.dimming.description')} highlighted={highlightedCardId === 'background-dimming'} isMobileStyle={isMobile}>
+                    <SettingItem label={t('settings.dimming.brightness')} hint={t('settings.dimming.brightnessHint', { default: dimmingDefault })} fullWidth>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-medium text-fg/80">{backgroundDimming}%</span>
                           {backgroundDimming !== dimmingDefault && (
-                            <button type="button" onClick={() => setBackgroundDimming(dimmingDefault)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">重置</button>
+                            <button type="button" onClick={() => setBackgroundDimming(dimmingDefault)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">{t('common.reset')}</button>
                           )}
                         </div>
                         <input 
@@ -1541,30 +1772,30 @@ export function SettingsDialog({ open, onClose }: Props) {
                       </div>
                     </SettingItem>
                   </Card>
-                  <Card id="settings-card-sidebar" title="侧边栏" description="控制侧边栏的显示行为" highlighted={highlightedCardId === 'sidebar'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-sidebar" title={t('settings.sidebar.title')} description={t('settings.sidebar.description')} highlighted={highlightedCardId === 'sidebar'} isMobileStyle={isMobile}>
                     <div className="space-y-4">
-                      <SettingItem label="点击后保持收起" hint="收起状态下点击图标后不自动展开侧边栏">
-                        <Toggle checked={sidebarClickKeepCollapsed} onChange={setSidebarClickKeepCollapsed} label={sidebarClickKeepCollapsed ? '是' : '否'} />
+                      <SettingItem label={t('settings.sidebar.keepCollapsed')} hint={t('settings.sidebar.keepCollapsedHint')}>
+                        <Toggle checked={sidebarClickKeepCollapsed} onChange={setSidebarClickKeepCollapsed} label={sidebarClickKeepCollapsed ? t('common.yes') : t('common.no')} />
                       </SettingItem>
-                      <SettingItem label="自动隐藏" hint="鼠标离开后自动收起侧边栏"><Toggle checked={sidebarAutoHide} onChange={setSidebarAutoHide} label={sidebarAutoHide ? '已开启' : '已关闭'} /></SettingItem>
+                      <SettingItem label={t('settings.sidebar.autoHide')} hint={t('settings.sidebar.autoHideHint')}><Toggle checked={sidebarAutoHide} onChange={setSidebarAutoHide} label={sidebarAutoHide ? t('common.on') : t('common.off')} /></SettingItem>
                       {sidebarAutoHide && (
-                        <SettingItem label={`隐藏延迟：${sidebarAutoHideDelay}秒`} hint="鼠标离开后多久隐藏" fullWidth>
-                          <Slider value={sidebarAutoHideDelay} onChange={setSidebarAutoHideDelay} min={1} max={10} unit="秒" defaultValue={3} onReset={() => setSidebarAutoHideDelay(3)} />
+                        <SettingItem label={t('settings.sidebarDelay.label', { delay: sidebarAutoHideDelay })} hint={t('settings.sidebarDelay.hint')} fullWidth>
+                          <Slider value={sidebarAutoHideDelay} onChange={setSidebarAutoHideDelay} min={1} max={10} unit={t('settings.units.seconds')} defaultValue={3} onReset={() => setSidebarAutoHideDelay(3)} />
                         </SettingItem>
                       )}
                     </div>
                   </Card>
-                  <Card id="settings-card-dock" title="底部 Dock 栏" description="控制底部快捷栏的显示" highlighted={highlightedCardId === 'dock'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-dock" title={t('settings.dock.title')} description={t('settings.dock.description')} highlighted={highlightedCardId === 'dock'} isMobileStyle={isMobile}>
                     <div className="space-y-4">
-                      <SettingItem label="显示 Dock 栏" hint="关闭后将隐藏整个底部快捷栏"><Toggle checked={dockVisible} onChange={setDockVisible} label={dockVisible ? '显示' : '隐藏'} /></SettingItem>
+                      <SettingItem label={t('settings.dock.showDock')} hint={t('settings.dock.showDockHint')}><Toggle checked={dockVisible} onChange={setDockVisible} label={dockVisible ? t('common.show') : t('common.hide')} /></SettingItem>
                       {dockVisible && (
                         <>
-                          <SettingItem label="书签页入口" hint="显示打开书签页的图标"><Toggle checked={dockShowBookmarks} onChange={setDockShowBookmarks} label={dockShowBookmarks ? '显示' : '隐藏'} /></SettingItem>
-                          <SettingItem label="设置入口" hint="显示打开设置页的图标"><Toggle checked={dockShowSettings} onChange={setDockShowSettings} label={dockShowSettings ? '显示' : '隐藏'} /></SettingItem>
-                          <SettingItem label="新书签位置" hint="新添加的书签显示在 Dock 栏的位置">
+                          <SettingItem label={t('settings.dock.bookmarksEntry')} hint={t('settings.dock.bookmarksEntryHint')}><Toggle checked={dockShowBookmarks} onChange={setDockShowBookmarks} label={dockShowBookmarks ? t('common.show') : t('common.hide')} /></SettingItem>
+                          <SettingItem label={t('settings.dock.settingsEntry')} hint={t('settings.dock.settingsEntryHint')}><Toggle checked={dockShowSettings} onChange={setDockShowSettings} label={dockShowSettings ? t('common.show') : t('common.hide')} /></SettingItem>
+                          <SettingItem label={t('settings.dock.newBookmarkPosition')} hint={t('settings.dock.newBookmarkPositionHint')}>
                             <div className="flex flex-wrap gap-2">
-                              <SegButton active={dockAddPosition === 'left'} onClick={() => setDockAddPosition('left')}>最左边</SegButton>
-                              <SegButton active={dockAddPosition === 'right'} onClick={() => setDockAddPosition('right')}>最右边</SegButton>
+                              <SegButton active={dockAddPosition === 'left'} onClick={() => setDockAddPosition('left')}>{t('common.left')}</SegButton>
+                              <SegButton active={dockAddPosition === 'right'} onClick={() => setDockAddPosition('right')}>{t('common.right')}</SegButton>
                             </div>
                           </SettingItem>
                         </>
@@ -1577,13 +1808,13 @@ export function SettingsDialog({ open, onClose }: Props) {
               {/* Bookmark */}
               {tab === 'bookmark' && (
                 <>
-                  <Card id="settings-card-icon-size" title="图标大小" description="调整书签图标的显示大小，拖动时可预览" highlighted={highlightedCardId === 'icon-size'} isMobileStyle={isMobile}>
-                    <SettingItem label={`当前大小：${bookmarkIconSize}px`} fullWidth>
+                  <Card id="settings-card-icon-size" title={t('settings.iconSize.title')} description={t('settings.iconSize.description')} highlighted={highlightedCardId === 'icon-size'} isMobileStyle={isMobile}>
+                    <SettingItem label={t('settings.iconSize.currentSize', { size: bookmarkIconSize })} fullWidth>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-medium text-fg/80">{bookmarkIconSize}px</span>
                           {bookmarkIconSize !== 64 && (
-                            <button type="button" onClick={() => setBookmarkIconSize(64)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">重置</button>
+                            <button type="button" onClick={() => setBookmarkIconSize(64)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">{t('common.reset')}</button>
                           )}
                         </div>
                         <input 
@@ -1601,13 +1832,13 @@ export function SettingsDialog({ open, onClose }: Props) {
                       </div>
                     </SettingItem>
                   </Card>
-                  <Card id="settings-card-icon-gap" title="图标间距" description="调整书签图标之间的间距，拖动时可预览" highlighted={highlightedCardId === 'icon-gap'} isMobileStyle={isMobile}>
-                    <SettingItem label={`当前间距：${bookmarkIconGap}px`} hint="调整图标之间的距离" fullWidth>
+                  <Card id="settings-card-icon-gap" title={t('settings.iconGap.title')} description={t('settings.iconGap.description')} highlighted={highlightedCardId === 'icon-gap'} isMobileStyle={isMobile}>
+                    <SettingItem label={t('settings.iconGap.currentGap', { gap: bookmarkIconGap })} hint={t('settings.iconGap.hint')} fullWidth>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-medium text-fg/80">{bookmarkIconGap}px</span>
                           {bookmarkIconGap !== (isMobile ? 36 : 52) && (
-                            <button type="button" onClick={() => setBookmarkIconGap(isMobile ? 36 : 52)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">重置</button>
+                            <button type="button" onClick={() => setBookmarkIconGap(isMobile ? 36 : 52)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">{t('common.reset')}</button>
                           )}
                         </div>
                         <input 
@@ -1625,48 +1856,48 @@ export function SettingsDialog({ open, onClose }: Props) {
                       </div>
                     </SettingItem>
                   </Card>
-                  <Card id="settings-card-corner-radius" title="图标圆角" description="调整书签图标的圆角大小，拖动时可预览" highlighted={highlightedCardId === 'corner-radius'} isMobileStyle={isMobile}>
-                    <SettingItem label={`当前圆角：${cornerRadius}px`} fullWidth>
+                  <Card id="settings-card-icon-radius-ratio" title={t('settings.iconRadiusRatio.title')} description={t('settings.iconRadiusRatio.description')} highlighted={highlightedCardId === 'icon-radius-ratio'} isMobileStyle={isMobile}>
+                    <SettingItem label={t('settings.iconRadiusRatio.currentRatio', { ratio: Math.round(iconRadiusRatio * 100) })} hint={t('settings.iconRadiusRatio.preview', { radius: Math.round(64 * iconRadiusRatio * 2) / 2 })} fullWidth>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-sm font-medium text-fg/80">{cornerRadius}px</span>
-                          {cornerRadius !== 18 && (
-                            <button type="button" onClick={() => setCornerRadius(18)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">重置</button>
+                          <span className="text-sm font-medium text-fg/80">{Math.round(iconRadiusRatio * 100)}%</span>
+                          {iconRadiusRatio !== 0.25 && (
+                            <button type="button" onClick={() => setIconRadiusRatio(0.25)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">{t('common.reset')}</button>
                           )}
                         </div>
                         <input 
-                          ref={cornerRadiusSliderRef}
+                          ref={iconRadiusSliderRef}
                           type="range" 
                           min={0} 
-                          max={48} 
+                          max={50} 
                           step={1} 
-                          value={cornerRadius} 
-                          onChange={(e) => setCornerRadius(Number(e.target.value))} 
-                          onMouseDown={handleStartCornerRadiusPreview}
-                          onTouchStart={handleStartCornerRadiusPreview}
+                          value={Math.round(iconRadiusRatio * 100)} 
+                          onChange={(e) => setIconRadiusRatio(Number(e.target.value) / 100)} 
+                          onMouseDown={handleStartIconRadiusPreview}
+                          onTouchStart={handleStartIconRadiusPreview}
                           className="w-full accent-[rgb(var(--primary))] h-2 rounded-full cursor-pointer"
                         />
                       </div>
                     </SettingItem>
                   </Card>
-                  <Card id="settings-card-bookmark-sort" title="书签排序" description="设置书签页的排序方式" highlighted={highlightedCardId === 'bookmark-sort'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-bookmark-sort" title={t('settings.bookmarkSort.title')} description={t('settings.bookmarkSort.description')} highlighted={highlightedCardId === 'bookmark-sort'} isMobileStyle={isMobile}>
                     <div className="space-y-4">
-                      <SettingItem label="排序模式">
+                      <SettingItem label={t('settings.bookmarkSort.sortMode')}>
                         <div className="flex flex-wrap gap-2">
-                          <SegButton active={bookmarkDrawerSortMode === 'custom'} onClick={() => setBookmarkDrawerSortMode('custom')}>自定义</SegButton>
-                          <SegButton active={bookmarkDrawerSortMode === 'folders-first'} onClick={() => setBookmarkDrawerSortMode('folders-first')}>文件夹优先</SegButton>
-                          <SegButton active={bookmarkDrawerSortMode === 'links-first'} onClick={() => setBookmarkDrawerSortMode('links-first')}>链接优先</SegButton>
-                          <SegButton active={bookmarkDrawerSortMode === 'alphabetical'} onClick={() => setBookmarkDrawerSortMode('alphabetical')}>字母排序</SegButton>
+                          <SegButton active={bookmarkDrawerSortMode === 'custom'} onClick={() => setBookmarkDrawerSortMode('custom')}>{t('settings.bookmarkSort.custom')}</SegButton>
+                          <SegButton active={bookmarkDrawerSortMode === 'folders-first'} onClick={() => setBookmarkDrawerSortMode('folders-first')}>{t('settings.bookmarkSort.foldersFirst')}</SegButton>
+                          <SegButton active={bookmarkDrawerSortMode === 'links-first'} onClick={() => setBookmarkDrawerSortMode('links-first')}>{t('settings.bookmarkSort.linksFirst')}</SegButton>
+                          <SegButton active={bookmarkDrawerSortMode === 'alphabetical'} onClick={() => setBookmarkDrawerSortMode('alphabetical')}>{t('settings.bookmarkSort.alphabetical')}</SegButton>
                         </div>
                       </SettingItem>
-                      <SettingItem label="锁定排序" hint="开启后禁止拖拽排序，防止误操作"><Toggle checked={bookmarkSortLocked} onChange={setBookmarkSortLocked} label={bookmarkSortLocked ? '已锁定' : '未锁定'} /></SettingItem>
+                      <SettingItem label={t('settings.bookmarkSort.lockSort')} hint={t('settings.bookmarkSort.lockSortHint')}><Toggle checked={bookmarkSortLocked} onChange={setBookmarkSortLocked} label={bookmarkSortLocked ? t('settings.bookmarkSort.locked') : t('settings.bookmarkSort.unlocked')} /></SettingItem>
                     </div>
                   </Card>
-                  <Card id="settings-card-dnd-animation" title="拖拽动画" description="手机桌面风格的拖拽效果" highlighted={highlightedCardId === 'dnd-animation'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-dnd-animation" title={t('settings.dndAnimation.title')} description={t('settings.dndAnimation.description')} highlighted={highlightedCardId === 'dnd-animation'} isMobileStyle={isMobile}>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <SettingItem label="预挤压" hint="拖拽时图标实时挤开"><Toggle checked={dndPrePush} onChange={setDndPrePush} label={dndPrePush ? '开' : '关'} /></SettingItem>
-                      <SettingItem label="挤压动画" hint="挤开过程更顺滑"><Toggle checked={dndPushAnim} onChange={setDndPushAnim} label={dndPushAnim ? '开' : '关'} /></SettingItem>
-                      <SettingItem label="归位动画" hint="松手后落位更自然"><Toggle checked={dndDropAnim} onChange={setDndDropAnim} label={dndDropAnim ? '开' : '关'} /></SettingItem>
+                      <SettingItem label={t('settings.dndAnimation.prePush')} hint={t('settings.dndAnimation.prePushHint')}><Toggle checked={dndPrePush} onChange={setDndPrePush} label={dndPrePush ? t('common.on') : t('common.off')} /></SettingItem>
+                      <SettingItem label={t('settings.dndAnimation.pushAnim')} hint={t('settings.dndAnimation.pushAnimHint')}><Toggle checked={dndPushAnim} onChange={setDndPushAnim} label={dndPushAnim ? t('common.on') : t('common.off')} /></SettingItem>
+                      <SettingItem label={t('settings.dndAnimation.dropAnim')} hint={t('settings.dndAnimation.dropAnimHint')}><Toggle checked={dndDropAnim} onChange={setDndDropAnim} label={dndDropAnim ? t('common.on') : t('common.off')} /></SettingItem>
                     </div>
                   </Card>
                 </>
@@ -1675,42 +1906,68 @@ export function SettingsDialog({ open, onClose }: Props) {
               {/* Search */}
               {tab === 'search' && (
                 <>
-                  <Card id="settings-card-search-engine" title="搜索引擎" description="选择默认的搜索引擎" highlighted={highlightedCardId === 'search-engine'} isMobileStyle={isMobile}>
-                    <div className="space-y-4">
-                      <SettingItem label="引擎">
-                        <div className="flex flex-wrap gap-2">
-                          <SegButton active={searchEngine === 'baidu'} onClick={() => onChangeSearchEngine('baidu')}>百度</SegButton>
-                          <SegButton active={searchEngine === 'bing'} onClick={() => onChangeSearchEngine('bing')}>必应</SegButton>
-                          <SegButton active={searchEngine === 'google'} onClick={() => onChangeSearchEngine('google')}>谷歌</SegButton>
-                          <SegButton active={searchEngine === 'custom'} onClick={() => onChangeSearchEngine('custom')}>自定义</SegButton>
-                        </div>
-                      </SettingItem>
-                      {searchEngine === 'custom' && (
-                        <SettingItem label="自定义 URL" hint="使用 {query} 作为搜索词占位符">
-                          <div className="flex gap-2">
-                            <Input value={customSearchUrlInput} onChange={(e) => setCustomSearchUrlInput(e.target.value)} placeholder="https://example.com/search?q={'{query}'}" className="flex-1" />
-                            <Button size="sm" disabled={!isValidCustomSearchUrl(customSearchUrlInput)} onClick={() => { setCustomSearchUrl(customSearchUrlInput.trim()); toast('自定义搜索引擎已保存') }}>应用</Button>
-                          </div>
-                          {customSearchUrlInput && !isValidCustomSearchUrl(customSearchUrlInput) && <p className="text-xs text-red-400">格式错误，需包含 {'{query}'} 且是有效 URL</p>}
-                        </SettingItem>
+                  <Card id="settings-card-search-engine" title={t('settings.searchEngine.title')} description={t('settings.searchEngine.description')} highlighted={highlightedCardId === 'search-engine'} isMobileStyle={isMobile}>
+                    <div className="space-y-3">
+                      {/* 搜索引擎选择器 - 两列等宽布局 */}
+                      <div className="grid grid-cols-2 gap-3 transition-all duration-300 ease-in-out">
+                        {(engineSelectorExpanded ? PRESET_SEARCH_ENGINES : PRESET_SEARCH_ENGINES.slice(0, COLLAPSED_ENGINE_COUNT)).map((engine) => {
+                          const isSelected = selectedEngineId === engine.id
+                          const syncedIcon = getSyncedIcon(engine.domain)
+                          return (
+                            <SearchEngineCard
+                              key={engine.id}
+                              engine={engine}
+                              isSelected={isSelected}
+                              accent={accent}
+                              onClick={() => setSelectedEngineId(engine.id)}
+                              syncedIcon={syncedIcon}
+                              globalBg={globalIconBg}
+                            />
+                          )
+                        })}
+                      </div>
+                      {/* 展开/收起按钮 */}
+                      {PRESET_SEARCH_ENGINES.length > COLLAPSED_ENGINE_COUNT && (
+                        <button
+                          type="button"
+                          onClick={() => setEngineSelectorExpanded(!engineSelectorExpanded)}
+                          className={cn(
+                            'w-full flex items-center justify-center gap-2 py-2',
+                            'text-sm text-fg/60 hover:text-fg/80 transition-colors',
+                            'border-t border-glass-border/15 pt-3'
+                          )}
+                        >
+                          {engineSelectorExpanded ? (
+                            <>
+                              <ChevronUp className="w-4 h-4 transition-transform duration-200" />
+                              <span>{t('settings.engineSelector.collapse')}</span>
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-4 h-4 transition-transform duration-200" />
+                              <span>{t('settings.engineSelector.expand', { count: PRESET_SEARCH_ENGINES.length - COLLAPSED_ENGINE_COUNT })}</span>
+                            </>
+                          )}
+                        </button>
                       )}
                     </div>
                   </Card>
-                  <Card id="settings-card-search-glow" title="流光边框" description="搜索框聚焦时的特效" highlighted={highlightedCardId === 'search-glow'} isMobileStyle={isMobile}>
+
+                  <Card id="settings-card-search-glow" title={t('settings.searchGlow.title')} description={t('settings.searchGlow.description')} highlighted={highlightedCardId === 'search-glow'} isMobileStyle={isMobile}>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <SettingItem label="流光线条"><Toggle checked={searchGlowBorder} onChange={setSearchGlowBorder} label={searchGlowBorder ? '开' : '关'} /></SettingItem>
-                      <SettingItem label="背后光效"><Toggle checked={searchGlowLight} onChange={setSearchGlowLight} label={searchGlowLight ? '开' : '关'} /></SettingItem>
-                      {searchGlowLight && <SettingItem label="光效移动"><Toggle checked={searchGlowLightMove} onChange={setSearchGlowLightMove} label={searchGlowLightMove ? '开' : '关'} /></SettingItem>}
+                      <SettingItem label={t('settings.searchGlow.border')}><Toggle checked={searchGlowBorder} onChange={setSearchGlowBorder} label={searchGlowBorder ? t('common.on') : t('common.off')} /></SettingItem>
+                      <SettingItem label={t('settings.searchGlow.light')}><Toggle checked={searchGlowLight} onChange={setSearchGlowLight} label={searchGlowLight ? t('common.on') : t('common.off')} /></SettingItem>
+                      {searchGlowLight && <SettingItem label={t('settings.searchGlow.lightMove')}><Toggle checked={searchGlowLightMove} onChange={setSearchGlowLightMove} label={searchGlowLightMove ? t('common.on') : t('common.off')} /></SettingItem>}
                     </div>
                   </Card>
-                  <Card id="settings-card-dropdown-style" title="建议框样式" description="调整搜索建议下拉框的外观" highlighted={highlightedCardId === 'dropdown-style'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-dropdown-style" title={t('settings.dropdownStyle.title')} description={t('settings.dropdownStyle.description')} highlighted={highlightedCardId === 'dropdown-style'} isMobileStyle={isMobile}>
                     <div className="space-y-4">
-                      <SettingItem label={`不透明度：${searchDropdownOpacity}%`} fullWidth>
+                      <SettingItem label={t('settings.dropdownStyle.opacity', { value: searchDropdownOpacity })} fullWidth>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-sm font-medium text-fg/80">{searchDropdownOpacity}%</span>
                             {searchDropdownOpacity !== 50 && (
-                              <button type="button" onClick={() => setSearchDropdownOpacity(50)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">重置</button>
+                              <button type="button" onClick={() => setSearchDropdownOpacity(50)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">{t('common.reset')}</button>
                             )}
                           </div>
                           <input 
@@ -1727,12 +1984,12 @@ export function SettingsDialog({ open, onClose }: Props) {
                           />
                         </div>
                       </SettingItem>
-                      <SettingItem label={`模糊度：${searchDropdownBlur}px`} fullWidth>
+                      <SettingItem label={t('settings.dropdownStyle.blur', { value: searchDropdownBlur })} fullWidth>
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-sm font-medium text-fg/80">{searchDropdownBlur}px</span>
                             {searchDropdownBlur !== 24 && (
-                              <button type="button" onClick={() => setSearchDropdownBlur(24)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">重置</button>
+                              <button type="button" onClick={() => setSearchDropdownBlur(24)} className="text-xs text-fg/50 hover:text-fg/70 transition-colors">{t('common.reset')}</button>
                             )}
                           </div>
                           <input 
@@ -1751,33 +2008,33 @@ export function SettingsDialog({ open, onClose }: Props) {
                       </SettingItem>
                     </div>
                   </Card>
-                  <Card id="settings-card-search-history" title="搜索历史" description="控制搜索历史的显示" highlighted={highlightedCardId === 'search-history'} isMobileStyle={isMobile}>
-                    <SettingItem label={searchHistoryCount === 0 ? '已关闭' : `显示 ${searchHistoryCount} 条`} fullWidth>
-                      <Slider value={searchHistoryCount} onChange={setSearchHistoryCount} min={0} max={20} unit="条" defaultValue={10} onReset={() => setSearchHistoryCount(10)} />
+                  <Card id="settings-card-search-history" title={t('settings.searchHistory.title')} description={t('settings.searchHistory.description')} highlighted={highlightedCardId === 'search-history'} isMobileStyle={isMobile}>
+                    <SettingItem label={searchHistoryCount === 0 ? t('settings.searchHistory.disabled') : t('settings.searchHistory.showCount', { count: searchHistoryCount })} fullWidth>
+                      <Slider value={searchHistoryCount} onChange={setSearchHistoryCount} min={0} max={20} unit={t('settings.units.items')} defaultValue={10} onReset={() => setSearchHistoryCount(10)} />
                     </SettingItem>
                   </Card>
-                  <Card id="settings-card-recent-bookmarks" title="最近打开" description="显示最近打开的书签" highlighted={highlightedCardId === 'recent-bookmarks'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-recent-bookmarks" title={t('settings.recentBookmarks.title')} description={t('settings.recentBookmarks.description')} highlighted={highlightedCardId === 'recent-bookmarks'} isMobileStyle={isMobile}>
                     <div className="space-y-4">
-                      <SettingItem label="启用"><Toggle checked={recentBookmarksEnabled} onChange={setRecentBookmarksEnabled} label={recentBookmarksEnabled ? '已开启' : '已关闭'} /></SettingItem>
+                      <SettingItem label={t('settings.recentBookmarks.enable')}><Toggle checked={recentBookmarksEnabled} onChange={setRecentBookmarksEnabled} label={recentBookmarksEnabled ? t('common.on') : t('common.off')} /></SettingItem>
                       {recentBookmarksEnabled && (
                         <>
-                          <SettingItem label="显示模式">
+                          <SettingItem label={t('settings.recentBookmarks.displayMode')}>
                             <div className="flex flex-wrap gap-2">
-                              <SegButton active={recentBookmarksMode === 'dynamic'} onClick={() => setRecentBookmarksMode('dynamic')}>动态一行</SegButton>
-                              <SegButton active={recentBookmarksMode === 'fixed'} onClick={() => setRecentBookmarksMode('fixed')}>固定数量</SegButton>
+                              <SegButton active={recentBookmarksMode === 'dynamic'} onClick={() => setRecentBookmarksMode('dynamic')}>{t('settings.recentBookmarks.dynamicRow')}</SegButton>
+                              <SegButton active={recentBookmarksMode === 'fixed'} onClick={() => setRecentBookmarksMode('fixed')}>{t('settings.recentBookmarks.fixedCount')}</SegButton>
                             </div>
                           </SettingItem>
                           {recentBookmarksMode === 'fixed' && (
-                            <SettingItem label={`显示数量：${recentBookmarksCount} 个`} fullWidth>
-                              <Slider value={recentBookmarksCount} onChange={setRecentBookmarksCount} min={1} max={12} unit="个" defaultValue={8} onReset={() => setRecentBookmarksCount(8)} />
+                            <SettingItem label={t('settings.recentBookmarks.showCount', { count: recentBookmarksCount })} fullWidth>
+                              <Slider value={recentBookmarksCount} onChange={setRecentBookmarksCount} min={1} max={12} unit={t('settings.units.count')} defaultValue={8} onReset={() => setRecentBookmarksCount(8)} />
                             </SettingItem>
                           )}
                         </>
                       )}
                     </div>
                   </Card>
-                  <Card id="settings-card-search-row-height" title="选项行高" description="搜索建议和历史记录的行高" highlighted={highlightedCardId === 'search-row-height'} isMobileStyle={isMobile}>
-                    <SettingItem label={`当前高度：${searchRowHeight}px`} fullWidth>
+                  <Card id="settings-card-search-row-height" title={t('settings.searchRowHeight.title')} description={t('settings.searchRowHeight.description')} highlighted={highlightedCardId === 'search-row-height'} isMobileStyle={isMobile}>
+                    <SettingItem label={t('settings.searchRowHeight.currentHeight', { height: searchRowHeight })} fullWidth>
                       <Slider value={searchRowHeight} onChange={setSearchRowHeight} min={16} max={36} step={2} unit="px" defaultValue={32} onReset={() => setSearchRowHeight(32)} />
                     </SettingItem>
                   </Card>
@@ -1787,65 +2044,79 @@ export function SettingsDialog({ open, onClose }: Props) {
               {/* Account */}
               {tab === 'account' && (
                 <>
-                  <Card id="settings-card-login-status" title="登录状态" description="当前账户信息" highlighted={highlightedCardId === 'login-status'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-login-status" title={t('settings.loginStatus.title')} description={t('settings.loginStatus.description')} highlighted={highlightedCardId === 'login-status'} isMobileStyle={isMobile}>
                     {user ? (
                       <div className="flex items-center justify-between">
                         <div><p className="text-sm font-medium text-fg">{user.nickname}</p><p className="text-xs text-fg/60">@{user.username}</p></div>
-                        <Button variant="ghost" size="sm" onClick={() => { logout(); toast('已退出登录') }}>退出登录</Button>
+                        <Button variant="ghost" size="sm" onClick={() => { logout(); toast(t('auth.logoutSuccess')) }}>{t('nav.logout')}</Button>
                       </div>
-                    ) : <p className="text-sm text-fg/60">当前未登录</p>}
+                    ) : <p className="text-sm text-fg/60">{t('settings.loginStatus.notLoggedIn')}</p>}
                   </Card>
                   {user && (
                     <>
-                      <Card id="settings-card-profile" title="个人资料" description="修改账户基本信息" highlighted={highlightedCardId === 'profile'} isMobileStyle={isMobile}>
+                      <Card id="settings-card-profile" title={t('settings.profile.title')} description={t('settings.profile.description')} highlighted={highlightedCardId === 'profile'} isMobileStyle={isMobile}>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <SettingItem label="账号名称" hint="3-32个字符"><Input value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} placeholder="账号名称" className={cn(!usernameValid && usernameInput && 'border-red-500/50')} /></SettingItem>
-                          <SettingItem label="昵称" hint="2-32个字符，唯一"><Input value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder="昵称" className={cn(!nicknameValid && nicknameInput && 'border-red-500/50')} /></SettingItem>
-                          <SettingItem label="邮箱（可选）"><Input type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder="example@email.com" className={cn(!emailValid && emailInput && 'border-red-500/50')} /></SettingItem>
-                          <SettingItem label="手机号（可选）"><Input value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} placeholder="手机号" className={cn(!phoneValid && phoneInput && 'border-red-500/50')} /></SettingItem>
+                          <SettingItem label={t('settings.profile.username')} hint={t('settings.profile.usernameHint')}><Input value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} placeholder={t('settings.profile.username')} className={cn(!usernameValid && usernameInput && 'border-red-500/50')} /></SettingItem>
+                          <SettingItem label={t('settings.profile.nickname')} hint={t('settings.profile.nicknameHint')}><Input value={nicknameInput} onChange={(e) => setNicknameInput(e.target.value)} placeholder={t('settings.profile.nickname')} className={cn(!nicknameValid && nicknameInput && 'border-red-500/50')} /></SettingItem>
+                          <SettingItem label={t('settings.profile.email')}><Input type="email" value={emailInput} onChange={(e) => setEmailInput(e.target.value)} placeholder={t('settings.profile.emailExample')} className={cn(!emailValid && emailInput && 'border-red-500/50')} /></SettingItem>
+                          <SettingItem label={t('settings.profile.phone')}><Input value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} placeholder={t('settings.profile.phone')} className={cn(!phoneValid && phoneInput && 'border-red-500/50')} /></SettingItem>
                         </div>
-                        <div className="mt-4 pt-4 border-t border-glass-border/10"><Button variant="primary" onClick={handleSaveProfile} disabled={!profileValid || profileLoading}>{profileLoading ? '保存中...' : '保存资料'}</Button></div>
+                        <div className="mt-4 pt-4 border-t border-glass-border/10"><Button variant="primary" onClick={handleSaveProfile} disabled={!profileValid || profileLoading}>{profileLoading ? t('common.loading') : t('settings.profile.save')}</Button></div>
                       </Card>
-                      <Card id="settings-card-password" title="修改密码" description="更新账户密码" highlighted={highlightedCardId === 'password'} isMobileStyle={isMobile}>
+                      <Card id="settings-card-password" title={t('settings.changePassword.title')} description={t('settings.changePassword.description')} highlighted={highlightedCardId === 'password'} isMobileStyle={isMobile}>
                         <div className="space-y-4 max-w-md">
-                          <SettingItem label="当前密码">
+                          <SettingItem label={t('settings.changePassword.current')}>
                             <div className="relative">
-                              <Input type={showCurrentPwd ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="请输入当前密码" />
+                              <Input type={showCurrentPwd ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder={t('settings.changePassword.current')} />
                               <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-fg/40 hover:text-fg/60" onClick={() => setShowCurrentPwd(!showCurrentPwd)}>{showCurrentPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
                             </div>
                           </SettingItem>
-                          <SettingItem label="新密码" hint="6-200个字符">
+                          <SettingItem label={t('settings.changePassword.new')} hint={t('settings.changePassword.newHint')}>
                             <div className="relative">
-                              <Input type={showNewPwd ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="请输入新密码" className={cn(!newPasswordValid && newPassword && 'border-red-500/50')} />
+                              <Input type={showNewPwd ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t('settings.changePassword.new')} className={cn(!newPasswordValid && newPassword && 'border-red-500/50')} />
                               <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-fg/40 hover:text-fg/60" onClick={() => setShowNewPwd(!showNewPwd)}>{showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
                             </div>
                           </SettingItem>
-                          <SettingItem label="确认新密码">
+                          <SettingItem label={t('settings.changePassword.confirm')}>
                             <div className="relative">
-                              <Input type={showConfirmPwd ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="再次输入新密码" className={cn(!confirmPasswordValid && confirmPassword && 'border-red-500/50')} />
+                              <Input type={showConfirmPwd ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder={t('settings.changePassword.confirm')} className={cn(!confirmPasswordValid && confirmPassword && 'border-red-500/50')} />
                               <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-fg/40 hover:text-fg/60" onClick={() => setShowConfirmPwd(!showConfirmPwd)}>{showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
                             </div>
-                            {!confirmPasswordValid && confirmPassword && <p className="text-xs text-red-400">两次输入的密码不一致</p>}
+                            {!confirmPasswordValid && confirmPassword && <p className="text-xs text-red-400">{t('settings.changePassword.mismatch')}</p>}
                           </SettingItem>
-                          <Button variant="primary" onClick={handleChangePassword} disabled={!passwordFormValid || passwordLoading}>{passwordLoading ? '修改中...' : '修改密码'}</Button>
+                          <Button variant="primary" onClick={handleChangePassword} disabled={!passwordFormValid || passwordLoading}>{passwordLoading ? t('common.loading') : t('settings.changePassword.submit')}</Button>
                         </div>
                       </Card>
-                      <Card id="settings-card-api-key" title="扩展 API" description="管理 API 密钥" highlighted={highlightedCardId === 'api-key'} isMobileStyle={isMobile}><APIKeyManager /></Card>
+                      <Card id="settings-card-api-key" title={t('settings.apiKey.title')} description={t('settings.apiKey.description')} highlighted={highlightedCardId === 'api-key'} isMobileStyle={isMobile}><APIKeyManager /></Card>
                     </>
                   )}
-                  <Card id="settings-card-import-export" title="设置导入 / 导出" description="备份或恢复你的设置" highlighted={highlightedCardId === 'import-export'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-import-export" title={t('settings.importExport.title')} description={t('settings.importExport.description')} highlighted={highlightedCardId === 'import-export'} isMobileStyle={isMobile}>
                     <div className="flex flex-wrap items-center gap-3">
-                      <Button variant="primary" onClick={exportSettings}>导出设置</Button>
+                      <Button variant="primary" onClick={exportSettings}>{t('settings.importExport.export')}</Button>
                       <label className="inline-flex">
                         <input type="file" accept="application/json" className="hidden" onChange={(e) => { const f = e.currentTarget.files?.[0]; e.currentTarget.value = ''; if (f) void importSettings(f) }} />
-                        <Button variant="glass" type="button">导入设置</Button>
+                        <Button variant="glass" type="button">{t('settings.importExport.import')}</Button>
                       </label>
                     </div>
                   </Card>
-                  <Card id="settings-card-about" title="关于" description="版本信息" highlighted={highlightedCardId === 'about'} isMobileStyle={isMobile}>
+                  <Card id="settings-card-language" title={t('settings.language.title')} description={t('settings.language.description')} highlighted={highlightedCardId === 'language'} isMobileStyle={isMobile}>
+                    <div className="flex items-center gap-3">
+                      <Globe className="w-5 h-5 text-fg/60" />
+                      <Select
+                        value={currentLanguage}
+                        onChange={(value) => handleLanguageChange(value as LanguageCode)}
+                        options={supportedLanguages.map((lang): SelectOption => ({
+                          value: lang.code,
+                          label: lang.nativeName,
+                        }))}
+                        minWidth="160px"
+                      />
+                    </div>
+                  </Card>
+                  <Card id="settings-card-about" title={t('settings.about.title')} description={t('settings.about.description')} highlighted={highlightedCardId === 'about'} isMobileStyle={isMobile}>
                     <div className="flex items-center justify-between">
-                      <div><p className="text-sm font-medium text-fg">Start</p><p className="text-xs text-fg/60">版本 v{__APP_VERSION__}</p></div>
-                      <Button variant="ghost" size="sm" onClick={() => setChangelogOpen(true)}><History className="w-4 h-4 mr-2" />更新日志</Button>
+                      <div><p className="text-sm font-medium text-fg">Start</p><p className="text-xs text-fg/60">{t('settings.about.version')} v{__APP_VERSION__}</p></div>
+                      <Button variant="ghost" size="sm" onClick={() => setChangelogOpen(true)}><History className="w-4 h-4 mr-2" />{t('settings.about.changelog')}</Button>
                     </div>
                   </Card>
                 </>
@@ -1854,19 +2125,27 @@ export function SettingsDialog({ open, onClose }: Props) {
               {/* Reset */}
               {tab === 'reset' && (
                 <>
-                  <Card id="settings-card-reset-appearance" title="重置外观设置" description="将主题、颜色、背景等恢复为默认值" isMobileStyle={isMobile}>
+                  <Card id="settings-card-reset-appearance" title={t('settings.resetAppearance.title')} description={t('settings.resetAppearance.description')} isMobileStyle={isMobile}>
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-fg/70">包括深色模式、主题色、圆角、背景、侧边栏设置</p>
+                      <p className="text-sm text-fg/70">{t('settings.resetAppearance.detail')}</p>
                       <Button variant="ghost" size="sm" onClick={() => setResetDialogType('appearance')}>
-                        <RotateCcw className="w-4 h-4 mr-2" />重置
+                        <RotateCcw className="w-4 h-4 mr-2" />{t('common.reset')}
                       </Button>
                     </div>
                   </Card>
-                  <Card id="settings-card-reset-dnd" title="重置拖拽设置" description="将拖拽动画效果恢复为默认值" isMobileStyle={isMobile}>
+                  <Card id="settings-card-reset-dnd" title={t('settings.resetDnd.title')} description={t('settings.resetDnd.description')} isMobileStyle={isMobile}>
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-fg/70">包括预挤压、挤压动画、归位动画</p>
+                      <p className="text-sm text-fg/70">{t('settings.resetDnd.detail')}</p>
                       <Button variant="ghost" size="sm" onClick={() => setResetDialogType('dnd')}>
-                        <RotateCcw className="w-4 h-4 mr-2" />重置
+                        <RotateCcw className="w-4 h-4 mr-2" />{t('common.reset')}
+                      </Button>
+                    </div>
+                  </Card>
+                  <Card id="settings-card-clear-cache" title={t('settings.clearCache.title')} description={t('settings.clearCache.description')} isMobileStyle={isMobile}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-fg/70">{t('settings.clearCache.detail')}</p>
+                      <Button variant="ghost" size="sm" onClick={() => setResetDialogType('cache')}>
+                        <Trash2 className="w-4 h-4 mr-2" />{t('common.delete')}
                       </Button>
                     </div>
                   </Card>
@@ -1878,21 +2157,48 @@ export function SettingsDialog({ open, onClose }: Props) {
         </div>
       </div>
       <ChangelogDialog open={changelogOpen} onClose={() => setChangelogOpen(false)} />
-      
+
       {/* 重置确认框 */}
       <ResetConfirmDialog
         open={resetDialogType === 'appearance'}
         onClose={() => setResetDialogType(null)}
-        onConfirm={() => { resetAppearance(); toast.success('已重置外观设置') }}
-        title="重置外观设置"
-        description="确定要将所有外观设置恢复为默认值吗？此操作无法撤销。"
+        onConfirm={() => { resetAppearance(); toast.success(t('settings.resetConfirm.appearanceDone')) }}
+        title={t('settings.resetConfirm.appearanceTitle')}
+        description={t('settings.resetConfirm.appearanceDesc')}
       />
       <ResetConfirmDialog
         open={resetDialogType === 'dnd'}
         onClose={() => setResetDialogType(null)}
-        onConfirm={() => { resetBookmarkDnd(); toast.success('已重置拖拽设置') }}
-        title="重置拖拽设置"
-        description="确定要将所有拖拽动画设置恢复为默认值吗？此操作无法撤销。"
+        onConfirm={() => { resetBookmarkDnd(); toast.success(t('settings.resetConfirm.dndDone')) }}
+        title={t('settings.resetConfirm.dndTitle')}
+        description={t('settings.resetConfirm.dndDesc')}
+      />
+      <ResetConfirmDialog
+        open={resetDialogType === 'cache'}
+        onClose={() => setResetDialogType(null)}
+        onConfirm={async () => {
+          try {
+            // 清理 IndexedDB 壁纸缓存
+            const dbRequest = indexedDB.open('start-wallpaper-cache', 1)
+            dbRequest.onsuccess = () => {
+              const db = dbRequest.result
+              const tx = db.transaction('images', 'readwrite')
+              const store = tx.objectStore('images')
+              store.clear()
+            }
+            // 清理 localStorage 中的壁纸 URL 缓存
+            localStorage.removeItem('start:bingDaily')
+            localStorage.removeItem('start:picsumCache')
+            localStorage.removeItem('start:apiWallpaper')
+            // 清理书签缓存
+            localStorage.removeItem('start:bookmarkCache')
+            toast.success(t('settings.resetConfirm.cacheCleared'))
+          } catch {
+            toast.error(t('settings.resetConfirm.cacheClearFailed'))
+          }
+        }}
+        title={t('settings.resetConfirm.clearCache')}
+        description={t('settings.resetConfirm.clearCacheDesc')}
       />
       </div>
     </>

@@ -3,8 +3,14 @@ import * as fc from 'fast-check'
 import {
   buildSearchUrl,
   isValidCustomSearchUrl,
+  isValidSearchUrl,
   SEARCH_ENGINE_URLS,
   SEARCH_ENGINE_NAMES,
+  PRESET_SEARCH_ENGINES,
+  buildSearchUrlFromConfig,
+  getSearchEngineById,
+  getAllSearchEngines,
+  type SearchEngineConfig,
 } from './searchEngine'
 import type { SearchEngine } from '../stores/appearance'
 
@@ -177,6 +183,135 @@ describe('searchEngine', () => {
     it('should handle various valid URL formats', () => {
       expect(isValidCustomSearchUrl('http://localhost:3000/search?q={query}')).toBe(true)
       expect(isValidCustomSearchUrl('https://sub.domain.com/path/{query}/end')).toBe(true)
+    })
+  })
+
+  /**
+   * Property 9: 自定义搜索引擎 URL 验证
+   * For any URL template string, if it doesn't contain {query} placeholder,
+   * the validation function should return false; if it contains {query}, validation should pass.
+   * 
+   * Feature: search-engine-switcher, Property 9: 自定义搜索引擎 URL 验证
+   * Validates: Requirements 6.4
+   */
+  describe('Property 9: 自定义搜索引擎 URL 验证', () => {
+    it('should return false for any URL without {query} placeholder', () => {
+      fc.assert(
+        fc.property(
+          // 生成不包含 {query} 的 URL
+          fc.webUrl().filter(url => !url.includes('{query}')),
+          (url) => {
+            expect(isValidSearchUrl(url)).toBe(false)
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should return true for any URL containing {query} placeholder', () => {
+      fc.assert(
+        fc.property(
+          // 生成包含 {query} 的 URL
+          fc.tuple(
+            fc.webUrl(),
+            fc.constantFrom('?q={query}', '&search={query}', '/{query}', '={query}')
+          ).map(([url, suffix]) => url + suffix),
+          (url) => {
+            expect(isValidSearchUrl(url)).toBe(true)
+          }
+        ),
+        { numRuns: 100 }
+      )
+    })
+
+    it('should handle edge cases correctly', () => {
+      // 空字符串
+      expect(isValidSearchUrl('')).toBe(false)
+      // null/undefined 类型安全
+      expect(isValidSearchUrl(null as unknown as string)).toBe(false)
+      expect(isValidSearchUrl(undefined as unknown as string)).toBe(false)
+      // 只有 {query}
+      expect(isValidSearchUrl('{query}')).toBe(true)
+      // 多个 {query}
+      expect(isValidSearchUrl('https://example.com/{query}?q={query}')).toBe(true)
+    })
+
+    it('should validate preset engines have valid URL templates', () => {
+      // 所有预设引擎的 URL 模板都应该包含 {query}
+      for (const engine of PRESET_SEARCH_ENGINES) {
+        expect(isValidSearchUrl(engine.urlTemplate)).toBe(true)
+      }
+    })
+  })
+
+  describe('PRESET_SEARCH_ENGINES', () => {
+    it('should have all required preset engines', () => {
+      const engineIds = PRESET_SEARCH_ENGINES.map(e => e.id)
+      expect(engineIds).toContain('baidu')
+      expect(engineIds).toContain('bing')
+      expect(engineIds).toContain('google')
+      expect(engineIds).toContain('so') // 360搜索
+    })
+
+    it('should have valid URL templates for all preset engines', () => {
+      for (const engine of PRESET_SEARCH_ENGINES) {
+        expect(engine.urlTemplate).toContain('{query}')
+        expect(engine.isPreset).toBe(true)
+        expect(engine.domain).toBeTruthy()
+        expect(engine.name).toBeTruthy()
+      }
+    })
+  })
+
+  describe('buildSearchUrlFromConfig', () => {
+    it('should build correct URL from engine config', () => {
+      const engine = PRESET_SEARCH_ENGINES.find(e => e.id === 'bing')!
+      const url = buildSearchUrlFromConfig(engine, 'test query')
+      expect(url).toContain('bing.com')
+      expect(url).toContain(encodeURIComponent('test query'))
+    })
+
+    it('should return empty string for empty query', () => {
+      const engine = PRESET_SEARCH_ENGINES[0]
+      expect(buildSearchUrlFromConfig(engine, '')).toBe('')
+      expect(buildSearchUrlFromConfig(engine, '   ')).toBe('')
+    })
+  })
+
+  describe('getSearchEngineById', () => {
+    it('should return preset engine by id', () => {
+      const engine = getSearchEngineById('baidu')
+      expect(engine.id).toBe('baidu')
+      expect(engine.name).toBe('百度')
+    })
+
+    it('should return custom engine if exists', () => {
+      const customEngines: SearchEngineConfig[] = [
+        { id: 'custom1', name: 'Custom', urlTemplate: 'https://custom.com/{query}', domain: 'custom.com', isPreset: false }
+      ]
+      const engine = getSearchEngineById('custom1', customEngines)
+      expect(engine.id).toBe('custom1')
+    })
+
+    it('should return bing as default for unknown id', () => {
+      const engine = getSearchEngineById('unknown')
+      expect(engine.id).toBe('bing')
+    })
+  })
+
+  describe('getAllSearchEngines', () => {
+    it('should return all preset engines when no custom engines', () => {
+      const engines = getAllSearchEngines()
+      expect(engines.length).toBe(PRESET_SEARCH_ENGINES.length)
+    })
+
+    it('should include custom engines', () => {
+      const customEngines: SearchEngineConfig[] = [
+        { id: 'custom1', name: 'Custom', urlTemplate: 'https://custom.com/{query}', domain: 'custom.com', isPreset: false }
+      ]
+      const engines = getAllSearchEngines(customEngines)
+      expect(engines.length).toBe(PRESET_SEARCH_ENGINES.length + 1)
+      expect(engines.find(e => e.id === 'custom1')).toBeTruthy()
     })
   })
 })

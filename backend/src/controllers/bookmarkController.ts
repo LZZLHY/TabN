@@ -103,6 +103,40 @@ function validateIconFields(data: {
     return { valid: true, iconUrl: null, iconData, iconType: IconType.BASE64 }
   }
 
+  // TEXT 图标类型 - 文字图标
+  if (iconType === IconType.TEXT) {
+    // iconData 应该是 JSON 格式的 TextIconConfig
+    // 验证 JSON 格式是否有效
+    if (iconData) {
+      try {
+        const parsed = JSON.parse(iconData)
+        // 验证必要字段存在
+        if (typeof parsed !== 'object' || parsed === null) {
+          return { valid: false, error: '文字图标配置格式无效' }
+        }
+        // 验证文字长度（如果提供）
+        if (parsed.t !== undefined && typeof parsed.t === 'string' && parsed.t.length > 4) {
+          return { valid: false, error: '文字图标文字最多 4 个字符' }
+        }
+        // 验证颜色格式（如果提供）
+        if (parsed.c !== undefined && typeof parsed.c === 'string' && parsed.c !== '') {
+          if (!/^#[0-9A-Fa-f]{6}$/.test(parsed.c)) {
+            return { valid: false, error: '文字图标颜色格式无效' }
+          }
+        }
+        // 验证字体（如果提供）
+        const validFonts = ['system', 'serif', 'mono', 'rounded', 'handwriting']
+        if (parsed.f !== undefined && typeof parsed.f === 'string' && !validFonts.includes(parsed.f)) {
+          return { valid: false, error: '文字图标字体无效' }
+        }
+      } catch {
+        return { valid: false, error: '文字图标配置 JSON 格式无效' }
+      }
+    }
+    // TEXT 类型可以没有 iconData（使用默认值）
+    return { valid: true, iconUrl: null, iconData: iconData || null, iconType: IconType.TEXT }
+  }
+
   // 如果只提供了 iconUrl 但没有 iconType，自动设置为 URL 类型
   if (iconUrl && !iconType) {
     // 支持 source: 前缀的图标来源标记（如 source:google, source:duckduckgo）

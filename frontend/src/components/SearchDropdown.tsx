@@ -1,11 +1,13 @@
 import { Clock, Search, X, ExternalLink } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../utils/cn'
 import { useAppearanceStore } from '../stores/appearance'
+import { UnifiedIcon } from './ui/UnifiedIcon'
 
 export type DropdownItem =
-  | { type: 'shortcut'; id: string; name: string; url: string; favicon: string }
+  | { type: 'shortcut'; id: string; name: string; url: string; favicon: string; iconBg?: string | null; iconType?: 'BASE64' | 'URL' | null; iconData?: string | null; iconUrl?: string | null }
   | { type: 'suggestion'; text: string }
   | { type: 'history'; text: string }
   | { type: 'recent'; id: string; name: string; url: string; favicon: string | null }
@@ -15,6 +17,11 @@ interface ShortcutMatch {
   name: string
   url: string
   favicon: string
+  // 添加完整的书签图标信息
+  iconBg?: string | null
+  iconType?: 'BASE64' | 'URL' | null
+  iconData?: string | null
+  iconUrl?: string | null
 }
 
 interface RecentBookmark {
@@ -22,6 +29,10 @@ interface RecentBookmark {
   name: string
   url: string
   favicon: string | null
+  iconUrl?: string | null
+  iconType?: string | null
+  iconData?: string | null
+  iconBg?: string | null
 }
 
 interface SearchDropdownProps {
@@ -68,6 +79,7 @@ export function SearchDropdown({
   onSelectItem,
   onDeleteHistory,
 }: SearchDropdownProps) {
+  const { t } = useTranslation()
   // 获取样式设置
   const searchDropdownOpacity = useAppearanceStore((s) => s.searchDropdownOpacity)
   const searchDropdownBlur = useAppearanceStore((s) => s.searchDropdownBlur)
@@ -119,20 +131,27 @@ export function SearchDropdown({
   // 动态模式：计算能显示多少个书签
   const containerRef = useRef<HTMLDivElement>(null)
   const [visibleCount, setVisibleCount] = useState(recentBookmarks.length)
-
-  // 计算每个书签的预估宽度
-  const estimateItemWidth = useCallback((name: string) => {
-    // 图标 16px + gap 8px + padding 20px + 文字（每个字符约 8px，最大 120px）+ border 2px
-    const textWidth = Math.min(name.length * 8, 120)
-    return 16 + 8 + 20 + textWidth + 2 + 6 // 6px for gap
-  }, [])
+  // 用于首次渲染时先显示所有书签以便测量
+  const [measured, setMeasured] = useState(false)
+  // 记录上次的书签数据，用于检测变化
+  const prevBookmarksRef = useRef<string>('')
 
   // 监听容器宽度变化，计算能显示多少个
   useEffect(() => {
+    // 关闭时不重置 measured，保持当前显示数量，避免关闭动画时闪烁
     if (!isVisible) return
+    
     if (recentBookmarksMode !== 'dynamic' || recentBookmarks.length === 0) {
       setVisibleCount(recentBookmarks.length)
+      setMeasured(true)
       return
+    }
+
+    // 检测书签数据是否变化，变化时需要重新测量
+    const bookmarksKey = recentBookmarks.map(b => b.id).join(',')
+    if (bookmarksKey !== prevBookmarksRef.current) {
+      prevBookmarksRef.current = bookmarksKey
+      setMeasured(false)
     }
 
     const container = containerRef.current
@@ -140,30 +159,39 @@ export function SearchDropdown({
 
     const calculateVisibleCount = () => {
       const containerWidth = container.offsetWidth
+      const children = container.children
       let totalWidth = 0
       let count = 0
+      const gap = 6 // gap-1.5 = 6px
 
-      for (const bookmark of recentBookmarks) {
-        const itemWidth = estimateItemWidth(bookmark.name)
-        if (totalWidth + itemWidth > containerWidth) break
-        totalWidth += itemWidth
+      // 遍历实际渲染的子元素，计算能显示多少个
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i] as HTMLElement
+        const childWidth = child.offsetWidth + (i > 0 ? gap : 0)
+        if (totalWidth + childWidth > containerWidth) break
+        totalWidth += childWidth
         count++
       }
 
       setVisibleCount(Math.max(1, count)) // 至少显示 1 个
+      setMeasured(true)
     }
 
-    calculateVisibleCount()
+    // 使用 requestAnimationFrame 确保 DOM 已渲染
+    requestAnimationFrame(calculateVisibleCount)
 
-    const observer = new ResizeObserver(calculateVisibleCount)
+    const observer = new ResizeObserver(() => {
+      requestAnimationFrame(calculateVisibleCount)
+    })
     observer.observe(container)
 
     return () => observer.disconnect()
-  }, [isVisible, recentBookmarks, recentBookmarksMode, estimateItemWidth])
+  }, [isVisible, recentBookmarks, recentBookmarksMode])
 
   // 根据模式决定显示的书签
+  // 动态模式下：测量前显示所有（用于测量），测量后只显示计算出的数量
   const displayedRecentBookmarks = recentBookmarksMode === 'dynamic'
-    ? recentBookmarks.slice(0, visibleCount)
+    ? (measured ? recentBookmarks.slice(0, visibleCount) : recentBookmarks)
     : recentBookmarks
 
   // 构建所有项目的扁平列表，用于键盘导航
@@ -187,8 +215,8 @@ export function SearchDropdown({
       className={cn(
         'rounded-2xl border border-glass-border/25 shadow-glass',
         'overflow-hidden',
-        // 缓入缓出动画
-        'transition-all duration-300 ease-out',
+        // 缓入缓出动画 - 只对 opacity 和 transform 应用过渡，避免位置属性动画导致从左上角飞出
+        'transition-[opacity,transform] duration-300 ease-out',
         // 非 portal 模式下的动画
         !anchorRef && (isVisible
           ? 'opacity-100 translate-y-0 scale-100'
@@ -216,15 +244,15 @@ export function SearchDropdown({
         } : {}),
       }}
     >
-      <div className="max-h-[min(320px,50vh)] overflow-y-auto py-2 overscroll-contain">
+      <div className="max-h-[min(320px,50vh)] overflow-y-auto overflow-x-hidden py-2 overscroll-contain">
         {/* 最近点击的书签区域 */}
         {recentBookmarks.length > 0 && (
           <div className="px-3 pb-2">
-            <div className="text-[10px] text-fg/50 mb-1.5 px-1">最近打开</div>
+            <div className="text-[10px] text-fg/50 mb-1.5 px-1">{t('home.recentlyOpened')}</div>
             <div
               ref={containerRef}
               className={cn(
-                'flex gap-1.5',
+                'flex gap-1.5 overflow-hidden',
                 recentBookmarksMode === 'dynamic' ? 'flex-nowrap' : 'flex-wrap'
               )}
             >
@@ -245,18 +273,20 @@ export function SearchDropdown({
                         : 'bg-glass/20 border-glass-border/10 text-fg/90 hover:bg-primary/15 hover:border-primary/20 hover:text-fg',
                     )}
                   >
-                    {bookmark.favicon ? (
-                      <img
-                        src={bookmark.favicon}
-                        alt=""
-                        className="w-4 h-4 rounded-sm"
-                        onError={(e) => {
-                          ;(e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    ) : (
-                      <ExternalLink className="w-4 h-4 text-fg/40" />
-                    )}
+                    {(() => {
+                      return (
+                        <UnifiedIcon
+                          iconType={bookmark.iconType}
+                          iconData={bookmark.iconData}
+                          iconUrl={bookmark.iconUrl}
+                          iconBg={bookmark.iconBg}
+                          url={bookmark.url}
+                          name={bookmark.name}
+                          variant="mini"
+                          borderRadius="calc(var(--start-radius)*0.33)"
+                        />
+                      )
+                    })()}
                     <span className="truncate max-w-[120px]">{bookmark.name}</span>
                   </button>
                 )
@@ -273,8 +303,8 @@ export function SearchDropdown({
         {/* 快捷方式匹配区域 */}
         {shortcuts.length > 0 && (
           <div className="px-3 pb-2">
-            <div className="text-[10px] text-fg/50 mb-1.5 px-1">快捷方式</div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="text-[10px] text-fg/50 mb-1.5 px-1">{t('home.shortcuts')}</div>
+            <div className="flex flex-wrap gap-1.5 overflow-hidden">
               {shortcuts.map((shortcut) => {
                 const itemIndex = currentIndex++
                 const isHighlighted = highlightIndex === itemIndex
@@ -292,20 +322,20 @@ export function SearchDropdown({
                         : 'bg-glass/20 border-glass-border/10 text-fg/90 hover:bg-primary/15 hover:border-primary/20 hover:text-fg',
                     )}
                   >
-                    {shortcut.favicon ? (
-                      <img
-                        src={shortcut.favicon}
-                        alt=""
-                        className="w-4 h-4 rounded-sm"
-                        onError={(e) => {
-                          ;(e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    ) : (
-                      <div className="w-4 h-4 rounded-sm bg-primary/20 flex items-center justify-center text-[10px] text-primary font-medium">
-                        {shortcut.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    {(() => {
+                      return (
+                        <UnifiedIcon
+                          iconType={shortcut.iconType}
+                          iconData={shortcut.iconData}
+                          iconUrl={shortcut.iconUrl}
+                          iconBg={shortcut.iconBg}
+                          url={shortcut.url}
+                          name={shortcut.name}
+                          variant="mini"
+                          borderRadius="calc(var(--start-radius)*0.33)"
+                        />
+                      )
+                    })()}
                     <span className="truncate max-w-[120px]">{shortcut.name}</span>
                   </button>
                 )
@@ -360,7 +390,7 @@ export function SearchDropdown({
         {history.length > 0 && (
           <div className="px-2 space-y-1">
             {suggestions.length === 0 && shortcuts.length === 0 && (
-              <div className="text-[10px] text-fg/50 px-2 py-1">搜索历史</div>
+              <div className="text-[10px] text-fg/50 px-2 py-1">{t('home.searchHistory')}</div>
             )}
             {history.map((text) => {
               const itemIndex = currentIndex++
@@ -421,6 +451,8 @@ export function SearchDropdown({
 
   // 如果有 anchorRef，使用 portal 渲染到 body 层级
   if (anchorRef) {
+    // 在位置计算完成前不渲染，避免从左上角飞出
+    if (!position) return null
     return createPortal(dropdownContent, document.body)
   }
 

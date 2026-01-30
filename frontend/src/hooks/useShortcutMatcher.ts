@@ -1,22 +1,18 @@
 import { useMemo } from 'react'
-import { matchWithPinyin } from '../utils/pinyin'
+import { getMatchScore } from '../utils/pinyin'
 import { getIconUrl } from '../utils/iconSource'
-
-export interface Bookmark {
-  id: string
-  name: string
-  url: string | null
-  type: 'LINK' | 'FOLDER'
-  iconUrl?: string | null
-  iconType?: string | null
-  iconData?: string | null
-}
+import type { Bookmark } from '../components/bookmarks/types'
 
 export interface ShortcutMatch {
   id: string
   name: string
   url: string
   favicon: string
+  // 添加完整的书签图标信息
+  iconBg?: string | null
+  iconType?: 'BASE64' | 'URL' | null
+  iconData?: string | null
+  iconUrl?: string | null
 }
 
 const DEFAULT_MAX_RESULTS = 5
@@ -52,6 +48,12 @@ function getBookmarkFavicon(bookmark: Bookmark): string {
  * 1. 书签名称包含查询（大小写不敏感）
  * 2. 书签名称的拼音全拼包含查询
  * 3. 书签名称的拼音首字母包含查询
+ * 
+ * 排序规则（优先级从高到低）：
+ * 1. 首字母完全匹配（youtube 输入 y）
+ * 2. 名称开头匹配（youtube 输入 you）
+ * 3. 名称中间匹配（douyin 输入 y）
+ * 4. 按名称字母顺序
  */
 export function matchBookmarks(
   query: string,
@@ -65,7 +67,8 @@ export function matchBookmarks(
     return []
   }
 
-  const matches: ShortcutMatch[] = []
+  // 收集所有匹配的书签及其匹配分数
+  const matchesWithScore: Array<{ bookmark: Bookmark; score: number }> = []
 
   for (const bookmark of bookmarks) {
     // 只匹配 LINK 类型的书签
@@ -73,23 +76,32 @@ export function matchBookmarks(
       continue
     }
 
-    // 使用拼音匹配（支持原文、全拼、首字母）
-    if (matchWithPinyin(bookmark.name, trimmedQuery)) {
-      matches.push({
-        id: bookmark.id,
-        name: bookmark.name,
-        url: bookmark.url,
-        favicon: getBookmarkFavicon(bookmark),
-      })
-
-      // 达到最大结果数时停止
-      if (matches.length >= maxResults) {
-        break
-      }
+    // 获取匹配分数（0 表示不匹配，分数越高越优先）
+    const score = getMatchScore(bookmark.name, trimmedQuery)
+    if (score > 0) {
+      matchesWithScore.push({ bookmark, score })
     }
   }
 
-  return matches
+  // 按分数降序排序，分数相同时按名称字母顺序
+  matchesWithScore.sort((a, b) => {
+    if (b.score !== a.score) {
+      return b.score - a.score
+    }
+    return a.bookmark.name.localeCompare(b.bookmark.name)
+  })
+
+  // 取前 maxResults 个结果
+  return matchesWithScore.slice(0, maxResults).map(({ bookmark }) => ({
+    id: bookmark.id,
+    name: bookmark.name,
+    url: bookmark.url!, // 已在上面过滤掉 url 为 null 的情况
+    favicon: '',
+    iconBg: bookmark.iconBg,
+    iconType: bookmark.iconType,
+    iconData: bookmark.iconData,
+    iconUrl: bookmark.iconUrl,
+  }))
 }
 
 export interface UseShortcutMatcherReturn {

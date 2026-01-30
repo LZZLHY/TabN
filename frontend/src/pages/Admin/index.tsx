@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -63,12 +64,15 @@ type AdminExtension = {
 
 // --- Components ---
 
-/** 用户排序选项 */
-const USER_SORT_OPTIONS = [
-  { value: 'role_asc', label: '权限优先 (Root > User)', icon: <ArrowUpDown className="w-4 h-4" /> },
-  { value: 'created_desc', label: '注册时间 (最新)', icon: <ArrowUpDown className="w-4 h-4" /> },
-  { value: 'created_asc', label: '注册时间 (最早)', icon: <ArrowUpDown className="w-4 h-4" /> },
-]
+/** 用户排序选项 - 使用 hook 动态生成 */
+function useUserSortOptions() {
+  const { t } = useTranslation()
+  return [
+    { value: 'role_asc', label: t('admin.users.sortByRole'), icon: <ArrowUpDown className="w-4 h-4" /> },
+    { value: 'created_desc', label: t('admin.users.sortByNewest'), icon: <ArrowUpDown className="w-4 h-4" /> },
+    { value: 'created_asc', label: t('admin.users.sortByOldest'), icon: <ArrowUpDown className="w-4 h-4" /> },
+  ]
+}
 
 function Badge({ children, variant = 'default' }: { children: React.ReactNode; variant?: 'default' | 'success' | 'warning' | 'error' | 'outline' }) {
   const styles = {
@@ -104,6 +108,8 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
 // --- Main Page ---
 
 export function AdminPage() {
+  const { t } = useTranslation()
+  const userSortOptions = useUserSortOptions()
   useApplyAppearance()
   const token = useAuthStore((s) => s.token)
   const me = useAuthStore((s) => s.user)
@@ -215,7 +221,7 @@ export function AdminPage() {
       body: JSON.stringify({ status }),
     })
     if (!resp.ok) return toast.error(resp.message)
-    toast.success(`审核状态已更新为：${status}`)
+    toast.success(t('admin.extensions.statusUpdated', { status }))
     await loadExtensions()
   }
 
@@ -236,23 +242,23 @@ export function AdminPage() {
         body: JSON.stringify(json),
       })
       if (!resp.ok) return toast.error(resp.message)
-      toast.success('项目设置已保存')
+      toast.success(t('admin.project.saved'))
       setProjectSettingsText(JSON.stringify(resp.data.settings, null, 2))
     } catch {
-      toast.error('JSON 格式不正确')
+      toast.error(t('admin.project.invalidJson'))
     }
   }
 
   const setRole = async (u: AdminUser, role: 'USER' | 'ADMIN') => {
-    if (!token || !isRoot) return toast.error('权限不足')
-    if (u.id === me?.id) return toast.warning('不能修改自己的角色')
+    if (!token || !isRoot) return toast.error(t('admin.noPermission'))
+    if (u.id === me?.id) return toast.warning(t('admin.users.cannotModifySelf'))
     const resp = await apiFetch<{ user: AdminUser }>(`/api/admin/users/${u.id}/role`, {
       method: 'PATCH',
       token,
       body: JSON.stringify({ role }),
     })
     if (!resp.ok) return toast.error(resp.message)
-    toast.success(`用户 ${u.nickname} 角色已更新为 ${role}`)
+    toast.success(t('admin.users.roleUpdated', { nickname: u.nickname, role }))
     loadUsers() // Reload current page
   }
 
@@ -264,7 +270,7 @@ export function AdminPage() {
       body: JSON.stringify({ password: pwdValue }),
     })
     if (!resp.ok) return toast.error(resp.message)
-    toast.success('密码已重置')
+    toast.success(t('admin.users.passwordReset'))
     setPwdValue('')
     setPwdOpen(false)
     setTargetUser(null)
@@ -283,7 +289,7 @@ export function AdminPage() {
       }),
     })
     if (!resp.ok) return toast.error(resp.message)
-    toast.success('用户资料已更新')
+    toast.success(t('admin.users.profileUpdated'))
     setEditProfileOpen(false)
     setTargetUser(null)
     loadUsers() // Reload list
@@ -302,20 +308,20 @@ export function AdminPage() {
       }),
     })
     if (!resp.ok) return toast.error(resp.message)
-    toast.success('资料已保存')
+    toast.success(t('admin.profile.saved'))
     await refreshMe()
   }
 
   const changeMyPassword = async () => {
     if (!token || !isRoot) return
-    if (!oldPwd || !newPwd) return toast.warning('请填写完整')
+    if (!oldPwd || !newPwd) return toast.warning(t('admin.profile.fillRequired'))
     const resp = await apiFetch<{ ok: true }>('/api/admin/root/password', {
       method: 'PUT',
       token,
       body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd }),
     })
     if (!resp.ok) return toast.error(resp.message)
-    toast.success('密码已修改，请重新登录')
+    toast.success(t('admin.profile.passwordChanged'))
     // 密码修改成功后强制登出
     logout()
   }
@@ -387,22 +393,22 @@ export function AdminPage() {
               </div>
             <div>
                 <div className="font-bold text-lg leading-none text-fg">Admin</div>
-                <div className="text-xs text-fg/50 mt-1 font-medium">管理控制台</div>
+                <div className="text-xs text-fg/50 mt-1 font-medium">{t('admin.console')}</div>
               </div>
             </div>
           </div>
 
           <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto py-2">
             <div className="px-4 py-2 text-xs font-semibold text-fg/40 uppercase tracking-wider">Management</div>
-            <NavItem id="users" label="用户管理" icon={Users} />
-            <NavItem id="bookmarks" label="书签管理" icon={Bookmark} />
-            <NavItem id="extensions" label="插件审核" icon={Puzzle} />
+            <NavItem id="users" label={t('admin.users.title')} icon={Users} />
+            <NavItem id="bookmarks" label={t('admin.bookmarks.title')} icon={Bookmark} />
+            <NavItem id="extensions" label={t('admin.extensions.title')} icon={Puzzle} />
 
             <div className="px-4 py-2 mt-6 text-xs font-semibold text-fg/40 uppercase tracking-wider">System</div>
-            <NavItem id="logs" label="日志查看" icon={FileText} />
-            {isRoot && <NavItem id="update" label="系统更新" icon={Download} />}
-            <NavItem id="project" label="项目设置" icon={Settings} />
-            {isRoot && <NavItem id="profile" label="我的资料" icon={UserCircle} />}
+            <NavItem id="logs" label={t('admin.logs.title')} icon={FileText} />
+            {isRoot && <NavItem id="update" label={t('admin.update.title')} icon={Download} />}
+            <NavItem id="project" label={t('admin.project.title')} icon={Settings} />
+            {isRoot && <NavItem id="profile" label={t('admin.profile.title')} icon={UserCircle} />}
           </nav>
 
           <div className="p-4 border-t border-glass-border/10">
@@ -417,7 +423,7 @@ export function AdminPage() {
             </div>
             <Button variant="ghost" className="w-full justify-start text-fg/60 hover:text-red-500 hover:bg-red-50/10" onClick={() => navigate('/')}>
               <LogOut className="w-4 h-4 mr-2" />
-                返回前台
+                {t('admin.backToFront')}
               </Button>
           </div>
         </aside>
@@ -444,15 +450,15 @@ export function AdminPage() {
               {tab === 'users' && (
                 <>
                   <SectionHeader
-                    title="用户管理"
-                    subtitle="管理系统用户、角色权限与安全设置。"
+                    title={t('admin.users.title')}
+                    subtitle={t('admin.users.subtitle')}
                     action={
                       <div className="flex flex-wrap items-center gap-2">
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-fg/40" />
                           <input 
                             className="h-9 pl-9 pr-3 rounded-xl bg-glass/10 border border-glass-border/20 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 w-48 sm:w-64"
-                            placeholder="搜索用户名/昵称..."
+                            placeholder={t('admin.users.searchPlaceholder')}
                             value={userSearch}
                             onChange={(e) => setUserSearch(e.target.value)}
                             onKeyDown={(e) => {
@@ -466,7 +472,7 @@ export function AdminPage() {
                             setUserSort(val)
                             loadUsers(1, userSearch, val)
                           }}
-                          options={USER_SORT_OPTIONS}
+                          options={userSortOptions}
                           width="180px"
                         />
                       </div>
@@ -477,11 +483,11 @@ export function AdminPage() {
                       <table className="w-full text-left text-sm">
                         <thead className="bg-glass/5 text-fg/60 font-medium border-b border-glass-border/10">
                           <tr>
-                            <th className="px-6 py-4">用户</th>
-                            <th className="px-6 py-4">角色</th>
-                            <th className="px-6 py-4">联系方式</th>
-                            <th className="px-6 py-4">注册时间</th>
-                            {isRoot && <th className="px-6 py-4">操作</th>}
+                            <th className="px-6 py-4">{t('admin.users.user')}</th>
+                            <th className="px-6 py-4">{t('admin.users.role')}</th>
+                            <th className="px-6 py-4">{t('admin.users.contact')}</th>
+                            <th className="px-6 py-4">{t('admin.users.registeredAt')}</th>
+                            {isRoot && <th className="px-6 py-4">{t('admin.users.actions')}</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-glass-border/5">
@@ -501,7 +507,7 @@ export function AdminPage() {
                                       {isRoot && u.role !== 'ROOT' && (
                                         <button 
                                           className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-fg/40 hover:text-primary focus:outline-none focus:opacity-100"
-                                          title="编辑资料"
+                                          title={t('admin.users.editProfile')}
                                           onClick={() => openEditProfile(u)}
                                         >
                                           <Pencil className="w-3 h-3" />
@@ -559,7 +565,7 @@ export function AdminPage() {
                                             setPwdValue('')
                                             setPwdOpen(true)
                                           }}
-                                          title="重置密码"
+                                          title={t('admin.users.resetPassword')}
                                         >
                                           <Shield className="w-4 h-4" />
                                         </Button>
@@ -574,7 +580,7 @@ export function AdminPage() {
                       </table>
                     </div>
                     {users.length === 0 && !loading && (
-                      <div className="p-8 text-center text-fg/50 text-sm">暂无数据</div>
+                      <div className="p-8 text-center text-fg/50 text-sm">{t('error.noData')}</div>
                     )}
                     
                     {/* Pagination */}
@@ -589,7 +595,7 @@ export function AdminPage() {
                            disabled={userPage <= 1}
                            onClick={() => loadUsers(userPage - 1, userSearch, userSort)}
                          >
-                           <ChevronLeft className="w-4 h-4" /> 上一页
+                           <ChevronLeft className="w-4 h-4" /> {t('common.prevPage')}
                          </Button>
                          <Button 
                            variant="ghost" 
@@ -597,7 +603,7 @@ export function AdminPage() {
                            disabled={userPage >= userTotalPages}
                            onClick={() => loadUsers(userPage + 1, userSearch, userSort)}
                          >
-                           下一页 <ChevronRight className="w-4 h-4" />
+                           {t('common.nextPage')} <ChevronRight className="w-4 h-4" />
                          </Button>
                        </div>
                     </div>
@@ -612,8 +618,8 @@ export function AdminPage() {
               {tab === 'extensions' && (
                 <>
                    <SectionHeader
-                    title="插件审核"
-                    subtitle="审核用户提交的拓展插件。"
+                    title={t('admin.extensions.title')}
+                    subtitle={t('admin.extensions.subtitle')}
                   />
                   <div className="space-y-4">
                     {extensions.map((x) => (
@@ -627,29 +633,29 @@ export function AdminPage() {
                               </Badge>
                 </div>
                             <div className="mt-1 text-sm text-fg/60">
-                              提交者：{x.user.nickname} (@{x.user.role}) · {new Date(x.createdAt).toLocaleString()}
+                              {t('admin.extensions.submitter')}{x.user.nickname} (@{x.user.role}) · {new Date(x.createdAt).toLocaleString()}
               </div>
                             {x.description && <div className="mt-3 text-sm text-fg/80 leading-relaxed max-w-2xl">{x.description}</div>}
                             {x.sourceUrl && (
                               <a href={x.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center text-xs text-primary hover:underline">
-                                查看源码 <ChevronRight className="w-3 h-3 ml-0.5" />
+                                {t('admin.extensions.viewSource')} <ChevronRight className="w-3 h-3 ml-0.5" />
                               </a>
                             )}
             </div>
                           <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
                             {x.status !== 'PENDING' && (
                               <Button variant="ghost" size="sm" onClick={() => reviewExtension(x.id, 'PENDING')}>
-                                重置为待审
+                                {t('admin.extensions.resetToPending')}
                               </Button>
                             )}
                             {x.status !== 'APPROVED' && (
                               <Button variant="glass" size="sm" className="text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 border-green-200/50 dark:border-green-800/50" onClick={() => reviewExtension(x.id, 'APPROVED')}>
-                                <CheckCircle2 className="w-4 h-4 mr-1.5" /> 通过
+                                <CheckCircle2 className="w-4 h-4 mr-1.5" /> {t('admin.extensions.approve')}
               </Button>
                             )}
                             {x.status !== 'REJECTED' && (
                               <Button variant="glass" size="sm" className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border-red-200/50 dark:border-red-800/50" onClick={() => reviewExtension(x.id, 'REJECTED')}>
-                                <XCircle className="w-4 h-4 mr-1.5" /> 驳回
+                                <XCircle className="w-4 h-4 mr-1.5" /> {t('admin.extensions.reject')}
                     </Button>
                             )}
                   </div>
@@ -658,7 +664,7 @@ export function AdminPage() {
               ))}
                     {extensions.length === 0 && !loading && (
                        <div className="text-center py-12 text-fg/50 bg-glass/5 rounded-3xl border border-glass-border/10 border-dashed">
-                        暂无插件提交
+                        {t('admin.extensions.noSubmissions')}
                       </div>
                     )}
                   </div>
@@ -675,16 +681,16 @@ export function AdminPage() {
               {tab === 'project' && (
                 <>
                   <SectionHeader
-                    title="项目设置"
-                    subtitle="编辑系统级配置 (JSON)。仅 Root 可见。"
+                    title={t('admin.project.title')}
+                    subtitle={t('admin.project.subtitle')}
                   />
                   {isRoot ? (
                     <Card className="flex flex-col h-[500px]">
                       <div className="flex items-center justify-between mb-3">
                         <div className="text-xs text-fg/50 font-mono">config.json</div>
                         <div className="flex gap-2">
-                           <Button variant="glass" size="sm" onClick={loadProjectSettings}>重置</Button>
-                           <Button variant="primary" size="sm" onClick={saveProjectSettings}>保存更改</Button>
+                           <Button variant="glass" size="sm" onClick={loadProjectSettings}>{t('common.reset')}</Button>
+                           <Button variant="primary" size="sm" onClick={saveProjectSettings}>{t('admin.project.saveChanges')}</Button>
               </div>
             </div>
             <textarea
@@ -695,7 +701,7 @@ export function AdminPage() {
                       />
                     </Card>
                   ) : (
-                    <div className="p-8 text-center text-fg/50">无权访问</div>
+                    <div className="p-8 text-center text-fg/50">{t('admin.noPermission')}</div>
                   )}
                 </>
               )}
@@ -704,54 +710,54 @@ export function AdminPage() {
               {tab === 'profile' && isRoot && (
                 <>
                   <SectionHeader
-                    title="我的资料"
-                    subtitle="更新管理员个人信息与安全设置。"
+                    title={t('admin.profile.title')}
+                    subtitle={t('admin.profile.subtitle')}
                   />
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card>
-                      <h3 className="text-lg font-medium mb-4">基本信息</h3>
+                      <h3 className="text-lg font-medium mb-4">{t('admin.profile.basicInfo')}</h3>
                       <div className="space-y-4">
                         <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-fg/70">账号</label>
+                          <label className="text-xs font-medium text-fg/70">{t('settings.profile.username')}</label>
                       <Input value={rootUsername} onChange={(e) => setRootUsername(e.target.value)} />
                     </div>
                         <div className="space-y-1.5">
-                          <label className="text-xs font-medium text-fg/70">昵称</label>
+                          <label className="text-xs font-medium text-fg/70">{t('settings.profile.nickname')}</label>
                       <Input value={rootNickname} onChange={(e) => setRootNickname(e.target.value)} />
                     </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-fg/70">邮箱</label>
-                            <Input value={rootEmail} onChange={(e) => setRootEmail(e.target.value)} placeholder="可选" />
+                            <label className="text-xs font-medium text-fg/70">{t('settings.profile.email')}</label>
+                            <Input value={rootEmail} onChange={(e) => setRootEmail(e.target.value)} placeholder={t('common.optional')} />
                       </div>
                           <div className="space-y-1.5">
-                             <label className="text-xs font-medium text-fg/70">手机</label>
-                             <Input value={rootPhone} onChange={(e) => setRootPhone(e.target.value)} placeholder="可选" />
+                             <label className="text-xs font-medium text-fg/70">{t('settings.profile.phone')}</label>
+                             <Input value={rootPhone} onChange={(e) => setRootPhone(e.target.value)} placeholder={t('common.optional')} />
                       </div>
                     </div>
                         <div className="pt-2 flex justify-end">
-                          <Button variant="primary" onClick={saveRootProfile}>更新资料</Button>
+                          <Button variant="primary" onClick={saveRootProfile}>{t('admin.profile.updateProfile')}</Button>
                     </div>
                   </div>
                     </Card>
 
                     <Card>
-                      <h3 className="text-lg font-medium mb-4">安全设置</h3>
+                      <h3 className="text-lg font-medium mb-4">{t('admin.profile.security')}</h3>
                       <div className="space-y-4">
                          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-700 dark:text-amber-400 flex gap-2">
                            <AlertCircle className="w-4 h-4 shrink-0" />
-                           修改密码后需要重新登录。
+                           {t('admin.profile.passwordWarning')}
                 </div>
                          <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-fg/70">原密码</label>
+                            <label className="text-xs font-medium text-fg/70">{t('settings.password.current')}</label>
                             <Input type="password" value={oldPwd} onChange={(e) => setOldPwd(e.target.value)} />
                     </div>
                          <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-fg/70">新密码</label>
+                            <label className="text-xs font-medium text-fg/70">{t('settings.password.new')}</label>
                             <Input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
                     </div>
                          <div className="pt-2 flex justify-end">
-                           <Button variant="glass" onClick={changeMyPassword} disabled={!oldPwd || !newPwd}>修改密码</Button>
+                           <Button variant="glass" onClick={changeMyPassword} disabled={!oldPwd || !newPwd}>{t('admin.profile.changePassword')}</Button>
                     </div>
                     </div>
                     </Card>
@@ -769,23 +775,23 @@ export function AdminPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setPwdOpen(false)} />
           <div className="relative w-full max-w-md glass-modal rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-semibold mb-1">重置密码</h3>
-            <p className="text-sm text-fg/60 mb-6">正在重置 {targetUser.nickname} (@{targetUser.username}) 的密码</p>
+            <h3 className="text-xl font-semibold mb-1">{t('admin.users.resetPassword')}</h3>
+            <p className="text-sm text-fg/60 mb-6">{t('admin.users.resettingPassword', { nickname: targetUser.nickname, username: targetUser.username })}</p>
 
             <div className="space-y-4">
                <div className="space-y-2">
-                 <label className="text-xs font-medium text-fg/70">新密码</label>
+                 <label className="text-xs font-medium text-fg/70">{t('settings.password.new')}</label>
                  <Input
                    autoFocus
                    type="password"
-                   placeholder="输入新密码"
+                   placeholder={t('admin.users.enterNewPassword')}
                    value={pwdValue}
                    onChange={(e) => setPwdValue(e.target.value)}
                  />
                </div>
                <div className="flex justify-end gap-3 pt-2">
-                 <Button variant="ghost" onClick={() => setPwdOpen(false)}>取消</Button>
-                 <Button variant="primary" onClick={resetPwd} disabled={!pwdValue}>确认重置</Button>
+                 <Button variant="ghost" onClick={() => setPwdOpen(false)}>{t('common.cancel')}</Button>
+                 <Button variant="primary" onClick={resetPwd} disabled={!pwdValue}>{t('admin.users.confirmReset')}</Button>
                </div>
             </div>
           </div>
@@ -797,32 +803,32 @@ export function AdminPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditProfileOpen(false)} />
           <div className="relative w-full max-w-md glass-modal rounded-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-semibold mb-1">编辑用户资料</h3>
-            <p className="text-sm text-fg/60 mb-6">修改 {targetUser.nickname} (@{targetUser.username}) 的信息</p>
+            <h3 className="text-xl font-semibold mb-1">{t('admin.users.editUserProfile')}</h3>
+            <p className="text-sm text-fg/60 mb-6">{t('admin.users.editingUser', { nickname: targetUser.nickname, username: targetUser.username })}</p>
 
             <div className="space-y-4">
                <div className="space-y-1.5">
-                 <label className="text-xs font-medium text-fg/70">账号</label>
+                 <label className="text-xs font-medium text-fg/70">{t('settings.profile.username')}</label>
                  <Input value={editUsername} onChange={(e) => setEditUsername(e.target.value)} />
                </div>
                <div className="space-y-1.5">
-                 <label className="text-xs font-medium text-fg/70">昵称</label>
+                 <label className="text-xs font-medium text-fg/70">{t('settings.profile.nickname')}</label>
                  <Input value={editNickname} onChange={(e) => setEditNickname(e.target.value)} />
                </div>
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-fg/70">邮箱</label>
+                    <label className="text-xs font-medium text-fg/70">{t('settings.profile.email')}</label>
                     <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-fg/70">手机</label>
+                    <label className="text-xs font-medium text-fg/70">{t('settings.profile.phone')}</label>
                     <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
                   </div>
                </div>
 
                <div className="flex justify-end gap-3 pt-2">
-                 <Button variant="ghost" onClick={() => setEditProfileOpen(false)}>取消</Button>
-                 <Button variant="primary" onClick={saveUserProfile}>保存更改</Button>
+                 <Button variant="ghost" onClick={() => setEditProfileOpen(false)}>{t('common.cancel')}</Button>
+                 <Button variant="primary" onClick={saveUserProfile}>{t('common.save')}</Button>
             </div>
             </div>
           </div>

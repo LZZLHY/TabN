@@ -1,10 +1,12 @@
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../services/api'
 import { cn } from '../utils/cn'
 
 export function ServerStatus() {
+  const { t } = useTranslation()
   const [isOnline, setIsOnline] = useState(true)
   const [checking, setChecking] = useState(false)
 
@@ -12,7 +14,7 @@ export function ServerStatus() {
     setChecking(true)
     try {
       // 检查 /health 接口
-      const res = await apiFetch<{ ok: boolean }>('/health')
+      const res = await apiFetch<{ ok: boolean }>('/health', { silent: true })
       if (res.ok) {
         setIsOnline(true)
       } else {
@@ -44,7 +46,7 @@ export function ServerStatus() {
       <div className="bg-rose-500 text-white px-4 py-3 shadow-lg flex items-center justify-center gap-3">
         <AlertCircle className="h-5 w-5 animate-pulse" />
         <span className="font-medium text-sm">
-          无法连接到服务器。数据库可能未启动，或者后端服务已停止。
+          {t('error.serverOffline')}
         </span>
         <button
           onClick={checkHealth}
@@ -55,7 +57,7 @@ export function ServerStatus() {
           )}
         >
           <RefreshCw className={cn("h-3.5 w-3.5", checking && "animate-spin")} />
-          {checking ? '连接中...' : '重试'}
+          {checking ? t('common.connecting') : t('common.retry')}
         </button>
       </div>
     </div>,

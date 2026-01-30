@@ -3,3 +3,5 @@
  */
 
 export * from './api'
+export * from './textIcon'
+export * from './preset'

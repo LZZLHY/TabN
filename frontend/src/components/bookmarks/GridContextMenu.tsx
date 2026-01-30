@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { ChevronRight, ChevronLeft } from 'lucide-react'
 import { Button } from '../ui/Button'
 import type { Bookmark, MenuState } from './types'
@@ -38,9 +39,21 @@ export function GridContextMenu({
   onRemoveShortcut,
   onMoveToFolder,
 }: GridContextMenuProps) {
+  const { t } = useTranslation()
   const [showFolderSubmenu, setShowFolderSubmenu] = useState(false)
   const [showEditSubmenu, setShowEditSubmenu] = useState(false)
   const [folderSearch, setFolderSearch] = useState('')
+  const folderSearchRef = useRef<HTMLInputElement | null>(null)
+
+  // “添加到”二级菜单打开时延迟聚焦，避免 autoFocus 抢焦点导致滑入动画首帧被吞
+  useEffect(() => {
+    if (!menu.open) return
+    if (!showFolderSubmenu) return
+    const tmr = window.setTimeout(() => {
+      folderSearchRef.current?.focus()
+    }, 160)
+    return () => window.clearTimeout(tmr)
+  }, [menu.open, showFolderSubmenu])
   
   // 菜单关闭时重置二级菜单状态
   if (!menu.open) {
@@ -96,16 +109,16 @@ export function GridContextMenu({
         <div className="overflow-hidden">
           {/* 一级菜单 */}
           {!activeSubmenu ? (
-            <div className="animate-[slideInFromLeft_150ms_ease-out]">
+            <div key="main-menu" className="animate-[slideInFromLeft_150ms_ease-out_both]">
               <div className="px-2 py-2 text-xs text-fg/70 truncate border-b border-glass-border/10 mb-1">{menu.item.name}</div>
               {menu.item.type === 'FOLDER' ? (
                 <>
-                  <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); onOpenFolder(menu.item.id) }}>打开</Button>
-                  <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); onAddToFolder(menu.item.id) }}>添加书签</Button>
-                  <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); onEdit(menu.item) }}>重命名</Button>
-                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50/10" onClick={() => { onClose(); onRemoveShortcut(menu.item.id); toast.success('已从Dock栏移除') }}>从Dock栏移除</Button>
-                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-amber-500 hover:text-amber-600 hover:bg-amber-50/10" onClick={() => { onClose(); onDelete(menu.item, 'release') }}>释放</Button>
-                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-red-500 hover:text-red-600 hover:bg-red-50/10" onClick={() => { onClose(); onDelete(menu.item, 'delete') }}>删除</Button>
+                  <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); onOpenFolder(menu.item.id) }}>{t('bookmarks.open')}</Button>
+                  <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); onAddToFolder(menu.item.id) }}>{t('bookmarks.addBookmark')}</Button>
+                  <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); onEdit(menu.item) }}>{t('bookmarks.rename')}</Button>
+                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50/10" onClick={() => { onClose(); onRemoveShortcut(menu.item.id); toast.success(t('bookmarks.removedFromDock')) }}>{t('bookmarks.removeFromDock')}</Button>
+                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-amber-500 hover:text-amber-600 hover:bg-amber-50/10" onClick={() => { onClose(); onDelete(menu.item, 'release') }}>{t('bookmarks.release')}</Button>
+                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-red-500 hover:text-red-600 hover:bg-red-50/10" onClick={() => { onClose(); onDelete(menu.item, 'delete') }}>{t('bookmarks.delete')}</Button>
                 </>
               ) : (
                 <>
@@ -115,11 +128,11 @@ export function GridContextMenu({
                     className="w-full justify-between h-8 text-sm" 
                     onClick={() => setShowEditSubmenu(true)}
                   >
-                    <span>编辑</span>
+                    <span>{t('bookmarks.edit')}</span>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); window.open(menu.item.url!, '_blank') }}>打开</Button>
-                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50/10" onClick={() => { onClose(); onRemoveShortcut(menu.item.id); toast.success('已从Dock栏移除') }}>从Dock栏移除</Button>
+                  <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); window.open(menu.item.url!, '_blank') }}>{t('bookmarks.open')}</Button>
+                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50/10" onClick={() => { onClose(); onRemoveShortcut(menu.item.id); toast.success(t('bookmarks.removedFromDock')) }}>{t('bookmarks.removeFromDock')}</Button>
                   
                   {/* 添加到文件夹 - 翻页按钮 */}
                   {availableFolders.length > 0 && (
@@ -128,18 +141,18 @@ export function GridContextMenu({
                       className="w-full justify-between h-8 text-sm" 
                       onClick={() => setShowFolderSubmenu(true)}
                     >
-                      <span>添加到...</span>
+                      <span>{t('bookmarks.addTo')}</span>
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                   )}
                   
-                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-red-500 hover:text-red-600 hover:bg-red-50/10" onClick={() => { onClose(); onDelete(menu.item, 'delete') }}>删除</Button>
+                  <Button variant="ghost" className="w-full justify-start h-8 text-sm text-red-500 hover:text-red-600 hover:bg-red-50/10" onClick={() => { onClose(); onDelete(menu.item, 'delete') }}>{t('bookmarks.delete')}</Button>
                 </>
               )}
-              <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); toast.info('直接拖拽即可整理/创建收藏夹') }}>移动/整理</Button>
+              <Button variant="ghost" className="w-full justify-start h-8 text-sm" onClick={() => { onClose(); toast.info(t('bookmarks.dragToOrganize')) }}>{t('bookmarks.moveOrganize')}</Button>
             </div>
           ) : activeSubmenu === 'folder' ? (
-            <div className="flex flex-col max-h-64 animate-[slideInFromRight_150ms_ease-out]">
+            <div key="folder-submenu" className="flex flex-col max-h-64 animate-[slideInFromRight_150ms_ease-out_both]">
               <div className="flex items-center gap-1 px-1 py-1 border-b border-glass-border/10">
                 <Button 
                   variant="ghost" 
@@ -149,17 +162,17 @@ export function GridContextMenu({
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
                 <input
+                  ref={folderSearchRef}
                   type="text"
-                  placeholder="搜索文件夹..."
+                  placeholder={t('bookmarks.searchFolder')}
                   value={folderSearch}
                   onChange={(e) => setFolderSearch(e.target.value)}
                   className="flex-1 h-6 px-2 text-xs bg-transparent border-none outline-none placeholder:text-fg/40"
-                  autoFocus
                 />
               </div>
               <div className="overflow-y-auto flex-1" onTouchMove={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()}>
                 {filteredFolders.length === 0 ? (
-                  <div className="px-2 py-3 text-xs text-fg/50 text-center">无匹配文件夹</div>
+                  <div className="px-2 py-3 text-xs text-fg/50 text-center">{t('bookmarks.noMatchingFolder')}</div>
                 ) : (
                   filteredFolders.map(folder => (
                     <Button 
@@ -178,7 +191,7 @@ export function GridContextMenu({
               </div>
             </div>
           ) : activeSubmenu === 'edit' ? (
-            <div className="animate-[slideInFromRight_150ms_ease-out]">
+            <div key="edit-submenu" className="animate-[slideInFromRight_150ms_ease-out_both]">
               <div className="flex items-center gap-1 px-1 py-1 border-b border-glass-border/10 mb-1">
                 <Button 
                   variant="ghost" 
@@ -187,21 +200,21 @@ export function GridContextMenu({
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <span className="text-xs text-fg/70">编辑</span>
+                <span className="text-xs text-fg/70">{t('bookmarks.edit')}</span>
               </div>
               <Button 
                 variant="ghost" 
                 className="w-full justify-start h-8 text-sm" 
                 onClick={() => { onClose(); onEdit(menu.item) }}
               >
-                更改信息
+                {t('bookmarks.changeInfo')}
               </Button>
               <Button 
                 variant="ghost" 
                 className="w-full justify-start h-8 text-sm" 
                 onClick={() => { onClose(); onEditIcon?.(menu.item) }}
               >
-                更改图标
+                {t('bookmarks.changeIcon')}
               </Button>
             </div>
           ) : null}

@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
   RefreshCw,
@@ -62,6 +63,7 @@ type UpdateState =
   | { phase: 'success'; message: string }
 
 export function UpdateTab() {
+  const { t } = useTranslation()
   const token = useAuthStore((s) => s.token)
   const globalUpdating = useUpdateStateStore((s) => s.isUpdating)
   const setGlobalUpdating = useUpdateStateStore((s) => s.setUpdating)
@@ -69,8 +71,8 @@ export function UpdateTab() {
   const [checking, setChecking] = useState(false)
   const [versionInfo, setVersionInfo] = useState<VersionInfo | null>(null)
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null)
-  const [displayUptime, setDisplayUptime] = useState<string>('加载中...')
-  const [displayTotalUptime, setDisplayTotalUptime] = useState<string>('加载中...')
+  const [displayUptime, setDisplayUptime] = useState<string>(t('admin.update.loading'))
+  const [displayTotalUptime, setDisplayTotalUptime] = useState<string>(t('admin.update.loading'))
   
   // 更新状态
   const [updateState, setUpdateState] = useState<UpdateState>({ phase: 'idle' })
@@ -89,23 +91,23 @@ export function UpdateTab() {
   }, [])
 
   // 格式化运行时长
-  const formatUptime = (ms: number) => {
+  const formatUptime = useCallback((ms: number) => {
     const seconds = Math.floor(ms / 1000)
     const minutes = Math.floor(seconds / 60)
     const hours = Math.floor(minutes / 60)
     const days = Math.floor(hours / 24)
 
     if (days > 0) {
-      return `${days}天 ${hours % 24}小时 ${minutes % 60}分钟`
+      return `${days}${t('admin.update.days')} ${hours % 24}${t('admin.update.hours')} ${minutes % 60}${t('admin.update.minutes')}`
     }
     if (hours > 0) {
-      return `${hours}小时 ${minutes % 60}分钟 ${seconds % 60}秒`
+      return `${hours}${t('admin.update.hours')} ${minutes % 60}${t('admin.update.minutes')} ${seconds % 60}${t('admin.update.seconds')}`
     }
     if (minutes > 0) {
-      return `${minutes}分钟 ${seconds % 60}秒`
+      return `${minutes}${t('admin.update.minutes')} ${seconds % 60}${t('admin.update.seconds')}`
     }
-    return `${seconds}秒`
-  }
+    return `${seconds}${t('admin.update.seconds')}`
+  }, [t])
 
   // 获取服务器状态
   const fetchServerStatus = useCallback(async () => {
@@ -151,7 +153,7 @@ export function UpdateTab() {
     // 每秒更新
     const interval = setInterval(updateUptime, 1000)
     return () => clearInterval(interval)
-  }, [serverStatus?.startTime, serverStatus?.totalUptimeMs, serverStatus?.uptimeMs])
+  }, [serverStatus?.startTime, serverStatus?.totalUptimeMs, serverStatus?.uptimeMs, formatUptime])
 
   // 检查更新（silent 模式不显示"已是最新版本"提示）
   const checkUpdate = useCallback(async (silent = false) => {
@@ -167,20 +169,20 @@ export function UpdateTab() {
       if (!silent) {
         if (resp.data.hasUpdate) {
           const patchInfo = resp.data.latestPatch ? ` (${resp.data.latestPatch})` : ''
-          toast.success(`发现新版本 v${resp.data.latest}${patchInfo}`)
+          toast.success(t('admin.update.newVersion', { version: resp.data.latest, patch: patchInfo }))
           if (!resp.data.hasGit) {
-            toast.warning('当前环境没有 Git，无法自动更新')
+            toast.warning(t('admin.update.noGit'))
           }
         } else {
-          toast.success('已是最新版本')
+          toast.success(t('admin.update.upToDate'))
         }
       }
     } catch {
-      if (!silent) toast.error('检查更新失败')
+      if (!silent) toast.error(t('admin.update.checkFailed'))
     } finally {
       setChecking(false)
     }
-  }, [token])
+  }, [token, t])
 
   // 组件挂载时自动检测更新
   useEffect(() => {
@@ -197,10 +199,10 @@ export function UpdateTab() {
     
     // 开始更新流程 - 根据是否需要安装依赖显示不同消息
     const initialMessage = versionInfo.needsDeps 
-      ? '正在更新（拉取代码 + 安装依赖），请耐心等待...'
-      : '正在拉取最新代码...'
+      ? t('admin.update.pullingWithDeps')
+      : t('admin.update.pulling')
     setUpdateState({ phase: 'pulling', message: initialMessage })
-    setGlobalUpdating(true, '正在更新中，请稍候...')
+    setGlobalUpdating(true, t('admin.update.updating'))
     
     // 标记是否已经发送请求成功
     let requestSucceeded = false
@@ -226,7 +228,7 @@ export function UpdateTab() {
       
       // 如果需要重启后端
       if (versionInfo.needsRestart) {
-        setUpdateState({ phase: 'restarting', message: '后端正在重启，请稍候...', startTime: Date.now() })
+        setUpdateState({ phase: 'restarting', message: t('admin.update.restarting'), startTime: Date.now() })
         
         // 启动等待动画
         let dots = 0
@@ -239,7 +241,7 @@ export function UpdateTab() {
         
         // 等待 2 秒后开始轮询
         await new Promise(resolve => setTimeout(resolve, 2000))
-        setUpdateState({ phase: 'waiting', message: '等待后端恢复', dots: 0 })
+        setUpdateState({ phase: 'waiting', message: t('admin.update.waiting'), dots: 0 })
         
         // 轮询检测后端是否恢复
         const maxWaitTime = 60000 // 最多等待 60 秒
@@ -268,7 +270,7 @@ export function UpdateTab() {
             if (dotsIntervalRef.current) clearInterval(dotsIntervalRef.current)
             setUpdateState({ phase: 'idle' })
             setGlobalUpdating(false)
-            toast.error('等待后端恢复超时，请手动刷新页面')
+            toast.error(t('admin.update.timeout'))
             return
           }
           
@@ -277,15 +279,15 @@ export function UpdateTab() {
             // 后端恢复了
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
             if (dotsIntervalRef.current) clearInterval(dotsIntervalRef.current)
-            setUpdateState({ phase: 'success', message: '更新完成！正在刷新页面...' })
-            toast.success('更新完成！')
+            setUpdateState({ phase: 'success', message: t('admin.update.success') })
+            toast.success(t('admin.update.successSimple'))
             setTimeout(() => window.location.reload(), 1500)
           }
         }, pollInterval)
         
       } else {
         // 不需要重启，直接完成
-        setUpdateState({ phase: 'success', message: '更新完成！' })
+        setUpdateState({ phase: 'success', message: t('admin.update.successSimple') })
         setGlobalUpdating(false)
         toast.success(resp.data.message)
         setTimeout(() => {
@@ -300,9 +302,9 @@ export function UpdateTab() {
       }
       setUpdateState({ phase: 'idle' })
       setGlobalUpdating(false)
-      toast.error('更新失败')
+      toast.error(t('admin.update.failed'))
     }
-  }, [token, versionInfo, checkUpdate, setGlobalUpdating])
+  }, [token, versionInfo, checkUpdate, setGlobalUpdating, t])
 
   // 仅拉取代码
   const pullOnly = useCallback(async () => {
@@ -317,11 +319,11 @@ export function UpdateTab() {
       toast.success(resp.data.message)
       checkUpdate()
     } catch {
-      toast.error('拉取失败')
+      toast.error(t('admin.update.failed'))
     } finally {
       setLoading(false)
     }
-  }, [token, checkUpdate])
+  }, [token, checkUpdate, t])
 
   // 安装依赖
   const installDeps = useCallback(async () => {
@@ -335,11 +337,11 @@ export function UpdateTab() {
       }
       toast.success(resp.data.message)
     } catch {
-      toast.error('安装依赖失败')
+      toast.error(t('admin.update.failed'))
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, t])
 
   // 重启服务
   const restartService = useCallback(async () => {
@@ -350,8 +352,8 @@ export function UpdateTab() {
     if (dotsIntervalRef.current) clearInterval(dotsIntervalRef.current)
     
     setShowRestartConfirm(false)
-    setUpdateState({ phase: 'restarting', message: '后端正在重启，请稍候...', startTime: Date.now() })
-    setGlobalUpdating(true, '后端正在重启，请稍候...')
+    setUpdateState({ phase: 'restarting', message: t('admin.update.restarting'), startTime: Date.now() })
+    setGlobalUpdating(true, t('admin.update.restarting'))
     
     try {
       await apiFetch<{ message: string }>('/api/admin/update/restart', { method: 'POST', token })
@@ -371,7 +373,7 @@ export function UpdateTab() {
     
     // 等待 2 秒后开始轮询
     await new Promise(resolve => setTimeout(resolve, 2000))
-    setUpdateState({ phase: 'waiting', message: '等待后端恢复', dots: 0 })
+    setUpdateState({ phase: 'waiting', message: t('admin.update.waiting'), dots: 0 })
     
     // 轮询检测后端是否恢复
     const maxWaitTime = 60000
@@ -398,7 +400,7 @@ export function UpdateTab() {
         if (dotsIntervalRef.current) clearInterval(dotsIntervalRef.current)
         setUpdateState({ phase: 'idle' })
         setGlobalUpdating(false)
-        toast.error('等待后端恢复超时，请手动刷新页面')
+        toast.error(t('admin.update.timeout'))
         return
       }
       
@@ -406,20 +408,20 @@ export function UpdateTab() {
       if (isUp) {
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
         if (dotsIntervalRef.current) clearInterval(dotsIntervalRef.current)
-        setUpdateState({ phase: 'success', message: '重启完成！正在刷新页面...' })
-        toast.success('重启完成！')
+        setUpdateState({ phase: 'success', message: t('admin.update.success') })
+        toast.success(t('admin.update.successSimple'))
         setTimeout(() => window.location.reload(), 1500)
       }
     }, pollInterval)
-  }, [token, setGlobalUpdating])
+  }, [token, setGlobalUpdating, t])
 
   return (
     <div className="space-y-6">
       {/* 标题 */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-fg tracking-tight">系统更新</h2>
-          <p className="mt-1 text-sm text-fg/60">检查并安装最新版本，支持智能更新。</p>
+          <h2 className="text-xl font-semibold text-fg tracking-tight">{t('admin.update.title')}</h2>
+          <p className="mt-1 text-sm text-fg/60">{t('admin.update.subtitle')}</p>
         </div>
         <Button
           variant="glass"
@@ -427,7 +429,7 @@ export function UpdateTab() {
           disabled={checking}
         >
           <RefreshCw className={cn("w-4 h-4 mr-2", checking && "animate-spin")} />
-          检查更新
+          {t('admin.update.checkUpdate')}
         </Button>
       </div>
 
@@ -438,8 +440,8 @@ export function UpdateTab() {
             <Server className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-lg font-medium text-fg">服务器状态</div>
-            <div className="text-sm text-fg/60">后端服务运行信息</div>
+            <div className="text-lg font-medium text-fg">{t('admin.update.serverStatus')}</div>
+            <div className="text-sm text-fg/60">{t('admin.update.serverStatusDesc')}</div>
           </div>
         </div>
         
@@ -447,17 +449,17 @@ export function UpdateTab() {
           <div className="p-4 bg-glass/5 rounded-xl">
             <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
               <Clock className="w-4 h-4" />
-              启动时长
+              {t('admin.update.startupDuration')}
             </div>
             <div className="text-lg font-medium text-fg">
-              {serverStatus?.startupDuration || '加载中...'}
+              {serverStatus?.startupDuration || t('admin.update.loading')}
             </div>
           </div>
           
           <div className="p-4 bg-glass/5 rounded-xl">
             <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
               <Zap className="w-4 h-4" />
-              本次运行
+              {t('admin.update.sessionUptime')}
             </div>
             <div className="text-lg font-medium text-fg">
               {displayUptime}
@@ -467,7 +469,7 @@ export function UpdateTab() {
           <div className="p-4 bg-glass/5 rounded-xl">
             <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
               <Clock className="w-4 h-4" />
-              总运行时长
+              {t('admin.update.totalUptime')}
             </div>
             <div className="text-lg font-medium text-fg">
               {displayTotalUptime}
@@ -477,12 +479,12 @@ export function UpdateTab() {
           <div className="p-4 bg-glass/5 rounded-xl">
             <div className="flex items-center gap-2 text-fg/60 text-sm mb-1">
               <Server className="w-4 h-4" />
-              启动时间
+              {t('admin.update.startTime')}
             </div>
             <div className="text-sm font-medium text-fg">
               {serverStatus?.startTime 
-                ? new Date(serverStatus.startTime).toLocaleString('zh-CN')
-                : '加载中...'}
+                ? new Date(serverStatus.startTime).toLocaleString()
+                : t('admin.update.loading')}
             </div>
           </div>
         </div>
@@ -502,10 +504,10 @@ export function UpdateTab() {
             </div>
             <div>
               <div className="text-lg font-medium text-fg">
-                {versionInfo?.hasUpdate ? '有新版本可用' : '已是最新版本'}
+                {versionInfo?.hasUpdate ? t('admin.update.hasUpdate') : t('admin.update.upToDate')}
               </div>
               <div className="text-sm text-fg/60">
-                当前版本: <code className="px-1.5 py-0.5 bg-glass/10 rounded">v{versionInfo?.current || serverStatus?.currentVersion || '未知'}{(versionInfo?.currentPatch || serverStatus?.currentPatch) ? ` (${versionInfo?.currentPatch || serverStatus?.currentPatch})` : ''}</code>
+                {t('admin.update.currentVersion')}: <code className="px-1.5 py-0.5 bg-glass/10 rounded">v{versionInfo?.current || serverStatus?.currentVersion || t('admin.update.unknown')}{(versionInfo?.currentPatch || serverStatus?.currentPatch) ? ` (${versionInfo?.currentPatch || serverStatus?.currentPatch})` : ''}</code>
                 {versionInfo?.hasUpdate && (
                   <>
                     {' → '}
@@ -523,7 +525,7 @@ export function UpdateTab() {
             className="flex items-center gap-2"
           >
             <RefreshCw className={cn("w-4 h-4", checking && "animate-spin")} />
-            {checking ? '检测中...' : '刷新检测'}
+            {checking ? t('admin.update.checking') : t('admin.logs.refresh')}
           </Button>
         </div>
 
@@ -536,35 +538,35 @@ export function UpdateTab() {
               {versionInfo.frontendOnly && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 rounded-lg text-sm">
                   <Monitor className="w-4 h-4" />
-                  仅前端更新（秒级）
+                  {t('admin.update.frontendOnly')}
                 </div>
               )}
               {/* 数据库迁移 */}
               {versionInfo.needsMigration && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-lg text-sm">
                   <Database className="w-4 h-4" />
-                  需要数据库迁移
+                  {t('admin.update.needsMigration')}
                 </div>
               )}
               {/* 安装依赖 */}
               {versionInfo.needsDeps && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-sm">
                   <Package className="w-4 h-4" />
-                  需要安装新依赖
+                  {t('admin.update.needsDeps')}
                 </div>
               )}
               {/* 重启后端 */}
               {versionInfo.needsRestart && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg text-sm">
                   <RotateCcw className="w-4 h-4" />
-                  需要重启后端
+                  {t('admin.update.needsRestart')}
                 </div>
               )}
               {/* 无缝更新（无需重启、无需依赖、非仅前端） */}
               {!versionInfo.needsRestart && !versionInfo.needsDeps && !versionInfo.needsMigration && !versionInfo.frontendOnly && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-600 dark:text-green-400 rounded-lg text-sm">
                   <Zap className="w-4 h-4" />
-                  无缝更新（无需重启）
+                  {t('admin.update.seamless')}
                 </div>
               )}
             </div>
@@ -579,12 +581,12 @@ export function UpdateTab() {
               {updateState.phase !== 'idle' ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  更新中...
+                  {t('admin.update.updating')}
                 </>
               ) : (
                 <>
                   <Download className="w-4 h-4 mr-2" />
-                  一键更新
+                  {t('admin.update.update')}
                 </>
               )}
             </Button>
@@ -600,10 +602,9 @@ export function UpdateTab() {
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-medium text-fg">无法自动更新</div>
+              <div className="font-medium text-fg">{t('admin.update.noGitTitle')}</div>
               <p className="mt-1 text-sm text-fg/60">
-                当前环境没有安装 Git，无法使用自动更新功能。
-                请手动从 GitHub 下载最新版本并替换文件。
+                {t('admin.update.noGit')}
               </p>
               <a 
                 href="https://github.com/LZZLHY/TabN/releases" 
@@ -611,7 +612,7 @@ export function UpdateTab() {
                 rel="noopener noreferrer"
                 className="inline-block mt-3 text-sm text-primary hover:underline"
               >
-                前往 GitHub 下载 →
+                {t('admin.update.goToGithub')} →
               </a>
             </div>
           </div>
@@ -621,23 +622,23 @@ export function UpdateTab() {
       {/* 手动操作 */}
       {versionInfo?.hasGit && (
         <div className="glass-panel rounded-2xl p-6">
-          <h3 className="text-lg font-medium text-fg mb-4">手动操作</h3>
+          <h3 className="text-lg font-medium text-fg mb-4">{t('admin.update.manualActions')}</h3>
           <div className="flex flex-wrap gap-3">
             <Button variant="glass" onClick={pullOnly} disabled={loading || updateState.phase !== 'idle'}>
               <Download className="w-4 h-4 mr-2" />
-              仅拉取代码
+              {t('admin.update.pullOnly')}
             </Button>
             <Button variant="glass" onClick={installDeps} disabled={loading || updateState.phase !== 'idle'}>
               <Package className="w-4 h-4 mr-2" />
-              安装依赖
+              {t('admin.update.installDeps')}
             </Button>
             <Button variant="glass" onClick={() => setShowRestartConfirm(true)} disabled={loading || updateState.phase !== 'idle'} className="text-red-500 hover:bg-red-50/10">
               <RotateCcw className="w-4 h-4 mr-2" />
-              重启服务
+              {t('admin.update.restart')}
             </Button>
           </div>
           <p className="mt-3 text-xs text-fg/50">
-            提示：一键更新会自动判断是否需要安装依赖和重启服务。手动操作仅在特殊情况下使用。
+            {t('admin.update.manualHint')}
           </p>
         </div>
       )}
@@ -650,16 +651,16 @@ export function UpdateTab() {
             <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
               <RotateCcw className="w-6 h-6 text-red-500" />
             </div>
-            <h3 className="text-lg font-semibold text-fg text-center mb-2">确认重启服务</h3>
+            <h3 className="text-lg font-semibold text-fg text-center mb-2">{t('admin.update.restartConfirm')}</h3>
             <p className="text-sm text-fg/60 text-center mb-6">
-              重启后端服务将导致短暂的服务中断，页面会在重启完成后自动刷新。
+              {t('admin.update.restartWarning')}
             </p>
             <div className="flex gap-3">
               <Button variant="glass" className="flex-1" onClick={() => setShowRestartConfirm(false)}>
-                取消
+                {t('common.cancel')}
               </Button>
               <Button variant="primary" className="flex-1 bg-red-500 hover:bg-red-600" onClick={restartService}>
-                确认重启
+                {t('admin.update.restartConfirm')}
               </Button>
             </div>
           </div>
@@ -679,11 +680,11 @@ export function UpdateTab() {
               )}
             </div>
             <h3 className="text-lg font-semibold text-fg mb-2">
-              {updateState.phase === 'pulling' && '正在更新'}
-              {updateState.phase === 'installing' && '正在安装依赖'}
-              {updateState.phase === 'restarting' && '后端正在重启'}
-              {updateState.phase === 'waiting' && '等待后端恢复'}
-              {updateState.phase === 'success' && '更新完成'}
+              {updateState.phase === 'pulling' && t('admin.update.updating')}
+              {updateState.phase === 'installing' && t('admin.update.pullingWithDeps')}
+              {updateState.phase === 'restarting' && t('admin.update.restarting')}
+              {updateState.phase === 'waiting' && t('admin.update.waiting')}
+              {updateState.phase === 'success' && t('admin.update.successSimple')}
             </h3>
             <p className="text-sm text-fg/60">
               {updateState.message}
@@ -691,7 +692,7 @@ export function UpdateTab() {
             </p>
             {(updateState.phase === 'restarting' || updateState.phase === 'waiting') && (
               <p className="mt-3 text-xs text-fg/40">
-                后端重启期间连接中断是正常的，请耐心等待...
+                {t('admin.update.restarting')}
               </p>
             )}
           </div>

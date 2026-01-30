@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
+import { useTranslation } from 'react-i18next'
 import { Button } from '../../ui/Button'
 import { apiFetch } from '../../../services/api'
 import { getOrder, storageKey } from '../orderStorage'
@@ -23,6 +24,12 @@ type GridDeleteDialogProps = {
   removeShortcut: (id: string) => void
   replaceShortcutWithChildren: (folderId: string, childIds: string[], displayIndex: number) => void
   load: () => Promise<void>
+  /** 获取书签元素的函数（用于淡出动画） */
+  getEl?: (id: string) => HTMLDivElement | undefined
+  /** 保存位置快照的函数（用于补位动画） */
+  savePositions?: () => void
+  /** 触发补位动画的函数 */
+  triggerFillAnimation?: () => void
 }
 
 /**
@@ -45,7 +52,12 @@ export function GridDeleteDialog({
   removeShortcut,
   replaceShortcutWithChildren,
   load,
+  getEl,
+  savePositions,
+  triggerFillAnimation,
 }: GridDeleteDialogProps) {
+  const { t } = useTranslation()
+  
   if (!open || !item) return null
 
   const isFolder = item.type === 'FOLDER'
@@ -57,6 +69,18 @@ export function GridDeleteDialog({
     if (!token || !item || !userId) return
 
     const folderId = item.id
+
+    // 0. 保存当前位置快照（用于补位动画）
+    savePositions?.()
+    
+    // 1. 获取书签元素并添加淡出动画类
+    const el = getEl?.(item.id)
+    if (el) {
+      el.classList.add('bookmark-fade-out')
+    }
+    
+    // 2. 等待动画完成（200ms，与 CSS 动画时长一致）
+    await new Promise(resolve => setTimeout(resolve, 200))
 
     let nextParentOrder: string[] | null = null
     if (isFolder && isRelease) {
@@ -82,7 +106,7 @@ export function GridDeleteDialog({
     const resp = await apiFetch(url, { method: 'DELETE', token })
     
     if (resp.ok) {
-      toast.success(isRelease ? '已释放' : '已删除')
+      toast.success(isRelease ? t('toast.released') : t('toast.deleted'))
       // 释放模式：如果删除的是快捷栏中的文件夹，将子项插入到文件夹当前显示位置
       if (isRelease && isFolder && shortcutIds.includes(item.id)) {
         const childIds = allItems.filter((x) => x.parentId === folderId).map((x) => x.id)
@@ -114,19 +138,26 @@ export function GridDeleteDialog({
         }
       }
       await load()
+      
+      // 触发补位动画
+      triggerFillAnimation?.()
     } else {
+      // 删除失败，移除动画类恢复显示
+      if (el) {
+        el.classList.remove('bookmark-fade-out')
+      }
       toast.error(resp.message)
     }
   }
 
   // 根据模式显示不同的标题和描述
-  const title = isFolder && isRelease ? '确认释放' : '确认删除'
+  const title = isFolder && isRelease ? t('bookmarks.confirmRelease') : t('bookmarks.confirmDelete')
   const description = isFolder 
     ? (isRelease 
-        ? `确定要释放收藏夹 "${item.name}" 吗？文件夹内的 ${childCount} 个书签将移动到上一级。`
-        : `确定要删除收藏夹 "${item.name}" 吗？文件夹内的 ${childCount} 个书签将被一起删除，此操作不可恢复！`)
-    : `确定要删除书签 "${item.name}" 吗？`
-  const buttonText = isFolder && isRelease ? '释放' : '删除'
+        ? t('bookmarks.releaseConfirmDesc', { name: item.name, count: childCount })
+        : t('bookmarks.deleteConfirmDesc', { name: item.name, count: childCount }))
+    : t('bookmarks.deleteConfirm', { name: item.name })
+  const buttonText = isFolder && isRelease ? t('bookmarks.release') : t('bookmarks.delete')
   const buttonClass = isRelease 
     ? 'bg-amber-600 border-amber-600 hover:bg-amber-700 text-white'
     : 'bg-red-600 border-red-600 hover:bg-red-700 text-white'
@@ -141,7 +172,7 @@ export function GridDeleteDialog({
         <h3 className="font-semibold text-lg">{title}</h3>
         <p className="text-sm text-fg/70 mt-2">{description}</p>
         <div className="flex justify-end gap-2 mt-6">
-          <Button variant="ghost" onClick={onClose}>取消</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
           <Button 
             variant="primary" 
             className={buttonClass}

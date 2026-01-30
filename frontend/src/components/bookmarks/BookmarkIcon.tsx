@@ -1,183 +1,10 @@
 import { Folder } from 'lucide-react'
 import { cn } from '../../utils/cn'
-import { Favicon } from '../Favicon'
 import { getSortedFolderChildren } from './folderOperations'
-import { getIconUrl } from '../../utils/iconSource'
+import { FolderPreviewIcon } from './FolderPreviewIcon'
+import { UnifiedIcon, type IconData } from '../ui/UnifiedIcon'
 import type { Bookmark } from './types'
 import type { BookmarkContext } from '../../types/bookmark'
-
-/**
- * 极小图标组件（用于嵌套文件夹预览中的 2x2 网格内的图标）
- * 不再递归，只显示简单图标
- */
-function TinyIcon({ bookmark }: { bookmark: Bookmark }) {
-  const isFolder = bookmark.type === 'FOLDER'
-  
-  if (isFolder) {
-    return (
-      <div className="bg-amber-100/50 rounded-[0.5px] flex items-center justify-center aspect-square">
-        <Folder className="w-full h-full p-px text-amber-500" />
-      </div>
-    )
-  }
-  
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon)
-  
-  if (hasCustomIcon) {
-    return (
-      <img
-        src={customIcon}
-        className="w-full h-full object-cover rounded-[0.5px] aspect-square"
-        alt=""
-        loading="lazy"
-        decoding="async"
-      />
-    )
-  }
-  
-  return (
-    <Favicon
-      url={bookmark.url || ''}
-      size={6}
-      className="w-full h-full object-cover rounded-[0.5px] aspect-square"
-    />
-  )
-}
-
-/**
- * 超小图标组件（用于子文件夹预览中的 2x2 网格）
- * 支持显示嵌套文件夹内的图标预览
- */
-function MiniIcon({ bookmark, nestedItems }: { bookmark: Bookmark; nestedItems?: Bookmark[] }) {
-  const isFolder = bookmark.type === 'FOLDER'
-  
-  if (isFolder) {
-    const children = nestedItems || []
-    if (children.length === 0) {
-      // 空文件夹显示文件夹图标
-      return (
-        <div className="w-full h-full bg-amber-100/50 rounded-[1px] flex items-center justify-center aspect-square">
-          <Folder className="w-full h-full p-[1px] text-amber-500" />
-        </div>
-      )
-    }
-    // 显示嵌套文件夹内的前 4 个图标（2x2 网格）
-    return (
-      <div className="w-full h-full bg-amber-100/30 rounded-[1px] grid grid-cols-2 gap-[0.5px] p-[0.5px] aspect-square">
-        {[0, 1, 2, 3].map((idx) => {
-          const child = children[idx]
-          if (!child) {
-            return <div key={`empty-${idx}`} className="bg-black/5 rounded-[0.5px] aspect-square" />
-          }
-          return <TinyIcon key={child.id} bookmark={child} />
-        })}
-      </div>
-    )
-  }
-  
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon)
-  
-  if (hasCustomIcon) {
-    return (
-      <img
-        src={customIcon}
-        className="w-full h-full object-cover rounded-[1px]"
-        alt=""
-        loading="lazy"
-        decoding="async"
-      />
-    )
-  }
-  
-  return (
-    <Favicon
-      url={bookmark.url || ''}
-      size={8}
-      className="w-full h-full object-cover rounded-[1px]"
-    />
-  )
-}
-
-/**
- * 文件夹预览中的小图标组件
- * 支持显示书签图标或子文件夹预览
- */
-function FolderPreviewIcon({ bookmark, subFolderItems, allItems }: { bookmark: Bookmark; subFolderItems?: Bookmark[]; allItems?: Bookmark[] }) {
-  const isSubFolder = bookmark.type === 'FOLDER'
-  
-  // 如果是子文件夹，显示其内容预览
-  if (isSubFolder) {
-    const children = subFolderItems || []
-    if (children.length === 0) {
-      return (
-        <div className="w-full pt-[100%] relative bg-amber-100/50 rounded-[2px] overflow-hidden">
-          <Folder className="absolute inset-0 w-full h-full p-0.5 text-amber-500" />
-        </div>
-      )
-    }
-    // 显示子文件夹内的前 4 个项目的缩略图（始终保持 2x2 布局）
-    return (
-      <div className="w-full pt-[100%] relative bg-amber-100/30 rounded-[2px] overflow-hidden">
-        <div className="absolute inset-0 grid grid-cols-2 gap-px p-px">
-          {[0, 1, 2, 3].map((idx) => {
-            const child = children[idx]
-            if (!child) {
-              return <div key={`empty-${idx}`} className="bg-black/5 rounded-[1px] aspect-square" />
-            }
-            // 如果子项是文件夹，获取其嵌套子项
-            const nestedItems = child.type === 'FOLDER' && allItems
-              ? allItems.filter(x => x.parentId === child.id).slice(0, 4)
-              : undefined
-            return <MiniIcon key={child.id} bookmark={child} nestedItems={nestedItems} />
-          })}
-        </div>
-      </div>
-    )
-  }
-  
-  // 普通书签图标逻辑
-  let customIcon = ''
-  if (bookmark.iconType === 'BASE64' && bookmark.iconData) {
-    customIcon = bookmark.iconData
-  } else if (bookmark.iconUrl) {
-    customIcon = getIconUrl(bookmark.url, bookmark.iconUrl)
-  }
-  const hasCustomIcon = Boolean(customIcon)
-  
-  return (
-    <div className="w-full pt-[100%] relative bg-black/10 rounded-[2px] overflow-hidden">
-      {hasCustomIcon ? (
-        <img
-          src={customIcon}
-          className="absolute inset-0 w-full h-full object-cover"
-          alt=""
-          loading="lazy"
-          decoding="async"
-        />
-      ) : bookmark.url ? (
-        <Favicon
-          url={bookmark.url}
-          size={16}
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      ) : (
-        <Folder className="absolute inset-0 w-full h-full p-0.5 text-amber-500" />
-      )}
-    </div>
-  )
-}
 
 type BookmarkIconProps = {
   bookmark: Bookmark
@@ -199,6 +26,9 @@ type BookmarkIconProps = {
 /**
  * 书签图标渲染组件
  * 支持文件夹预览、自定义图标、Favicon、首字母 fallback
+ * 
+ * 使用 UnifiedIcon 组件进行图标渲染，确保所有图标类型正确显示
+ * 使用 FolderPreviewIcon 组件进行文件夹预览渲染
  */
 export function BookmarkIcon({
   bookmark: b,
@@ -227,20 +57,6 @@ export function BookmarkIcon({
   const dockIconClass = dockMode 
     ? 'group-hover:scale-125 group-hover:-translate-y-3' 
     : ''
-
-  // 自定义图标逻辑
-  let customIconSrc = ''
-  if (!isFolder) {
-    if (b.iconType === 'BASE64' && b.iconData) {
-      // Base64 图标优先
-      customIconSrc = b.iconData
-    } else if (b.iconUrl) {
-      // 使用 iconUrl（可能是来源标记或自定义 URL）
-      customIconSrc = getIconUrl(b.url, b.iconUrl)
-    }
-  }
-  const hasCustomIcon = Boolean(customIconSrc)
-  const showCustomIcon = hasCustomIcon && !customIconFailed
 
   // 计算图标背景样式
   const getIconBgStyle = (): { className: string; style?: React.CSSProperties } => {
@@ -309,13 +125,32 @@ export function BookmarkIcon({
     }
     
     // 默认背景（原始）- fallback
-    if (showCustomIcon) {
+    // 判断是否有自定义图标
+    const hasCustomIcon = Boolean(
+      (b.iconType === 'BASE64' && b.iconData) || 
+      b.iconUrl || 
+      b.iconType === 'TEXT'
+    )
+    if (hasCustomIcon && !customIconFailed) {
       return { className: 'bg-white/70' }
     }
     return { className: 'bg-primary/15 text-primary font-semibold' }
   }
   
   const iconBgStyle = getIconBgStyle()
+
+  // 将 Bookmark 转换为 IconData 格式
+  const convertToIconData = (bookmark: Bookmark): IconData & { id: string; type: string; parentId: string | null } => ({
+    id: bookmark.id,
+    type: bookmark.type,
+    parentId: bookmark.parentId,
+    iconType: bookmark.iconType,
+    iconData: bookmark.iconData,
+    iconUrl: bookmark.iconUrl,
+    iconBg: bookmark.iconBg,
+    url: bookmark.url,
+    name: bookmark.name,
+  })
 
   return (
     <div
@@ -341,37 +176,30 @@ export function BookmarkIcon({
 
       <div className={cn('absolute inset-0', showCombine && !isFolder ? 'opacity-15' : 'opacity-100')}>
         {isFolder ? (
-          <div className="grid grid-cols-3 gap-0.5 w-full h-full content-start p-[8%]">
-            {folderItems.map((sub) => {
-              // 如果是子文件夹，获取其子项
-              const subFolderItems = sub.type === 'FOLDER'
-                ? allItems.filter(x => x.parentId === sub.id).slice(0, 4)
-                : undefined
-              return (
-                <FolderPreviewIcon key={sub.id} bookmark={sub} subFolderItems={subFolderItems} allItems={allItems} />
-              )
-            })}
-          </div>
+          // 文件夹使用 FolderPreviewIcon 组件
+          <FolderPreviewIcon
+            children={folderItems.map(convertToIconData)}
+            allItems={allItems.map(convertToIconData)}
+            variant="full"
+            size={48}
+            borderRadius="var(--start-radius)"
+            className="w-full h-full"
+          />
         ) : (
-          <>
-            {showCustomIcon ? (
-              <img
-                src={customIconSrc}
-                alt=""
-                className="h-full w-full object-cover"
-                loading="lazy"
-                decoding="async"
-                onError={onCustomIconError}
-              />
-            ) : (
-              <Favicon
-                url={b.url || ''}
-                name={b.name}
-                className="h-full w-full object-cover"
-                letterClassName="h-full w-full"
-              />
-            )}
-          </>
+          // 普通书签使用 UnifiedIcon 组件
+          <UnifiedIcon
+            iconType={b.iconType}
+            iconData={b.iconData}
+            iconUrl={b.iconUrl}
+            iconBg={b.iconBg}
+            url={b.url}
+            name={b.name}
+            variant="full"
+            size={48}
+            borderRadius="var(--start-radius)"
+            className="h-full w-full"
+            onError={onCustomIconError}
+          />
         )}
       </div>
     </div>
