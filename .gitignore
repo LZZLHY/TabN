@@ -65,6 +65,10 @@ backend/storage/
 # Process ID files
 .start/
 
+# Local CI scripts (not for GitHub)
+scripts/pre-push.js
+scripts/pre-push.bat
+
 # Developer notes (not for GitHub)
 # 注意：这两个文件在推送时需要手动从 Git 中排除
 # 详见 DEVELOPER_NOTES.md 中的说明

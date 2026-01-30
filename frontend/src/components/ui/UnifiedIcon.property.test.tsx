@@ -74,31 +74,6 @@ const sizeArbitrary: fc.Arbitrary<number> = fc.integer({ min: 1, max: 256 })
  */
 const textArbitrary: fc.Arbitrary<string> = fc.string({ minLength: 1, maxLength: 4 })
 
-/**
- * 生成有效的 hex 颜色
- */
-const hexColorArbitrary: fc.Arbitrary<string> = fc
-  .tuple(
-    fc.integer({ min: 0, max: 255 }),
-    fc.integer({ min: 0, max: 255 }),
-    fc.integer({ min: 0, max: 255 })
-  )
-  .map(([r, g, b]) => {
-    const toHex = (n: number) => n.toString(16).padStart(2, '0').toUpperCase()
-    return `#${toHex(r)}${toHex(g)}${toHex(b)}`
-  })
-
-/**
- * 生成 TEXT 类型图标的 iconData JSON
- */
-const textIconDataArbitrary: fc.Arbitrary<string> = fc
-  .record({
-    t: textArbitrary,
-    c: fc.oneof(hexColorArbitrary, fc.constant('')),
-    f: fc.constantFrom('system', 'serif', 'mono', 'rounded', 'handwriting'),
-  })
-  .map((config) => JSON.stringify(config))
-
 describe('**Feature: unified-icon-system, Property 1: borderRadius 属性正确应用**', () => {
   /**
    * 属性 1.1: 数字 borderRadius 正确应用到容器
@@ -902,7 +877,7 @@ describe('**Feature: proportional-icon-radius, Property 4: 自定义圆角优先
         sizeArbitrary,
         ratioArbitrary,
         variantArbitrary,
-        (customBorderRadius, size, ratio, variant) => {
+        (customBorderRadius, size, _ratio, variant) => {
           const expectedRadius =
             typeof customBorderRadius === 'number'
               ? `${customBorderRadius}px`

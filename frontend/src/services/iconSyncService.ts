@@ -5,7 +5,7 @@ import type { Bookmark } from '../components/bookmarks/types'
  */
 export interface SyncedIconInfo {
   /** 图标类型 */
-  iconType: 'BASE64' | 'URL' | null
+  iconType: 'BASE64' | 'URL' | 'TEXT' | null
   /** Base64 图标数据 */
   iconData: string | null
   /** 图标 URL */

@@ -1,4 +1,4 @@
-import { Clock, Search, X, ExternalLink } from 'lucide-react'
+import { Clock, Search, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +7,7 @@ import { useAppearanceStore } from '../stores/appearance'
 import { UnifiedIcon } from './ui/UnifiedIcon'
 
 export type DropdownItem =
-  | { type: 'shortcut'; id: string; name: string; url: string; favicon: string; iconBg?: string | null; iconType?: 'BASE64' | 'URL' | null; iconData?: string | null; iconUrl?: string | null }
+  | { type: 'shortcut'; id: string; name: string; url: string; favicon: string; iconBg?: string | null; iconType?: 'BASE64' | 'URL' | 'TEXT' | null; iconData?: string | null; iconUrl?: string | null }
   | { type: 'suggestion'; text: string }
   | { type: 'history'; text: string }
   | { type: 'recent'; id: string; name: string; url: string; favicon: string | null }
@@ -19,7 +19,7 @@ interface ShortcutMatch {
   favicon: string
   // 添加完整的书签图标信息
   iconBg?: string | null
-  iconType?: 'BASE64' | 'URL' | null
+  iconType?: 'BASE64' | 'URL' | 'TEXT' | null
   iconData?: string | null
   iconUrl?: string | null
 }

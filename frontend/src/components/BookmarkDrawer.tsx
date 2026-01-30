@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { X, Settings } from 'lucide-react'
+import { X, Settings, Folder } from 'lucide-react'
 import { apiFetch } from '../services/api'
 import { useAuthStore } from '../stores/auth'
 import { useBookmarkDndStore } from '../stores/bookmarkDnd'
@@ -22,6 +22,7 @@ import { useClickTracker, getSiteIdFromUrl } from '../hooks/useClickTracker'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { UnifiedIcon } from './ui/UnifiedIcon'
 import { FolderPreviewIcon } from './bookmarks/FolderPreviewIcon'
+import { Favicon } from './Favicon'
 
 // 从 bookmarks 模块导入共享组件和工具
 import {

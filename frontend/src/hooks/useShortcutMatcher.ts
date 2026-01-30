@@ -10,7 +10,7 @@ export interface ShortcutMatch {
   favicon: string
   // 添加完整的书签图标信息
   iconBg?: string | null
-  iconType?: 'BASE64' | 'URL' | null
+  iconType?: 'BASE64' | 'URL' | 'TEXT' | null
   iconData?: string | null
   iconUrl?: string | null
 }

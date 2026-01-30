@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import { useState, useRef, useCallback, useMemo, useEffect, useLayoutEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '../../utils/cn'
 import { useAppearanceStore } from '../../stores/appearance'
@@ -41,8 +41,10 @@ export function SearchEngineSwitcher({
   const [panelWidth, setPanelWidth] = useState(0)
 
   // 当搜索框失去焦点时（isVisible 变为 false），关闭引擎选择面板
-  useEffect(() => {
+  // 使用 useLayoutEffect 同步更新，避免闪烁
+  useLayoutEffect(() => {
     if (!isVisible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 需要同步关闭面板避免闪烁
       setIsPanelOpen(false)
     }
   }, [isVisible])

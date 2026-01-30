@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react'
-import { getFaviconSources, extractDomain, extractDomainName } from '../utils/url'
+import { getFaviconSources, extractDomain } from '../utils/url'
 import { cn } from '../utils/cn'
 import { getDefaultText } from '@start/shared'
 

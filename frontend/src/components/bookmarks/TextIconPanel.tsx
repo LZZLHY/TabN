@@ -97,12 +97,6 @@ export function TextIconPanel({
     return getDefaultText(bookmarkName, bookmarkUrl)
   }, [bookmarkName, bookmarkUrl])
   
-  // 计算显示的文字（用于预览）
-  const displayText = config.text || defaultText
-  
-  // 计算显示的颜色（空时使用主题色）
-  const displayColor = config.color || 'var(--color-primary)'
-  
   // 处理文字输入变更
   const handleTextChange = (value: string) => {
     // 如果正在使用输入法组合，直接更新不做限制

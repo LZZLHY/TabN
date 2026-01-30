@@ -10,8 +10,8 @@
  * **Validates: Requirements 2.5, 2.6, 2.7, 8.6**
  */
 
-import { describe, it, expect } from 'vitest'
-import { render } from '@testing-library/react'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { render, act } from '@testing-library/react'
 import * as fc from 'fast-check'
 import { FolderPreviewIcon } from './FolderPreviewIcon'
 import type { IconData, IconVariant } from '../ui/UnifiedIcon'
@@ -125,24 +125,6 @@ const bookmarkIconDataArbitrary: fc.Arbitrary<IconData & { id: string; type: 'BO
     ...data,
     type: 'BOOKMARK' as const,
     iconData: data.iconType === 'TEXT' ? (data.iconData ?? JSON.stringify({ t: 'A', c: '', f: 'system' })) : undefined,
-  }))
-
-/**
- * 生成文件夹的 IconData
- */
-const folderIconDataArbitrary: fc.Arbitrary<IconData & { id: string; type: 'FOLDER'; parentId: string | null }> = fc
-  .record({
-    id: fc.uuid(),
-    name: nameArbitrary,
-    parentId: fc.option(fc.uuid(), { nil: null }),
-  })
-  .map((data) => ({
-    ...data,
-    type: 'FOLDER' as const,
-    url: undefined,
-    iconType: undefined,
-    iconData: undefined,
-    iconBg: undefined,
   }))
 
 /**
@@ -988,7 +970,6 @@ describe('**Feature: unified-icon-system, Property 5: 多层嵌套文件夹预�
  */
 import { calculateProportionalRadius } from '../../utils/iconRadius'
 import { useAppearanceStore } from '../../stores/appearance'
-import { act } from '@testing-library/react'
 
 /**
  * 生成有效的圆角比例（0-0.5）

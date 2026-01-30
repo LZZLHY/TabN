@@ -1,6 +1,5 @@
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Folder as FolderIcon } from 'lucide-react'
 import { cn } from '../../utils/cn'
 import { DeleteButton } from './DeleteButton'
 import { getSortedFolderChildren } from './folderOperations'

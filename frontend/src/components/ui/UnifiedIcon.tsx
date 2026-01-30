@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { getDefaultText } from '@start/shared'

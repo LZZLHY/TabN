@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useLayoutEffect } from 'react'
 import { X, Check, Plus, ChevronUp } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
@@ -59,25 +59,34 @@ export function AddEngineDialog({
   const [errors, setErrors] = useState<{ name?: string; url?: string }>({})
   
   // 动画状态：控制是否渲染 DOM 和动画类名
-  const [shouldRender, setShouldRender] = useState(false)
+  // shouldRender 使用 useLayoutEffect 同步更新，避免闪烁
+  const [shouldRender, setShouldRender] = useState(isOpen)
   const [isAnimating, setIsAnimating] = useState(false)
 
   const enabledCount = enabledEngineIds.length
   const isMaxReached = enabledCount >= maxEngineCount
 
-  // 处理打开/关闭动画
+  // 同步更新 shouldRender（打开时立即渲染 DOM）
+  useLayoutEffect(() => {
+    if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 动画需要同步更新 DOM 渲染状态
+      setShouldRender(true)
+    }
+  }, [isOpen])
+
+  // 处理动画状态
   useEffect(() => {
     if (isOpen) {
-      // 打开：先渲染 DOM，再触发动画
-      setShouldRender(true)
-      // 使用 requestAnimationFrame 确保 DOM 已渲染
-      requestAnimationFrame(() => {
+      // 打开：触发进入动画
+      const rafId = requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setIsAnimating(true)
         })
       })
+      return () => cancelAnimationFrame(rafId)
     } else {
       // 关闭：先触发退出动画，再移除 DOM
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 动画需要同步更新状态
       setIsAnimating(false)
       const timer = setTimeout(() => {
         setShouldRender(false)

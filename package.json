@@ -14,7 +14,9 @@
     "build:shared": "npm run build -w shared",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "docker:restart": "docker compose restart"
+    "docker:restart": "docker compose restart",
+    "ci": "node scripts/pre-push.js",
+    "precommit": "node scripts/pre-push.js --quick"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

@@ -31,7 +31,6 @@ vi.mock('../ui/UnifiedIcon', () => ({
   UnifiedIcon: ({
     iconType,
     iconData,
-    iconUrl,
     iconBg,
     name,
     size,

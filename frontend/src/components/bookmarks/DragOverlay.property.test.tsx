@@ -128,30 +128,6 @@ const bookmarkArbitrary: fc.Arbitrary<Bookmark> = fc
   }))
 
 /**
- * 生成文件夹书签
- */
-const folderBookmarkArbitrary: fc.Arbitrary<Bookmark> = fc
-  .record({
-    id: fc.uuid(),
-    name: nameArbitrary,
-    parentId: fc.option(fc.uuid(), { nil: null }),
-  })
-  .map((data) => ({
-    id: data.id,
-    name: data.name,
-    url: null,
-    note: null,
-    type: 'FOLDER' as const,
-    parentId: data.parentId,
-    iconType: undefined,
-    iconData: undefined,
-    iconUrl: undefined,
-    iconBg: undefined,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }))
-
-/**
  * 创建测试用的 refs 和样式
  */
 function createTestRefs() {
