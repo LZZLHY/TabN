@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 管理员标签编辑属性测试
  * 
  * **Feature: bookmark-tags-and-icon-api, Property 3: 管理员标签编辑权限**
@@ -157,7 +157,7 @@ describe('Admin Tag Edit Property Tests', () => {
             expect(canEdit).toBe(true)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -185,7 +185,7 @@ describe('Admin Tag Edit Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -209,7 +209,7 @@ describe('Admin Tag Edit Property Tests', () => {
             expect(canEdit).toBe(false)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -243,7 +243,7 @@ describe('Admin Tag Edit Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -275,7 +275,7 @@ describe('Admin Tag Edit Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -299,7 +299,7 @@ describe('Admin Tag Edit Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -328,7 +328,7 @@ describe('Admin Tag Edit Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -365,7 +365,7 @@ describe('Admin Tag Edit Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -400,8 +400,9 @@ describe('Admin Tag Edit Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
 })
+

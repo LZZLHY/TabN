@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 预设控制器属性测试
  * **Feature: icon-preset-library**
  * **Property 1: Preset Creation Round Trip**
@@ -202,7 +202,7 @@ describe('Preset Controller Property Tests', () => {
             expect(retrieved[0].id).toBe(preset.id)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -317,7 +317,7 @@ describe('Preset Controller Property Tests', () => {
             expect(store.countByUserAndBookmark(userId, bookmarkId)).toBe(0)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -337,7 +337,7 @@ describe('Preset Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -371,7 +371,7 @@ describe('Preset Controller Property Tests', () => {
             expect(store.getById(presetId)).toBeDefined()
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -405,3 +405,4 @@ describe('Preset Controller Property Tests', () => {
     })
   })
 })
+

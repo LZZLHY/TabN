@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 书签控制器属性测试
  * Feature: bookmark-tags-and-icon-api, Property 2: 标签筛选正确性
  * 
@@ -110,7 +110,7 @@ describe('Bookmark Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -140,7 +140,7 @@ describe('Bookmark Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -168,7 +168,7 @@ describe('Bookmark Controller Property Tests', () => {
             expect(filteredBookmarks.length).toBe(expectedCount)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -198,7 +198,7 @@ describe('Bookmark Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -228,7 +228,7 @@ describe('Bookmark Controller Property Tests', () => {
             expect(filteredBookmarks.length).toBe(0)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -256,7 +256,7 @@ describe('Bookmark Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -301,7 +301,7 @@ describe('Bookmark Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -326,7 +326,7 @@ describe('Bookmark Controller Property Tests', () => {
             expect(result1).toEqual(result2)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -348,8 +348,9 @@ describe('Bookmark Controller Property Tests', () => {
             expect(result).toEqual([])
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
 })
+

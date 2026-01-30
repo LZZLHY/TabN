@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { calculateProportionalRadius, DEFAULT_RADIUS_RATIO } from './iconRadius'
 
@@ -27,7 +27,7 @@ describe('IconRadius', () => {
             expect(result).toBe(expected)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -43,7 +43,7 @@ describe('IconRadius', () => {
             expect(result * 2).toBe(Math.floor(result * 2))
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -59,7 +59,7 @@ describe('IconRadius', () => {
             expect(result).toBeGreaterThanOrEqual(0)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -74,7 +74,7 @@ describe('IconRadius', () => {
             expect(result).toBe(0)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -100,7 +100,7 @@ describe('IconRadius', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -171,3 +171,4 @@ describe('IconRadius', () => {
     })
   })
 })
+

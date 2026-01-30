@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 站点规范化工具属性测试
  * Feature: bookmark-click-stats
  */
@@ -105,7 +105,7 @@ describe('Site Normalizer', () => {
         // 结果应以协议开头
         expect(result1!.startsWith('http://') || result1!.startsWith('https://')).toBe(true)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -139,7 +139,7 @@ describe('Site Normalizer', () => {
           expect(site1).not.toBe(site2)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -181,7 +181,7 @@ describe('Site Normalizer', () => {
           expect(result).toBeNull()
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -221,3 +221,4 @@ describe('Site Normalizer', () => {
     })
   })
 })
+

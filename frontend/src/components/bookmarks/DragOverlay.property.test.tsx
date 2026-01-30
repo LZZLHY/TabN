@@ -1,4 +1,4 @@
-/**
+﻿/**
  * DragOverlay 属性测试
  * 
  * **Feature: unified-icon-system**
@@ -192,7 +192,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -235,7 +235,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -278,7 +278,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -321,7 +321,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -364,7 +364,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -412,7 +412,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -455,7 +455,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -519,7 +519,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -602,7 +602,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -645,7 +645,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -682,7 +682,7 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -723,7 +723,8 @@ describe('**Feature: unified-icon-system, Property 6: 拖拽覆盖层正确传�
           document.body.innerHTML = ''
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
+

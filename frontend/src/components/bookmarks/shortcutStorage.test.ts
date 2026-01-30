@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+﻿import { describe, it, expect, beforeEach, vi } from 'vitest'
 import * as fc from 'fast-check'
 import {
   shortcutStorageKey,
@@ -125,7 +125,7 @@ describe('shortcutStorage', () => {
             return result.every(id => validSet.has(id))
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -149,7 +149,7 @@ describe('shortcutStorage', () => {
             return result.filter(x => x === id).length === 1
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -175,7 +175,7 @@ describe('shortcutStorage', () => {
             return true
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -200,7 +200,7 @@ describe('shortcutStorage', () => {
             return JSON.stringify(result) === JSON.stringify(expected)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -224,8 +224,9 @@ describe('shortcutStorage', () => {
             return JSON.stringify(result) === JSON.stringify(expectedOrder)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
 })
+

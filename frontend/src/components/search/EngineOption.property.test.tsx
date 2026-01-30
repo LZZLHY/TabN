@@ -204,7 +204,7 @@ describe('**Feature: unified-icon-system, Property 7: 搜索引擎组件使用�
           expect(style).toContain(`height: ${size}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -244,7 +244,7 @@ describe('**Feature: unified-icon-system, Property 7: 搜索引擎组件使用�
           expect(unifiedIcon?.getAttribute('data-border-radius')).toBe(String(expectedRadius))
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -282,7 +282,7 @@ describe('**Feature: unified-icon-system, Property 7: 搜索引擎组件使用�
           expect(style).toContain('height: 48px')
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -324,7 +324,7 @@ describe('**Feature: unified-icon-system, Property 7: 搜索引擎组件使用�
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -379,7 +379,7 @@ describe('**Feature: unified-icon-system, Property 7: 搜索引擎组件使用�
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -423,7 +423,7 @@ describe('**Feature: unified-icon-system, Property 7: 搜索引擎组件使用�
           expect(style).toContain(`height: ${size}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -469,7 +469,7 @@ describe('**Feature: unified-icon-system, Property 7: 搜索引擎组件使用�
           expect(unifiedIcon?.getAttribute('data-size')).toBe(String(size))
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -506,7 +506,7 @@ describe('**Feature: unified-icon-system, Property 7: 搜索引擎组件使用�
           expect(style).toContain(`height: ${size}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })

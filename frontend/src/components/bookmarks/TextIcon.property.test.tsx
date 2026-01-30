@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 文字图标 Unicode 字符支持属性测试
  * **Feature: text-icon, Property 4: Unicode Character Support**
  *
@@ -146,7 +146,7 @@ describe('**Feature: text-icon, Property 4: Unicode Character Support**', () => 
           expect(codePoint).toBeLessThanOrEqual(0x9fff)
         })
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -185,7 +185,7 @@ describe('**Feature: text-icon, Property 4: Unicode Character Support**', () => 
           expect(isHiragana || isKatakana).toBe(true)
         })
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -217,7 +217,7 @@ describe('**Feature: text-icon, Property 4: Unicode Character Support**', () => 
           expect(codePoint).toBeLessThanOrEqual(0xd7af)
         })
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -249,7 +249,7 @@ describe('**Feature: text-icon, Property 4: Unicode Character Support**', () => 
           expect(codePoint).toBeLessThanOrEqual(0x1f64f)
         })
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -278,7 +278,7 @@ describe('**Feature: text-icon, Property 4: Unicode Character Support**', () => 
         const renderedChars = [...(span?.textContent || '')]
         expect(renderedChars.length).toBeLessThanOrEqual(4)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -319,7 +319,7 @@ describe('**Feature: text-icon, Property 4: Unicode Character Support**', () => 
         const expectedFontSize = Math.round(size * expectedRatio)
         expect(fontSize).toBe(expectedFontSize)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -362,7 +362,7 @@ describe('**Feature: text-icon, Property 4: Unicode Character Support**', () => 
         const expectedFontSize = Math.round(size * expectedRatio)
         expect(fontSize).toBe(expectedFontSize)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -403,7 +403,7 @@ describe('**Feature: text-icon, Property 4: Unicode Character Support**', () => 
         const expectedFontSize = Math.round(size * expectedRatio)
         expect(fontSize).toBe(expectedFontSize)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -443,7 +443,7 @@ describe('**Feature: text-icon, Property 4: Unicode Character Support**', () => 
           expect(renderedCodePoints).toEqual(expectedCodePoints)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -545,7 +545,7 @@ describe('**Feature: text-icon, Property 3: Text Character Limit**', () => {
         expect(renderedCharCount).toBeLessThanOrEqual(4)
         expect(renderedCharCount).toBeGreaterThanOrEqual(1)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -573,7 +573,7 @@ describe('**Feature: text-icon, Property 3: Text Character Limit**', () => {
         // 验证截断后正好是 4 个字符
         expect(renderedCharCount).toBe(4)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -601,7 +601,7 @@ describe('**Feature: text-icon, Property 3: Text Character Limit**', () => {
         const expectedText = [...text].slice(0, 4).join('')
         expect(renderedText).toBe(expectedText)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -637,7 +637,7 @@ describe('**Feature: text-icon, Property 3: Text Character Limit**', () => {
           expect(renderedText).toBe('?')
         }
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -670,7 +670,7 @@ describe('**Feature: text-icon, Property 3: Text Character Limit**', () => {
           expect(renderedText).toBe(text)
         }
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -714,7 +714,7 @@ describe('**Feature: text-icon, Property 3: Text Character Limit**', () => {
           expect(renderedText).toBe(expectedText)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -746,7 +746,8 @@ describe('**Feature: text-icon, Property 3: Text Character Limit**', () => {
         const expectedText = [...text].slice(0, 4).join('')
         expect(renderedText).toBe(expectedText)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
+

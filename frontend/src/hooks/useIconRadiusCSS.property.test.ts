@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+﻿import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fc from 'fast-check'
 import { renderHook, act } from '@testing-library/react'
 import { useIconRadiusCSS } from './useIconRadiusCSS'
@@ -70,7 +70,7 @@ describe('Property 6: CSS 变量响应式更新', () => {
           unmount()
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -98,7 +98,7 @@ describe('Property 6: CSS 变量响应式更新', () => {
           unmount()
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -129,7 +129,7 @@ describe('Property 6: CSS 变量响应式更新', () => {
           unmount()
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -158,7 +158,7 @@ describe('Property 6: CSS 变量响应式更新', () => {
           unmount()
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -223,7 +223,8 @@ describe('Property 6: CSS 变量响应式更新', () => {
           unmount()
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
+

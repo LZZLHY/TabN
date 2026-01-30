@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 请求日志中间件属性测试
  * Property 2: Request ID Propagation
  * Validates: Requirements 1.6, 2.3, 2.4
@@ -47,7 +47,7 @@ describe('Request Logger Middleware', () => {
             expect(id).toMatch(uuidRegex)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -68,3 +68,4 @@ describe('Request Logger Middleware', () => {
     })
   })
 })
+

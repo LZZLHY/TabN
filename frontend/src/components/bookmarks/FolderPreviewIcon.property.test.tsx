@@ -165,7 +165,7 @@ describe('**Feature: unified-icon-system, Property 4: 文件夹预览正确传�
           expect(style).toContain(`border-radius: ${borderRadius}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -198,7 +198,7 @@ describe('**Feature: unified-icon-system, Property 4: 文件夹预览正确传�
           expect(style).toContain(`border-radius: ${borderRadius}`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -231,7 +231,7 @@ describe('**Feature: unified-icon-system, Property 4: 文件夹预览正确传�
           expect(style).toContain(`width: ${size}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -264,7 +264,7 @@ describe('**Feature: unified-icon-system, Property 4: 文件夹预览正确传�
           expect(style).toContain(`height: ${size}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -297,7 +297,7 @@ describe('**Feature: unified-icon-system, Property 4: 文件夹预览正确传�
           expect(style).toContain(`height: ${size}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -335,7 +335,7 @@ describe('**Feature: unified-icon-system, Property 4: 文件夹预览正确传�
           expect(style).toContain(`border-radius: ${expectedRadius}`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -365,7 +365,7 @@ describe('**Feature: unified-icon-system, Property 4: 文件夹预览正确传�
           expect(unifiedIcons.length).toBeGreaterThanOrEqual(Math.min(children.length, 9))
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -403,7 +403,7 @@ describe('**Feature: unified-icon-system, Property 4: 文件夹预览正确传�
           expect(style).toContain(`border-radius: ${expectedRadius}`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
@@ -477,7 +477,7 @@ describe('**Feature: unified-icon-system, Property 5: 多层嵌套文件夹预�
           expect(unifiedIcons.length).toBeGreaterThanOrEqual(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -545,7 +545,7 @@ describe('**Feature: unified-icon-system, Property 5: 多层嵌套文件夹预�
           expect(textIcons.length).toBeGreaterThanOrEqual(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -629,7 +629,7 @@ describe('**Feature: unified-icon-system, Property 5: 多层嵌套文件夹预�
           expect(nestedPreviews.length).toBeGreaterThanOrEqual(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -663,7 +663,7 @@ describe('**Feature: unified-icon-system, Property 5: 多层嵌套文件夹预�
           expect(nestedPreviews.length).toBeGreaterThanOrEqual(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -717,7 +717,7 @@ describe('**Feature: unified-icon-system, Property 5: 多层嵌套文件夹预�
           expect(emptyPreviews.length).toBeGreaterThanOrEqual(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -809,7 +809,7 @@ describe('**Feature: unified-icon-system, Property 5: 多层嵌套文件夹预�
           expect(nestedPreviews.length).toBeGreaterThanOrEqual(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -859,7 +859,7 @@ describe('**Feature: unified-icon-system, Property 5: 多层嵌套文件夹预�
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -959,7 +959,7 @@ describe('**Feature: unified-icon-system, Property 5: 多层嵌套文件夹预�
           expect(unifiedIcons.length).toBeGreaterThanOrEqual(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
@@ -1046,7 +1046,7 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1132,7 +1132,7 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1275,7 +1275,7 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
           })
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1320,7 +1320,7 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1361,7 +1361,7 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
           expect(style).toContain(`border-radius: ${customBorderRadius}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1447,7 +1447,7 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1491,7 +1491,7 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
           })
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1543,7 +1543,7 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
           })
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })

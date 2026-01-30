@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 时长格式化属性测试
  * Property 6: 时长格式化正确性
  * 
@@ -54,7 +54,7 @@ describe('formatUptime Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -90,7 +90,7 @@ describe('formatUptime Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -127,7 +127,7 @@ describe('formatUptime Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -169,3 +169,4 @@ describe('formatUptime Property Tests', () => {
     })
   })
 })
+

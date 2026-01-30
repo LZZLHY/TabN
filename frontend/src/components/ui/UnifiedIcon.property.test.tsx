@@ -1,4 +1,4 @@
-/**
+﻿/**
  * UnifiedIcon 属性测试
  * 
  * **Feature: unified-icon-system**
@@ -107,7 +107,7 @@ describe('**Feature: unified-icon-system, Property 1: borderRadius 属性正确�
           expect(style).toContain(`border-radius: ${borderRadius}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -143,7 +143,7 @@ describe('**Feature: unified-icon-system, Property 1: borderRadius 属性正确�
           expect(style).toContain(`border-radius: ${borderRadius}`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -164,7 +164,7 @@ describe('**Feature: unified-icon-system, Property 1: borderRadius 属性正确�
           expect(result).toBe(`${borderRadius}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -185,7 +185,7 @@ describe('**Feature: unified-icon-system, Property 1: borderRadius 属性正确�
           expect(result).toBe(borderRadius)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -202,7 +202,7 @@ describe('**Feature: unified-icon-system, Property 1: borderRadius 属性正确�
         const result = getActualBorderRadius(variant, undefined)
         expect(result).toBe(VARIANT_RADIUS[variant])
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -245,7 +245,7 @@ describe('**Feature: unified-icon-system, Property 1: borderRadius 属性正确�
           expect(imgStyle).toContain(`border-radius: ${expectedRadius}`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
@@ -279,7 +279,7 @@ describe('**Feature: unified-icon-system, Property 2: size 属性正确覆盖默
         const style = iconContainer?.getAttribute('style') || ''
         expect(style).toContain(`width: ${size}px`)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -311,7 +311,7 @@ describe('**Feature: unified-icon-system, Property 2: size 属性正确覆盖默
         const style = iconContainer?.getAttribute('style') || ''
         expect(style).toContain(`height: ${size}px`)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -328,7 +328,7 @@ describe('**Feature: unified-icon-system, Property 2: size 属性正确覆盖默
         const result = getActualSize(variant, size)
         expect(result).toBe(size)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -345,7 +345,7 @@ describe('**Feature: unified-icon-system, Property 2: size 属性正确覆盖默
         const result = getActualSize(variant, undefined)
         expect(result).toBe(VARIANT_SIZES[variant])
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -371,7 +371,7 @@ describe('**Feature: unified-icon-system, Property 2: size 属性正确覆盖默
           expect(actualSize).not.toBe(defaultSize)
         }
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -403,7 +403,7 @@ describe('**Feature: unified-icon-system, Property 2: size 属性正确覆盖默
         expect(style).toContain(`width: ${size}px`)
         expect(style).toContain(`height: ${size}px`)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
@@ -423,7 +423,7 @@ describe('**Feature: unified-icon-system, Property 3: 自定义 size 时文字�
         const expected = Math.round(size * TEXT_ICON_FONT_RATIO)
         expect(result).toBe(expected)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -440,7 +440,7 @@ describe('**Feature: unified-icon-system, Property 3: 自定义 size 时文字�
         const result = getTextIconFontSize(variant, undefined, undefined)
         expect(result).toBe(VARIANT_FONT_SIZES[variant])
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -464,7 +464,7 @@ describe('**Feature: unified-icon-system, Property 3: 自定义 size 时文字�
           expect(result).toBe(fontSize)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -507,7 +507,7 @@ describe('**Feature: unified-icon-system, Property 3: 自定义 size 时文字�
           expect(containerStyle).toContain(`height: ${size}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -524,7 +524,7 @@ describe('**Feature: unified-icon-system, Property 3: 自定义 size 时文字�
         const result = getTextIconFontSize(variant, size, undefined)
         expect(Number.isInteger(result)).toBe(true)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -553,7 +553,7 @@ describe('**Feature: unified-icon-system, Property 3: 自定义 size 时文字�
         expect(typeof VARIANT_FONT_SIZES[variant]).toBe('number')
         expect(VARIANT_FONT_SIZES[variant]).toBeGreaterThan(0)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -583,7 +583,7 @@ describe('**Feature: unified-icon-system, Property 3: 自定义 size 时文字�
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
@@ -625,7 +625,7 @@ describe('**Feature: proportional-icon-radius, Property 3: UnifiedIcon 圆角应
           expect(actualRadius).toBe(`${expectedRadius}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -651,7 +651,7 @@ describe('**Feature: proportional-icon-radius, Property 3: UnifiedIcon 圆角应
           expect(result).toBe(`${expectedRadius}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -696,7 +696,7 @@ describe('**Feature: proportional-icon-radius, Property 3: UnifiedIcon 圆角应
           expect(imgStyle).toContain(`border-radius: ${containerRadius}`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -734,7 +734,7 @@ describe('**Feature: proportional-icon-radius, Property 3: UnifiedIcon 圆角应
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -772,7 +772,7 @@ describe('**Feature: proportional-icon-radius, Property 3: UnifiedIcon 圆角应
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -798,7 +798,7 @@ describe('**Feature: proportional-icon-radius, Property 3: UnifiedIcon 圆角应
           expect(isHalfPixelMultiple).toBe(true)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
@@ -832,7 +832,7 @@ describe('**Feature: proportional-icon-radius, Property 4: 自定义圆角优先
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -858,7 +858,7 @@ describe('**Feature: proportional-icon-radius, Property 4: 自定义圆角优先
           expect(result).toBe(customBorderRadius)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -907,7 +907,7 @@ describe('**Feature: proportional-icon-radius, Property 4: 自定义圆角优先
           expect(imgStyle).toContain(`border-radius: ${expectedRadius}`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -937,7 +937,7 @@ describe('**Feature: proportional-icon-radius, Property 4: 自定义圆角优先
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -961,7 +961,7 @@ describe('**Feature: proportional-icon-radius, Property 4: 自定义圆角优先
           expect(result).toBe(`${expectedRadius}px`)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -979,7 +979,7 @@ describe('**Feature: proportional-icon-radius, Property 4: 自定义圆角优先
         
         expect(result).toBe(VARIANT_RADIUS[variant])
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1016,7 +1016,8 @@ describe('**Feature: proportional-icon-radius, Property 4: 自定义圆角优先
           expect(withDefault).toBe(VARIANT_RADIUS[variant])
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
+

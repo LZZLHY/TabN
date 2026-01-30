@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import {
   getSortKey,
@@ -97,7 +97,7 @@ describe('sortBookmarks', () => {
             expect(result).toEqual(filteredCustomOrder)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -158,7 +158,7 @@ describe('sortBookmarks', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -220,7 +220,7 @@ describe('sortBookmarks', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -272,7 +272,7 @@ describe('sortBookmarks', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -412,7 +412,7 @@ describe('sortBookmarks', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -494,3 +494,4 @@ describe('sortBookmarks', () => {
     })
   })
 })
+

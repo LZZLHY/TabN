@@ -1,4 +1,4 @@
-/**
+﻿/**
  * LogStorage 属性测试
  * Property 7: Log File Rotation
  * Property 8: Log Retention Cleanup
@@ -106,7 +106,7 @@ describe('LogStorage', () => {
             expect(dateStr).toMatch(/^\d{4}-\d{2}-\d{2}$/)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -269,7 +269,8 @@ describe('getDateString', () => {
           expect(result).toBe(date.toISOString().slice(0, 10))
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
+

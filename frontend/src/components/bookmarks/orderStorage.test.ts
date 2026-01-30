@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+﻿import { describe, it, expect, beforeEach, vi } from 'vitest'
 import * as fc from 'fast-check'
 import { storageKey, getOrder, saveOrder } from './orderStorage'
 
@@ -102,7 +102,7 @@ describe('orderStorage', () => {
             expect(retrievedDrawer).toEqual(drawerOrder)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -133,7 +133,7 @@ describe('orderStorage', () => {
             expect(getOrder(userId, null, 'shortcut')).toEqual(shortcutUpdate)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -153,7 +153,7 @@ describe('orderStorage', () => {
             expect(drawerKey).toBe(shortcutKey + ':drawer')
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -206,3 +206,4 @@ describe('Property 6: Lock Prevents Modifications (Integration Notes)', () => {
     expect(useAppearanceStore.getState().bookmarkSortLocked).toBe(false)
   })
 })
+

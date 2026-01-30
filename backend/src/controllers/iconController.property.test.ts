@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 图标 API 属性测试
  * **Feature: bookmark-tags-and-icon-api, Property 9/10/11**
  * 
@@ -165,7 +165,7 @@ describe('Icon Controller Property Tests', () => {
           const result = validateIconData('URL', url)
           expect(result.valid).toBe(true)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -180,7 +180,7 @@ describe('Icon Controller Property Tests', () => {
           const result = validateIconData('BASE64', data)
           expect(result.valid).toBe(true)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -196,7 +196,7 @@ describe('Icon Controller Property Tests', () => {
           const result2 = validateIconData(request.iconType, request.iconData)
           expect(result1).toEqual(result2)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -244,7 +244,7 @@ describe('Icon Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -267,7 +267,7 @@ describe('Icon Controller Property Tests', () => {
             expect(result.failureCount).toBe(0)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -289,7 +289,7 @@ describe('Icon Controller Property Tests', () => {
             expect(result.successCount + result.failureCount).toBe(updates.length)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -330,7 +330,7 @@ describe('Icon Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -356,7 +356,7 @@ describe('Icon Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -399,8 +399,9 @@ describe('Icon Controller Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
 })
+

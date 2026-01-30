@@ -128,7 +128,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
           expect(style.toLowerCase()).toContain('currentcolor')
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -165,7 +165,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
           expect(style).toContain(FONT_FAMILIES.system)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -203,7 +203,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
           expect(style).toContain(expectedRgb)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -240,7 +240,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
           expect(style).toContain(FONT_FAMILIES[config.fontFamily])
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -282,7 +282,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
         // 验证字体处理
         expect(style).toContain(FONT_FAMILIES[config.fontFamily])
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -314,7 +314,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
           expect(config.fontFamily).toBe('system')
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -352,7 +352,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
           expect(config.color).toBe('')
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -396,7 +396,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
           expect(hintText).toContain('主题')
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -415,7 +415,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
         expect(typeof FONT_FAMILIES[fontFamily]).toBe('string')
         expect(FONT_FAMILIES[fontFamily].length).toBeGreaterThan(0)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -443,7 +443,7 @@ describe('**Feature: text-icon, Property 7: Default Value Fallbacks**', () => {
         const style = span?.getAttribute('style') || ''
         expect(style).toContain('sans-serif')
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })

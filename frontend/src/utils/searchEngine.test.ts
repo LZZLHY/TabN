@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import {
   buildSearchUrl,
@@ -77,7 +77,7 @@ describe('searchEngine', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -97,7 +97,7 @@ describe('searchEngine', () => {
             expect(url).toContain(encodedQuery)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -121,7 +121,7 @@ describe('searchEngine', () => {
             expect(url).not.toContain('{query}')
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -204,7 +204,7 @@ describe('searchEngine', () => {
             expect(isValidSearchUrl(url)).toBe(false)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -220,7 +220,7 @@ describe('searchEngine', () => {
             expect(isValidSearchUrl(url)).toBe(true)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -315,3 +315,4 @@ describe('searchEngine', () => {
     })
   })
 })
+

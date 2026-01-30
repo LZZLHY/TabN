@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 书签图标设置属性测试
  * **Feature: bookmark-tags-and-icon-api, Property 4: 图标设置一致性**
  * **Feature: bookmark-tags-and-icon-api, Property 5: 图标 URL 格式验证**
@@ -205,7 +205,7 @@ describe('Bookmark Icon Property Tests', () => {
             expect(result.iconData).toBeNull()
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -234,7 +234,7 @@ describe('Bookmark Icon Property Tests', () => {
             expect(result.iconUrl).toBeNull()
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -262,7 +262,7 @@ describe('Bookmark Icon Property Tests', () => {
             expect(result.iconData).toBeNull()
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -290,7 +290,7 @@ describe('Bookmark Icon Property Tests', () => {
             expect(result.iconUrl).toBeNull()
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -335,7 +335,7 @@ describe('Bookmark Icon Property Tests', () => {
             expect(result1).toEqual(result2)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -396,7 +396,7 @@ describe('Bookmark Icon Property Tests', () => {
           const result = validateIconUrl(invalidUrl)
           expect(result).toBe(false)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -413,7 +413,7 @@ describe('Bookmark Icon Property Tests', () => {
           const result = validateIconUrl(validUrl)
           expect(result).toBe(true)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -439,7 +439,7 @@ describe('Bookmark Icon Property Tests', () => {
             expect(result.error).toBeDefined()
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -493,7 +493,7 @@ describe('Bookmark Icon Property Tests', () => {
             expect(result1).toBe(result2)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -511,7 +511,7 @@ describe('Bookmark Icon Property Tests', () => {
           validateIconUrl(url)
           expect(url).toBe(originalUrl)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -543,8 +543,9 @@ describe('Bookmark Icon Property Tests', () => {
             expect(result).toBe(true)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
 })
+

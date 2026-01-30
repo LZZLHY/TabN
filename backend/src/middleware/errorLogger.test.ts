@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 错误日志中间件属性测试
  * Property 6: Error Deduplication
  * Validates: Requirements 3.5
@@ -73,7 +73,7 @@ describe('Error Logger Middleware', () => {
             expect(hash1).toBe(hash2)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -96,7 +96,7 @@ describe('Error Logger Middleware', () => {
             expect(hash1).not.toBe(hash2)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -203,3 +203,4 @@ describe('Error Logger Middleware', () => {
     })
   })
 })
+

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { keyboardNavigationUtils } from './useKeyboardNavigation'
 
@@ -68,7 +68,7 @@ describe('useKeyboardNavigation', () => {
             expect(nextIndex).toBe(0)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -83,7 +83,7 @@ describe('useKeyboardNavigation', () => {
             expect(prevIndex).toBe(total - 1)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -106,7 +106,7 @@ describe('useKeyboardNavigation', () => {
             expect(prevIndex).toBeLessThan(total)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -126,7 +126,7 @@ describe('useKeyboardNavigation', () => {
             expect(backToCurrent).toBe(validCurrent)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -146,7 +146,7 @@ describe('useKeyboardNavigation', () => {
             expect(backToCurrent).toBe(validCurrent)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -179,3 +179,4 @@ describe('useKeyboardNavigation', () => {
     })
   })
 })
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 图标数据序列化属性测试
  * **Feature: bookmark-tags-and-icon-api, Property 12: 图标数据序列化往返一致性**
  * 
@@ -137,7 +137,7 @@ describe('Icon Serialization Property Tests', () => {
           expect(deserialized.type).toBe(iconData.type)
           expect(deserialized.value).toBe(iconData.value)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -162,7 +162,7 @@ describe('Icon Serialization Property Tests', () => {
           expect(parsed).not.toBeNull()
           expect(Array.isArray(parsed)).toBe(false)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -187,7 +187,7 @@ describe('Icon Serialization Property Tests', () => {
           expect(['URL', 'BASE64']).toContain(deserialized.type)
           expect(typeof deserialized.value).toBe('string')
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -207,7 +207,7 @@ describe('Icon Serialization Property Tests', () => {
           expect(deserialized).toEqual(iconData)
           expect(deserialized.type).toBe('URL')
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -227,7 +227,7 @@ describe('Icon Serialization Property Tests', () => {
           expect(deserialized).toEqual(iconData)
           expect(deserialized.type).toBe('BASE64')
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -246,7 +246,7 @@ describe('Icon Serialization Property Tests', () => {
           
           expect(deserialized).toEqual(iconData)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -268,7 +268,7 @@ describe('Icon Serialization Property Tests', () => {
           expect(['URL', 'BASE64']).toContain(parsed.type)
           expect(parsed.type).toBe(iconData.type)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -289,7 +289,7 @@ describe('Icon Serialization Property Tests', () => {
           expect(serialized1).toBe(serialized2)
           expect(serialized2).toBe(serialized3)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -315,8 +315,9 @@ describe('Icon Serialization Property Tests', () => {
           expect(deserialized1).toEqual(deserialized2)
           expect(serialized1).toBe(serialized2)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
 })
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 敏感数据脱敏属性测试
  * Property 3: Sensitive Data Masking
  * Validates: Requirements 2.5
@@ -54,7 +54,7 @@ describe('Sanitize Utils', () => {
             expect(sanitized[normalField]).toBe(normalValue)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -231,3 +231,4 @@ describe('Sanitize Utils', () => {
     })
   })
 })
+

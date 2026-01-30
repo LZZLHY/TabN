@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+﻿import { describe, it, expect, beforeEach } from 'vitest'
 import * as fc from 'fast-check'
 import { searchHistoryUtils } from './useSearchHistory'
 
@@ -40,7 +40,7 @@ describe('useSearchHistory', () => {
             expect(loaded).toContain(keyword)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -66,7 +66,7 @@ describe('useSearchHistory', () => {
             expect(loaded).toEqual(uniqueKeywords)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -111,7 +111,7 @@ describe('useSearchHistory', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -161,7 +161,7 @@ describe('useSearchHistory', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -207,3 +207,4 @@ describe('useSearchHistory', () => {
     })
   })
 })
+

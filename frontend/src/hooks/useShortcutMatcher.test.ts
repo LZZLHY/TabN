@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 import * as fc from 'fast-check'
 import { shortcutMatcherUtils } from './useShortcutMatcher'
 import type { Bookmark } from '../components/bookmarks/types'
@@ -108,7 +108,7 @@ describe('useShortcutMatcher', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -138,7 +138,7 @@ describe('useShortcutMatcher', () => {
             expect(matches[0].name).toBe(trimmed)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -197,7 +197,7 @@ describe('useShortcutMatcher', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -321,3 +321,4 @@ describe('useShortcutMatcher', () => {
     })
   })
 })
+

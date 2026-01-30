@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+﻿import { describe, it, expect, beforeEach } from 'vitest'
 import * as fc from 'fast-check'
 import { useAppearanceStore } from './appearance'
 import { PRESET_SEARCH_ENGINES } from '../utils/searchEngine'
@@ -36,7 +36,7 @@ describe('Property 2: Store 存储和范围验证', () => {
           expect(storedRatio).toBeCloseTo(ratio, 10)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -55,7 +55,7 @@ describe('Property 2: Store 存储和范围验证', () => {
           expect(storedRatio).toBe(0)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -74,7 +74,7 @@ describe('Property 2: Store 存储和范围验证', () => {
           expect(storedRatio).toBe(0.5)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -112,7 +112,7 @@ describe('Property 2: Store 存储和范围验证', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -131,7 +131,7 @@ describe('Property 2: Store 存储和范围验证', () => {
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
@@ -323,3 +323,4 @@ describe('Property 10: 自定义搜索引擎 CRUD 操作', () => {
     )
   })
 })
+

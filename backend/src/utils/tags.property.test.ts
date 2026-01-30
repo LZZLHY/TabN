@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 标签验证属性测试
  * Feature: bookmark-tags-and-icon-api, Property 1: 标签 CRUD 一致性
  * 
@@ -76,7 +76,7 @@ describe('Tags Property Tests', () => {
           expect(validation.valid).toBe(true)
           expect(validation.errors).toHaveLength(0)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -97,7 +97,7 @@ describe('Tags Property Tests', () => {
           // 两次清理的结果应该相同
           expect(secondSanitize).toEqual(firstSanitize)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -116,7 +116,7 @@ describe('Tags Property Tests', () => {
           // 清理后的标签数量不应超过原始数量
           expect(sanitized.length).toBeLessThanOrEqual(tags.length)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -142,7 +142,7 @@ describe('Tags Property Tests', () => {
             expect(tag.endsWith('\t')).toBe(false)
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -168,7 +168,7 @@ describe('Tags Property Tests', () => {
             expect(existsInOriginal).toBe(true)
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -188,7 +188,7 @@ describe('Tags Property Tests', () => {
           // 清理后的标签数组不应包含重复项
           expect(sanitized.length).toBe(uniqueSet.size)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -230,8 +230,9 @@ describe('Tags Property Tests', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
 })
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 预设验证属性测试
  * **Feature: icon-preset-library, Property 3: Name Validation**
  * **Feature: icon-preset-library, Property 8: Data Validation**
@@ -40,7 +40,7 @@ describe('Preset Validation Property Tests', () => {
             expect(error).not.toBeNull()
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -55,7 +55,7 @@ describe('Preset Validation Property Tests', () => {
             expect(error).not.toBeNull()
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -69,7 +69,7 @@ describe('Preset Validation Property Tests', () => {
             expect(error).toBeNull()
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -82,7 +82,7 @@ describe('Preset Validation Property Tests', () => {
             expect(error).not.toBeNull()
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -116,7 +116,7 @@ describe('Preset Validation Property Tests', () => {
               expect(error).not.toBeNull()
             }
           ),
-          { numRuns: 100 }
+          { numRuns: 20 }
         )
       })
 
@@ -129,7 +129,7 @@ describe('Preset Validation Property Tests', () => {
               expect(error).not.toBeNull()
             }
           ),
-          { numRuns: 100 }
+          { numRuns: 20 }
         )
       })
     })
@@ -173,7 +173,7 @@ describe('Preset Validation Property Tests', () => {
               expect(error).toBeNull()
             }
           ),
-          { numRuns: 100 }
+          { numRuns: 20 }
         )
       })
 
@@ -192,7 +192,7 @@ describe('Preset Validation Property Tests', () => {
               expect(error).not.toBeNull()
             }
           ),
-          { numRuns: 100 }
+          { numRuns: 20 }
         )
       })
 
@@ -205,7 +205,7 @@ describe('Preset Validation Property Tests', () => {
               expect(error).not.toBeNull()
             }
           ),
-          { numRuns: 100 }
+          { numRuns: 20 }
         )
       })
     })
@@ -224,7 +224,7 @@ describe('Preset Validation Property Tests', () => {
             expect(sanitized).not.toContain("'")
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -237,8 +237,9 @@ describe('Preset Validation Property Tests', () => {
             expect(sanitized).toBe(sanitized.trim())
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
 })
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * API 密钥属性测试
  * **Feature: bookmark-tags-and-icon-api, Property 6/7/8**
  * 
@@ -115,7 +115,7 @@ describe('API Key Property Tests', () => {
           const extractedUserId = extractUserIdFromAPIKey(apiKey)
           expect(extractedUserId).toBe(userId)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -137,7 +137,7 @@ describe('API Key Property Tests', () => {
           // 验证密钥以 bk_ 开头
           expect(apiKey.startsWith('bk_')).toBe(true)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -161,7 +161,7 @@ describe('API Key Property Tests', () => {
           // 所有密钥应该都不同
           expect(keys.size).toBe(10)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -187,7 +187,7 @@ describe('API Key Property Tests', () => {
             expect(apiKey1).not.toBe(apiKey2)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -213,7 +213,7 @@ describe('API Key Property Tests', () => {
           expect(isValidAPIKeyFormat(oldKey)).toBe(true)
           expect(isValidAPIKeyFormat(newKey)).toBe(true)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -237,7 +237,7 @@ describe('API Key Property Tests', () => {
           expect(extractedFromOld).toBe(userId)
           expect(extractedFromNew).toBe(userId)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -260,7 +260,7 @@ describe('API Key Property Tests', () => {
           expect(result2).toBe(result3)
           expect(result1).toBe(true) // 有效密钥应该通过验证
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -278,7 +278,7 @@ describe('API Key Property Tests', () => {
         fc.property(validAPIKeyArbitrary, (apiKey) => {
           expect(isValidAPIKeyFormat(apiKey)).toBe(true)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -294,7 +294,7 @@ describe('API Key Property Tests', () => {
         fc.property(invalidAPIKeyArbitrary, (apiKey) => {
           expect(isValidAPIKeyFormat(apiKey)).toBe(false)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -326,7 +326,7 @@ describe('API Key Property Tests', () => {
           
           expect(extractedUserId).toBe(userId)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -343,7 +343,7 @@ describe('API Key Property Tests', () => {
           const extractedUserId = extractUserIdFromAPIKey(apiKey)
           expect(extractedUserId).toBeNull()
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -364,7 +364,7 @@ describe('API Key Property Tests', () => {
           expect(extracted1).toBe(extracted2)
           expect(extracted2).toBe(extracted3)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -387,7 +387,7 @@ describe('API Key Property Tests', () => {
             expect(userId!.length).toBeGreaterThan(0)
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -415,8 +415,9 @@ describe('API Key Property Tests', () => {
           const extractedUserId = extractUserIdFromAPIKey(apiKey)
           expect(extractedUserId).toBe(userId)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
 })
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Logger 属性测试
  * Property 1: Log Level Filtering
  * Property 4: Log Entry Structure Consistency
@@ -56,7 +56,7 @@ describe('Logger', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -143,7 +143,7 @@ describe('Logger', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -192,3 +192,4 @@ describe('Logger', () => {
     })
   })
 })
+

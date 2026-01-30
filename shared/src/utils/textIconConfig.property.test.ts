@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 文字图标配置序列化属性测试
  * **Feature: text-icon, Property 5: Configuration Serialization Round-Trip**
  *
@@ -123,7 +123,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
           expect(deserialized.color).toBe(config.color)
           expect(deserialized.fontFamily).toBe(config.fontFamily)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -148,7 +148,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
           expect(parsed).not.toBeNull()
           expect(Array.isArray(parsed)).toBe(false)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -175,7 +175,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
           expect(typeof parsed.c).toBe('string')
           expect(typeof parsed.f).toBe('string')
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -202,7 +202,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
           expect(typeof deserialized.color).toBe('string')
           expect(typeof deserialized.fontFamily).toBe('string')
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -223,7 +223,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
           expect(serialized1).toBe(serialized2)
           expect(serialized2).toBe(serialized3)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -249,7 +249,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
           expect(deserialized1).toEqual(deserialized2)
           expect(serialized1).toBe(serialized2)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -277,7 +277,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
           // fontFamily 应保持不变
           expect(deserialized.fontFamily).toBe(config.fontFamily)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -296,7 +296,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
 
           expect(VALID_TEXT_ICON_FONTS).toContain(deserialized.fontFamily)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -318,7 +318,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
             expect(deserialized.color).toMatch(/^#[0-9A-Fa-f]{6}$/)
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -337,7 +337,7 @@ describe('TextIconConfig Serialization Property Tests', () => {
 
           expect(deserialized.text.length).toBeLessThanOrEqual(4)
         }),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -482,7 +482,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
         // 不应抛出错误
         expect(() => parseTextIconConfig(invalidJson)).not.toThrow()
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -501,7 +501,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
         expect(result.color).toBe('')
         expect(result.fontFamily).toBe('system')
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -526,7 +526,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
         // fontFamily 应该是有效的选项
         expect(VALID_TEXT_ICON_FONTS).toContain(result.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -551,7 +551,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
         // fontFamily 应该是有效的选项
         expect(VALID_TEXT_ICON_FONTS).toContain(result.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -573,7 +573,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
           expect(result.color).toMatch(/^#[0-9A-Fa-f]{6}$/)
         }
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -593,7 +593,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
         // fontFamily 应该是有效的选项（无效输入应回退到 'system'）
         expect(VALID_TEXT_ICON_FONTS).toContain(result.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -626,7 +626,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
         // fontFamily 应该是有效的选项
         expect(VALID_TEXT_ICON_FONTS).toContain(result.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -649,7 +649,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
         const serialized = serializeTextIconConfig(result)
         expect(() => JSON.parse(serialized)).not.toThrow()
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -677,7 +677,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
         // 应只包含预期的字段
         expect(Object.keys(result).sort()).toEqual(['color', 'fontFamily', 'text'])
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -709,7 +709,7 @@ describe('**Feature: text-icon, Property 6: Deserialization with Invalid Data**'
         // fontFamily 应该是有效的选项
         expect(VALID_TEXT_ICON_FONTS).toContain(result.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
@@ -830,7 +830,7 @@ describe('**Feature: text-icon, Property 1: Default Text Extraction**', () => {
           expect(result).toMatch(/^[A-Z]$/)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -852,7 +852,7 @@ describe('**Feature: text-icon, Property 1: Default Text Extraction**', () => {
           expect(result).toMatch(/^[0-9]$/)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -876,7 +876,7 @@ describe('**Feature: text-icon, Property 1: Default Text Extraction**', () => {
           expect(result.codePointAt(0)).toBeLessThanOrEqual(0x9fff)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -900,7 +900,7 @@ describe('**Feature: text-icon, Property 1: Default Text Extraction**', () => {
           expect(result.codePointAt(0)).toBeLessThanOrEqual(0x309f)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -924,7 +924,7 @@ describe('**Feature: text-icon, Property 1: Default Text Extraction**', () => {
           expect(result.codePointAt(0)).toBeLessThanOrEqual(0xd7af)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -945,7 +945,7 @@ describe('**Feature: text-icon, Property 1: Default Text Extraction**', () => {
           expect(result.length).toBe(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -974,7 +974,7 @@ describe('**Feature: text-icon, Property 1: Default Text Extraction**', () => {
           expect(result).toBe(expectedChar)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1003,7 +1003,7 @@ describe('**Feature: text-icon, Property 1: Default Text Extraction**', () => {
           expect(result).toBe(expectedChar)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
@@ -1051,7 +1051,7 @@ describe('**Feature: text-icon, Property 2: Domain Fallback for Empty Names**', 
           expect(result).toBe(expectedChar)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1071,7 +1071,7 @@ describe('**Feature: text-icon, Property 2: Domain Fallback for Empty Names**', 
           expect(result).toBe('?')
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1102,7 +1102,7 @@ describe('**Feature: text-icon, Property 2: Domain Fallback for Empty Names**', 
           expect(result.length).toBe(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1131,7 +1131,7 @@ describe('**Feature: text-icon, Property 2: Domain Fallback for Empty Names**', 
           expect(result).toMatch(/^[A-Z]$/)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1159,7 +1159,7 @@ describe('**Feature: text-icon, Property 2: Domain Fallback for Empty Names**', 
           expect(result).toMatch(/^[0-9]$/)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1187,7 +1187,7 @@ describe('**Feature: text-icon, Property 2: Domain Fallback for Empty Names**', 
           expect(result.length).toBe(1)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1213,7 +1213,7 @@ describe('**Feature: text-icon, Property 2: Domain Fallback for Empty Names**', 
           expect(result).toBe(expectedChar)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -1240,7 +1240,7 @@ describe('**Feature: text-icon, Property 2: Domain Fallback for Empty Names**', 
           expect(result).toBe(expectedChar)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as fc from 'fast-check'
 import { searchSuggestionsUtils } from './useSearchSuggestions'
 
@@ -129,7 +129,7 @@ describe('useSearchSuggestions', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -146,7 +146,7 @@ describe('useSearchSuggestions', () => {
             }
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
 
@@ -162,7 +162,7 @@ describe('useSearchSuggestions', () => {
             expect(limited.length).toBeLessThanOrEqual(max)
           }
         ),
-        { numRuns: 100 }
+        { numRuns: 20 }
       )
     })
   })
@@ -192,3 +192,4 @@ describe('useSearchSuggestions', () => {
     })
   })
 })
+

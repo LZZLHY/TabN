@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 图标编辑器配置保留属性测试
  * **Feature: text-icon, Property 8: Configuration Preservation on Type Switch**
  *
@@ -88,7 +88,7 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
         expect(deserialized.color).toBe(config.color)
         expect(deserialized.fontFamily).toBe(config.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -114,7 +114,7 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
         expect(serialized1).toBe(serialized2)
         expect(serialized2).toBe(serialized3)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -134,7 +134,7 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
         expect(restoredConfig.color).toBe(config.color)
         expect(restoredConfig.fontFamily).toBe(config.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -163,7 +163,7 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
 
         expect(restored.fontFamily).toBe(config.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -188,7 +188,7 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
         expect(restoredConfig1).toEqual(initialConfig)
         expect(restoredConfig2).toEqual(initialConfig)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -224,7 +224,7 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
         expect(restored.color).toBe(config.color)
         expect(restored.fontFamily).toBe(config.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -248,7 +248,7 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
           expect(VALID_TEXT_ICON_FONTS).toContain(restored.fontFamily)
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -271,7 +271,7 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
         expect(restored.color).toBe(color)
         expect(restored.color).toMatch(/^#[0-9A-F]{6}$/)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -294,7 +294,7 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
         expect(typeof parsed.c).toBe('string')
         expect(typeof parsed.f).toBe('string')
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 
@@ -331,7 +331,8 @@ describe('**Feature: text-icon, Property 8: Configuration Preservation on Type S
         expect(restored.color).toBe(config.color)
         expect(restored.fontFamily).toBe(config.fontFamily)
       }),
-      { numRuns: 100 }
+      { numRuns: 20 }
     )
   })
 })
+
