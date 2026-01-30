@@ -85,7 +85,8 @@ async function hasGit(): Promise<boolean> {
  */
 async function getLatestRelease(): Promise<{ version: string; patch: number; notes: string; date: string } | null> {
   try {
-    // 使用 GitHub API 获取最新 tag，包含 commit SHA
+    // 使用 GitHub API 获取所有 tags
+    // 注意：GitHub API 返回的 tags 是按字母顺序排序的，不是按版本号排序
     const response = await fetch(
       `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/tags`,
       {
@@ -106,9 +107,28 @@ async function getLatestRelease(): Promise<{ version: string; patch: number; not
       return null
     }
     
+    // GitHub API 返回的 tags 是按字母顺序排序的，需要找到版本号最大的 tag
+    // 过滤出符合 vX.Y.Z 格式的 tags，然后按版本号排序
+    const versionTags = tags
+      .filter(tag => /^v\d+\.\d+\.\d+$/.test(tag.name))
+      .sort((a, b) => {
+        const vA = a.name.replace(/^v/, '').split('.').map(Number)
+        const vB = b.name.replace(/^v/, '').split('.').map(Number)
+        for (let i = 0; i < 3; i++) {
+          if (vA[i] > vB[i]) return -1  // 降序排列，最大版本在前
+          if (vA[i] < vB[i]) return 1
+        }
+        return 0
+      })
+    
+    if (versionTags.length === 0) {
+      logger.warn('没有找到符合格式的版本 tag')
+      return null
+    }
+    
     // 获取最新 tag 和对应的 commit SHA
-    const latestTag = tags[0].name
-    const commitSha = tags[0].commit.sha
+    const latestTag = versionTags[0].name
+    const commitSha = versionTags[0].commit.sha
     const version = latestTag.replace(/^v/, '') // 移除 v 前缀
     
     logger.info('获取到最新 tag', { tag: latestTag, commitSha })
