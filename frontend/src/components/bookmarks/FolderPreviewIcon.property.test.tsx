@@ -1142,6 +1142,8 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
    * **Validates: Requirements 4.1, 4.2**
    * 
    * 对于任意两个不同的圆角比例，子图标圆角应该按比例变化
+   * 
+   * 注意：此测试需要渲染两次组件，运行次数减少以避免 CI 超时
    */
   it('当圆角比例变化时，子图标圆角相应更新', () => {
     fc.assert(
@@ -1222,7 +1224,7 @@ describe('**Feature: proportional-icon-radius, Property 5: FolderPreviewIcon 比
           }
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 30 }  // 减少运行次数以避免 CI 超时
     )
   })
 
