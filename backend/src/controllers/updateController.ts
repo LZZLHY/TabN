@@ -490,14 +490,20 @@ router.post('/pull', requireAuth, requireRoot, async (_req: AuthedRequest, res: 
     
     logger.info('开始拉取更新')
     
-    // 拉取代码
-    const { stdout, stderr } = await execAsync('git pull origin main', { cwd: ROOT_DIR })
-    logger.info('Git pull 完成', { stdout, stderr })
+    // 使用 fetch + reset 强制更新，避免本地修改导致冲突
+    // 1. 先 fetch 最新代码
+    await execAsync('git fetch origin main', { cwd: ROOT_DIR, timeout: 60000 })
+    logger.info('Git fetch 完成')
+    
+    // 2. 强制重置到远程分支（忽略本地修改）
+    const { stdout } = await execAsync('git reset --hard origin/main', { cwd: ROOT_DIR })
+    logger.info('Git reset 完成', { stdout })
     
     res.json({ ok: true, data: { message: '代码更新成功', output: stdout } })
   } catch (error) {
     logger.error('拉取更新失败', { error })
-    res.status(500).json({ ok: false, message: '拉取更新失败' })
+    const errorMessage = error instanceof Error ? error.message : '未知错误'
+    res.status(500).json({ ok: false, message: `拉取更新失败: ${errorMessage}` })
   }
 })
 
@@ -591,8 +597,9 @@ router.post('/full', requireAuth, requireRoot, async (req: AuthedRequest, res: R
     
     logger.info('开始完整更新', { needsDeps, needsRestart })
     
-    // 1. 拉取代码
-    await execAsync('git pull origin main', { cwd: ROOT_DIR })
+    // 1. 拉取代码（使用 fetch + reset 强制更新）
+    await execAsync('git fetch origin main', { cwd: ROOT_DIR, timeout: 60000 })
+    await execAsync('git reset --hard origin/main', { cwd: ROOT_DIR })
     logger.info('代码拉取完成')
     
     // 2. 安装依赖（如果需要）

@@ -451,14 +451,17 @@ show_result() {
 register_tabn_command() {
     echo -e "${YELLOW}注册 tabn 命令...${NC}"
     
-    # 创建符号链接到 /usr/local/bin
+    # 确保脚本有执行权限
     TABN_SCRIPT="$INSTALL_DIR/scripts/tabn.sh"
     chmod +x "$TABN_SCRIPT"
     
+    # 创建符号链接到 /usr/local/bin
     if [ -w "/usr/local/bin" ]; then
         ln -sf "$TABN_SCRIPT" /usr/local/bin/tabn
+        chmod +x /usr/local/bin/tabn
     else
         $SUDO ln -sf "$TABN_SCRIPT" /usr/local/bin/tabn
+        $SUDO chmod +x /usr/local/bin/tabn
     fi
     
     echo -e "${GREEN}✓ 已注册 tabn 命令，可在任意位置运行${NC}"

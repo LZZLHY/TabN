@@ -222,7 +222,12 @@ update_tabn() {
     
     # 重新安装依赖
     npm install
-    npm run build:shared
+    
+    # 构建共享模块（直接在 shared 目录执行，避免 workspaces 问题）
+    echo -e "${YELLOW}构建共享模块...${NC}"
+    cd "$INSTALL_DIR/shared"
+    npm run build
+    cd "$INSTALL_DIR"
     
     # 重启服务
     start_tabn
